@@ -1,0 +1,112 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vietai_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: vietai_travel_db
+      POSTGRES_USER: vietai_user
+      POSTGRES_PASSWORD: vietai_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - vietai_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vietai_user -d vietai_travel_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongodb:
+    image: mongo:7
+    container_name: vietai_mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: vietai_mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: vietai_mongo_password
+      MONGO_INITDB_DATABASE: vietai_ai_logs
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./database/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - vietai_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vietai_ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - vietai_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vietai_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=vietai_travel_db;Username=vietai_user;Password=vietai_password
+      MongoDb__ConnectionString: mongodb://vietai_mongo_user:vietai_mongo_password@mongodb:27017/?authSource=admin
+      MongoDb__DatabaseName: vietai_ai_logs
+      Ollama__BaseUrl: http://ollama:11434
+      Ollama__ChatModel: llama3.1:8b
+      Ollama__EmbeddingModel: nomic-embed-text
+      Weather__Provider: OpenMeteo
+      Jwt__SecretKey: CHANGE_THIS_SECRET_KEY_IN_PRODUCTION_USE_AT_LEAST_32_CHARS
+      Jwt__Issuer: VietAITravel
+      Jwt__Audience: VietAITravelUsers
+      Jwt__ExpiryMinutes: "60"
+      Seed__RunOnStartup: "true"
+    ports:
+      - "5000:8080"
+    networks:
+      - vietai_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000
+    container_name: vietai_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - vietai_network
+
+volumes:
+  postgres_data:
+  mongo_data:
+  ollama_data:
+
+networks:
+  vietai_network:
+    driver: bridge

@@ -1,0 +1,84 @@
+name: VietAI Travel CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend-build-test:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: vietai_travel_test_db
+          POSTGRES_USER: vietai_user
+          POSTGRES_PASSWORD: vietai_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vietai_user -d vietai_travel_test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore backend
+        run: dotnet restore ./backend/VietAITravel.sln
+
+      - name: Build backend
+        run: dotnet build ./backend/VietAITravel.sln --configuration Release --no-restore
+
+      - name: Run backend tests
+        run: dotnet test ./backend/VietAITravel.sln --configuration Release --no-build
+
+  frontend-build-test:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install & build frontend
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm run build
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [backend-build-test, frontend-build-test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: docker compose build
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy placeholder
+        run: |
+          echo "Deploy step: SSH to server and run docker compose up -d --build"
