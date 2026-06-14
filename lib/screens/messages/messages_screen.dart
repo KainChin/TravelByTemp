@@ -1,405 +1,356 @@
 import 'package:flutter/material.dart';
-import 'package:assignment/core/theme/app_colors.dart';
-import 'package:assignment/data/mock_data.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'messages_styles.dart';
+import 'models/message_model.dart';
+import 'providers/chat_provider.dart';
+import 'widgets/chat_bubble.dart';
+import 'widgets/input_bar.dart';
+import 'widgets/typing_indicator.dart';
 
-class MessagesScreen extends StatelessWidget {
+class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildListHeader(),
-        Expanded(child: _ChatView()),
-      ],
+  State<MessagesScreen> createState() => _MessagesScreenState();
+}
+
+class _MessagesScreenState extends State<MessagesScreen> {
+  final _scrollCtrl = ScrollController();
+  bool _isRecording = false;
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _handleSend(String text, ChatProvider provider) async {
+    await provider.send(text);
+    _scrollToBottom();
+  }
+
+  Future<void> _handleMic() async {
+    setState(() => _isRecording = !_isRecording);
+    // TODO: tích hợp speech_to_text package
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isRecording
+            ? '🎙️ Đang ghi âm...'
+            : '⏹️ Dừng ghi âm'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: MsgColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
-  Widget _buildListHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Future<void> _handleImage() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery);
+    if (file != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📷 Đã chọn: ${file.name}'),
+          backgroundColor: MsgColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      // TODO: gửi ảnh kèm tin nhắn
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ChatProvider(),
+      child: Consumer<ChatProvider>(
+        builder: (context, provider, _) {
+          return Scaffold(
+            backgroundColor: MsgColors.bg,
+            appBar: _buildAppBar(provider),
+            body: Column(
               children: [
-                Text('Messages', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                SizedBox(height: 4),
-                Text(
-                  'Chat with your AI travel assistant.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                Expanded(
+                  child: provider.messages.isEmpty
+                      ? _buildWelcome(provider)
+                      : _buildChat(provider),
+                ),
+                InputBar(
+                  onSend: (text) => _handleSend(text, provider),
+                  onMic: _handleMic,
+                  onImage: _handleImage,
+                  isLoading: provider.isLoading,
                 ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.cardBorder),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.delete_outline, size: 22),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
-}
 
-class _ChatView extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.cardBorder),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.arrow_back, size: 22),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 8),
-                const CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.primaryLight,
-                  child: Icon(Icons.smart_toy, color: AppColors.primary, size: 22),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text('AI Travel Assistant', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                          SizedBox(width: 4),
-                          Icon(Icons.verified, size: 16, color: AppColors.primary),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Icon(Icons.circle, size: 8, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text('Online', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(onPressed: () {}, icon: const Icon(Icons.phone_outlined, size: 22)),
-                IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert, size: 22)),
-              ],
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text('Today', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _BotBubble(
-                'Xin chào ${MockData.userName}! 👋 Mình có thể giúp gì cho chuyến đi của bạn hôm nay?',
-                '09:28',
-              ),
-              _UserBubble(
-                'Mình đang lên kế hoạch đi Đà Lạt 2 ngày sau đó ghé Nha Trang 1 ngày. Bạn có thể gợi ý lịch trình chi tiết giúp mình được không?',
-                '09:29',
-              ),
-              _BotBubble('Tuyệt vời! Mình sẽ gợi ý lịch trình chi tiết cho bạn ngay đây ✨', '09:30'),
-              const SizedBox(height: 8),
-              _ItineraryCard(),
-              const SizedBox(height: 8),
-              _UserBubble(
-                'Cảm ơn bạn! Mình muốn đổi khách sạn ở Đà Lạt sang gần trung tâm hơn thì sao?',
-                '09:32',
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 14,
-                    backgroundColor: AppColors.primaryLight,
-                    child: Icon(Icons.smart_toy, size: 14, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.cardBorder),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(
-                        3,
-                        (i) => Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.textHint.withValues(alpha: 0.5 + i * 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        _buildInputBar(),
-      ],
-    );
-  }
-
-  Widget _buildInputBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.cardBorder)),
-      ),
-      child: Row(
-        children: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.add_circle_outline)),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Nhắn tin với AI Travel Assistant...',
-                        hintStyle: TextStyle(fontSize: 14, color: AppColors.textHint),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.emoji_emotions_outlined, color: AppColors.primary),
-                  ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.mic, color: AppColors.primary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BotBubble extends StatelessWidget {
-  const _BotBubble(this.text, this.time);
-
-  final String text;
-  final String time;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.primaryLight,
-            child: Icon(Icons.smart_toy, size: 14, color: AppColors.primary),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.cardBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(text, style: const TextStyle(fontSize: 14, height: 1.4)),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(time, style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UserBubble extends StatelessWidget {
-  const _UserBubble(this.text, this.time);
-
-  final String text;
-  final String time;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(text, style: const TextStyle(fontSize: 14, height: 1.4)),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(time, style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.done_all, size: 14, color: AppColors.primary),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ItineraryCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 36),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
-        ],
-      ),
-      child: Column(
+  PreferredSizeWidget _buildAppBar(ChatProvider provider) {
+    return AppBar(
+      backgroundColor: MsgColors.surface,
+      elevation: 0,
+      toolbarHeight: 70,
+      automaticallyImplyLeading: false,
+      title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Đà Lạt 2N1Đ + Nha Trang 1N',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    Text('Lịch trình được cá nhân hóa cho bạn',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  ],
-                ),
-              ),
-              Icon(Icons.landscape, size: 40, color: AppColors.primary.withValues(alpha: 0.5)),
+              const Text('Messages', style: MsgTextStyles.appBarTitle),
+              const SizedBox(width: 6),
+              const Text('✨', style: TextStyle(fontSize: 18)),
             ],
           ),
+          const Text('Chat with your AI travel assistant.',
+              style: MsgTextStyles.appBarSub),
+        ],
+      ),
+      actions: [
+        // 🗑️ Refresh/clear chat
+        GestureDetector(
+          onTap: () => _showClearDialog(provider),
+          child: Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              border: Border.all(color: MsgColors.borderLight),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.refresh_rounded,
+                color: MsgColors.textDark, size: 20),
+          ),
+        ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Divider(height: 1, color: MsgColors.borderLight),
+      ),
+    );
+  }
+
+  Widget _buildChat(ChatProvider provider) {
+    _scrollToBottom();
+    return ListView.builder(
+      controller: _scrollCtrl,
+      padding: const EdgeInsets.only(top: 16),
+      itemCount: provider.messages.length + (provider.isLoading ? 1 : 0) + 1,
+      itemBuilder: (_, i) {
+        // Date separator
+        if (i == 0) return _dateSeparator('Today');
+
+        final msgIndex = i - 1;
+
+        // Typing indicator
+        if (provider.isLoading && msgIndex == provider.messages.length) {
+          return const TypingIndicator();
+        }
+
+        if (msgIndex >= provider.messages.length) return const SizedBox();
+
+        return ChatBubble(message: provider.messages[msgIndex]);
+      },
+    );
+  }
+
+  Widget _buildWelcome(ChatProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          // AI "card" header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: MsgColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _aiHeader(),
+                const SizedBox(height: 16),
+                // Welcome bubble
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: MsgColors.bg,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Xin chào! 👋\nMình có thể giúp gì cho chuyến đi của bạn hôm nay?',
+                    style: MsgTextStyles.bubbleAI,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Gợi ý nhanh',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: MsgColors.textGrey,
+                )),
+          ),
           const SizedBox(height: 12),
-          _destRow('Đà Lạt ⛰️', '2 Ngày • 1 Đêm', 'Ngày 1 - 2'),
-          const Divider(height: 20),
-          _destRow('Nha Trang 🏖️', '1 Ngày', 'Ngày 3'),
-          const SizedBox(height: 8),
-          const Row(
-            children: [
-              Text('Xem chi tiết lịch trình',
-                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
-              Icon(Icons.chevron_right, size: 18, color: AppColors.primary),
-            ],
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: provider.quickSuggestions
+                .map((s) => GestureDetector(
+              onTap: () => _handleSend(s, provider),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: MsgColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: MsgColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Text(s, style: MsgTextStyles.quickChip),
+              ),
+            ))
+                .toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _destRow(String title, String sub, String tag) {
+  Widget _aiHeader() {
     return Row(
       children: [
         Container(
-          width: 48,
-          height: 48,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(10),
+            color: MsgColors.primaryLight,
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(Icons.image, color: AppColors.primary),
+          child: const Text('🤖', style: TextStyle(fontSize: 28)),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Row(
+                children: [
+                  const Text('AI Travel Assistant',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: MsgColors.textDark,
+                      )),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.verified,
+                      color: MsgColors.primary, size: 16),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    margin: const EdgeInsets.only(right: 5),
+                    decoration: const BoxDecoration(
+                      color: MsgColors.online,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const Text('Online', style: MsgTextStyles.onlineDot),
+                ],
+              ),
             ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(tag, style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600)),
-        ),
-        const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint),
       ],
+    );
+  }
+
+  Widget _dateSeparator(String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: MsgColors.borderLight)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: MsgColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: MsgColors.borderLight),
+              ),
+              child: Text(label, style: MsgTextStyles.dateChip),
+            ),
+          ),
+          const Expanded(child: Divider(color: MsgColors.borderLight)),
+        ],
+      ),
+    );
+  }
+
+  void _showClearDialog(ChatProvider provider) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Làm mới đoạn chat?'),
+        content: const Text('Toàn bộ lịch sử trò chuyện sẽ bị xoá.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Huỷ', style: TextStyle(color: MsgColors.textGrey)),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.clear();
+              Navigator.pop(context);
+            },
+            child: const Text('Xoá',
+                style: TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
     );
   }
 }
