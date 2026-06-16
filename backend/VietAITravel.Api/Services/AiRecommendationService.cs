@@ -48,7 +48,14 @@ public class AiRecommendationService(
         var parsed = ParseAiResponse(rawResponse, matches);
 
         if (parsed == null)
+        {
+            logger.LogWarning("Ollama returned an invalid AI schedule payload. Falling back to deterministic schedule.");
             parsed = BuildFallbackResponse(request, weatherResult, matches);
+        }
+        else
+        {
+            parsed = NormalizeAiResponse(parsed, request, weatherResult, matches);
+        }
 
         var scheduleId = Guid.NewGuid();
         var schedule = new Schedule
@@ -184,6 +191,84 @@ public class AiRecommendationService(
             $"Gợi ý dựa trên vector search và thời tiết {w.TemperatureC:F0}°C",
             recs,
             daily);
+    }
+
+    private static AiScheduleJson NormalizeAiResponse(
+        AiScheduleJson parsed,
+        AiRecommendRequest req,
+        WeatherResult weatherResult,
+        IReadOnlyList<VectorSearchResult> matches)
+    {
+        var destinationsById = matches.ToDictionary(m => m.Destination.Id);
+        var fallback = matches.First().Destination;
+
+        var recs = (parsed.recommendedDestinations ?? [])
+            .Where(r => Guid.TryParse(r.destinationId, out var id) && destinationsById.ContainsKey(id))
+            .Select(r =>
+            {
+                var destination = destinationsById[Guid.Parse(r.destinationId)].Destination;
+                return new AiRecommendedDestination(
+                    destination.Id.ToString(),
+                    destination.Name,
+                    string.IsNullOrWhiteSpace(r.reason) ? "Phu hop voi so thich va ngan sach." : r.reason,
+                    string.IsNullOrWhiteSpace(r.weatherFit) ? weatherResult.Description : r.weatherFit,
+                    destination.EstimatedCost);
+            })
+            .GroupBy(r => r.destinationId)
+            .Select(g => g.First())
+            .ToList();
+
+        if (recs.Count == 0)
+        {
+            recs.Add(new AiRecommendedDestination(
+                fallback.Id.ToString(),
+                fallback.Name,
+                "Phu hop voi so thich va ngan sach.",
+                fallback.SuitableWeather ?? weatherResult.Description,
+                fallback.EstimatedCost));
+        }
+
+        var days = (parsed.dailyPlan ?? [])
+            .Where(d => d.day >= 1 && d.day <= req.TotalDays)
+            .OrderBy(d => d.day)
+            .Select(d => new AiDailyPlan(
+                d.day,
+                (d.items ?? [])
+                    .Select(i => NormalizeDailyItem(i, destinationsById, fallback))
+                    .ToList()))
+            .Where(d => d.items.Count > 0)
+            .GroupBy(d => d.day)
+            .Select(g => g.First())
+            .ToList();
+
+        if (days.Count == 0)
+            days = BuildFallbackResponse(req, weatherResult, matches).dailyPlan;
+
+        return new AiScheduleJson(
+            string.IsNullOrWhiteSpace(parsed.title) ? $"Lich trinh {req.TotalDays} ngay" : parsed.title,
+            string.IsNullOrWhiteSpace(parsed.summary) ? "Goi y dua tren AI, vector search va thoi tiet." : parsed.summary,
+            recs,
+            days);
+    }
+
+    private static AiDailyPlanItem NormalizeDailyItem(
+        AiDailyPlanItem item,
+        IReadOnlyDictionary<Guid, VectorSearchResult> destinationsById,
+        Destination fallback)
+    {
+        var destinationId = Guid.TryParse(item.destinationId, out var id) && destinationsById.ContainsKey(id)
+            ? id
+            : fallback.Id;
+
+        var time = TimeOnly.TryParse(item.time, out var parsedTime)
+            ? parsedTime.ToString("HH:mm")
+            : "08:00";
+
+        var activity = string.IsNullOrWhiteSpace(item.activity)
+            ? $"Tham quan {fallback.Name}"
+            : item.activity;
+
+        return new AiDailyPlanItem(destinationId.ToString(), time, activity, item.note);
     }
 
     private async Task PersistDailyPlanAsync(

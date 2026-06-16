@@ -52,6 +52,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
             e.Property(x => x.IsRevoked).HasColumnName("is_revoked");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Destination>(e =>
@@ -101,6 +102,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.IsPublic).HasColumnName("is_public");
             e.Property(x => x.GeneratedAt).HasColumnName("generated_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasOne(x => x.User).WithMany(u => u.Schedules).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ScheduleDestination>(e =>
@@ -115,6 +117,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.EstimatedTime).HasColumnName("estimated_time");
             e.Property(x => x.AiReason).HasColumnName("ai_reason");
             e.Property(x => x.WeatherFitNote).HasColumnName("weather_fit_note");
+            e.HasIndex(x => new { x.ScheduleId, x.DayNumber, x.OrderInDay }).IsUnique();
+            e.HasOne(x => x.Schedule).WithMany(s => s.ScheduleDestinations).HasForeignKey(x => x.ScheduleId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Destination).WithMany().HasForeignKey(x => x.DestinationId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Comment>(e =>
@@ -128,6 +133,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.IsApproved).HasColumnName("is_approved");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasIndex(x => new { x.UserId, x.DestinationId }).IsUnique();
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Destination).WithMany().HasForeignKey(x => x.DestinationId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -13,5 +13,8 @@ public record CreateDestinationRequest(
     string? EmbeddingText);
 
 public record UpdateDestinationRequest(
-    string? Name, string? Description, decimal? EstimatedCost, string? ImageUrl,
+    string? Name, string? Slug, string? Description, string? Province, string? Region,
+    decimal? Latitude, decimal? Longitude, string? Category, decimal? EstimatedCost,
+    string? CostUnit, string? OpeningHours, string? ImageUrl, string? BestTimeToVisit,
+    string? SuitableWeather, string? TravelStyle, string? AiRecommendationNote,
     bool? IsActive, string? EmbeddingText);

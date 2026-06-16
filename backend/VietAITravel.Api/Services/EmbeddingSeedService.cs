@@ -12,16 +12,18 @@ public class EmbeddingSeedService(
     IConfiguration config,
     ILogger<EmbeddingSeedService> logger) : IHostedService
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
         if (!bool.TryParse(config["Seed:RunOnStartup"], out var run) || !run)
-            return;
+            return Task.CompletedTask;
 
         _ = Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(8), cancellationToken);
             await EmbedAllMissingAsync(cancellationToken);
         }, cancellationToken);
+
+        return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
