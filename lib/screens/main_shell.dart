@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:assignment/screens/explore/screens/explore_screen.dart';
+import 'explore/explore_screen.dart';
 import 'package:assignment/screens/messages/messages_screen.dart';
 import 'package:assignment/screens/profile/profile_screen.dart';
 import 'package:assignment/screens/trips/screens/trips_screen.dart';
