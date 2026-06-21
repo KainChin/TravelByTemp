@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'explore/explore_screen.dart';
+import 'package:assignment/screens/explore/screens/explore_screen.dart';
 import 'package:assignment/screens/messages/messages_screen.dart';
 import 'package:assignment/screens/profile/profile_screen.dart';
-import 'package:assignment/screens/trips/screens/trip_planning_screen.dart'; // IMPORT MỚI
+import 'package:assignment/screens/trips/screens/trip_planning_screen.dart';
+
+import 'explore/screens/article_detail_screen.dart'; // IMPORT MỚI
 
 class SavedScreen extends StatelessWidget {
   const SavedScreen({super.key});
