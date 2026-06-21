@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
+import '../message_assets.dart';
 import '../messages_styles.dart';
 
+/// Bubble with three animated dots shown while the AI is "typing".
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({super.key});
 
@@ -9,102 +12,94 @@ class TypingIndicator extends StatefulWidget {
 }
 
 class _TypingIndicatorState extends State<TypingIndicator>
-    with TickerProviderStateMixin {
-  late final List<AnimationController> _controllers;
-  late final List<Animation<double>> _anims;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(
-      3,
-          (i) => AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 500),
-      ),
-    );
-    _anims = _controllers
-        .map((c) => Tween<double>(begin: 0, end: -8).animate(
-      CurvedAnimation(parent: c, curve: Curves.easeInOut),
-    ))
-        .toList();
-
-    // Stagger each dot by 150ms to create wave effect
-    for (int i = 0; i < 3; i++) {
-      Future.delayed(Duration(milliseconds: i * 150), () {
-        if (mounted) _controllers[i].repeat(reverse: true);
-      });
-    }
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(left: MsgDimens.hPad, bottom: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            _aiAvatar(),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: MsgColors.bubbleAI,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(MsgDimens.bubbleRadius),
-                  topRight: Radius.circular(MsgDimens.bubbleRadius),
-                  bottomRight: Radius.circular(MsgDimens.bubbleRadius),
-                  bottomLeft: Radius.circular(MsgDimens.bubbleRadiusSmall),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: MessageSpacing.lg),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: MessageColors.tagBackground,
+            child: ClipOval(
+              child: Image.asset(
+                MessageAssets.aiAvatar,
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.smart_toy_outlined,
+                  size: 18,
+                  color: MessageColors.primaryGreen,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (i) {
-                  return AnimatedBuilder(
-                    animation: _anims[i],
-                    builder: (_, __) => Transform.translate(
-                      offset: Offset(0, _anims[i].value),
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          color: MsgColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  );
-                }),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: MessageSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: MessageSpacing.lg,
+              vertical: MessageSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              color: MessageColors.aiBubble,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(MessageRadius.bubble),
+                bottomLeft: Radius.circular(MessageRadius.bubble),
+                bottomRight: Radius.circular(MessageRadius.bubble),
+              ),
+              boxShadow: MessageShadows.card,
+            ),
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (index) {
+                    final delay = index * 0.2;
+                    final t = (_controller.value - delay) % 1.0;
+                    final normalized = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.0, 1.0);
+                    final scale = 0.6 + 0.4 * normalized;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: MessageColors.textGrey,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
-
-  Widget _aiAvatar() => CircleAvatar(
-    radius: MsgDimens.avatarRadius,
-    backgroundColor: MsgColors.primaryLight,
-    child: const Text('🤖', style: TextStyle(fontSize: 18)),
-  );
 }
