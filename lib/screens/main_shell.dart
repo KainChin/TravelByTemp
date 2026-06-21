@@ -13,7 +13,15 @@ class SavedScreen extends StatelessWidget {
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  /// Tên người dùng đã đăng nhập — truyền từ màn hình Login/Auth khi
+  /// điều hướng tới MainShell, ví dụ:
+  /// `Navigator.pushReplacement(context, MaterialPageRoute(
+  ///   builder: (_) => MainShell(currentUserName: userModel.fullName),
+  /// ));`
+  final String currentUserName;
+
+  const MainShell({super.key, required this.currentUserName});
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -21,11 +29,13 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 2; // Đặt là 2 để mặc định mở tab Trips
 
-  static final List<Widget> _screens = [
+  // Không còn là `static final` vì danh sách màn hình giờ phụ thuộc vào
+  // currentUserName của widget (chỉ biết được ở instance, không phải static).
+  late final List<Widget> _screens = [
     const ExploreScreen(),
     const SavedScreen(),
-    const TripPlanningScreen(), // THAY THẾ Ở ĐÂY
-    const MessagesScreen(),
+    const TripPlanningScreen(),
+    MessagesScreen(currentUserName: widget.currentUserName),
     const ProfileScreen(),
   ];
 
