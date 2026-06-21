@@ -1,175 +1,122 @@
 import 'package:flutter/material.dart';
 
-// ─── Colors ───────────────────────────────────────────────────────────────────
+/// Toàn bộ màu sắc, kích thước, style dùng cho LoginScreen.
+/// Tách riêng để dễ chỉnh sửa theme mà không phải đụng vào logic UI.
+class LoginScreenStyles {
+  LoginScreenStyles._();
 
-class LoginColors {
-  LoginColors._();
+  // ----- Colors -----
+  static const Color primaryGreen = Color(0xFF1B5E3C);
+  static const Color backgroundColor = Color(0xFFF7F8F6);
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF6B6B6B);
+  static const Color inputBorder = Color(0xFFE0E0E0);
+  static const Color inputFill = Color(0xFFFFFFFF);
+  static const Color socialButtonBorder = Color(0xFFE0E0E0);
 
-  static const Color primary       = Color(0xFF22C55E);
-  static const Color primaryDark   = Color(0xFF16A34A);
-  static const Color background    = Color(0xFFF8F9FA);
-  static const Color surface       = Color(0xFFFFFFFF);
-  static const Color textPrimary   = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textHint      = Color(0xFF9CA3AF);
-  static const Color border        = Color(0xFFE5E7EB);
-}
+  // ----- Spacing -----
+  static const double horizontalPadding = 24;
+  static const double fieldSpacing = 16;
+  static const double sectionSpacing = 28;
 
-// ─── Text Styles ──────────────────────────────────────────────────────────────
+  // ----- Border radius -----
+  static const double inputRadius = 12;
+  static const double buttonRadius = 14;
+  static const double socialButtonRadius = 50;
 
-class LoginTextStyles {
-  LoginTextStyles._();
-
-  static const TextStyle heroTitle = TextStyle(
-    fontSize: 26,
-    fontWeight: FontWeight.w800,
-    color: LoginColors.textPrimary,
-    height: 1.2,
+  // ----- Text styles -----
+  static const TextStyle title = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: textPrimary,
   );
 
-  static const TextStyle heroTitleHighlight = TextStyle(
-    fontSize: 26,
-    fontWeight: FontWeight.w800,
-    color: LoginColors.primary,
-    height: 1.2,
-  );
-
-  static const TextStyle heroSubtitle = TextStyle(
-    fontSize: 13,
-    color: LoginColors.textSecondary,
-    height: 1.5,
-  );
-
-  static const TextStyle sectionLabel = TextStyle(
+  static const TextStyle subtitle = TextStyle(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: LoginColors.textPrimary,
+    color: textSecondary,
   );
 
-  static const TextStyle socialBtnLabel = TextStyle(
-    fontSize: 11,
+  static const TextStyle inputLabel = TextStyle(
+    fontSize: 13,
     fontWeight: FontWeight.w500,
-    color: LoginColors.textPrimary,
-  );
-
-  static const TextStyle inputText = TextStyle(
-    fontSize: 15,
-    color: LoginColors.textPrimary,
+    color: textPrimary,
   );
 
   static const TextStyle inputHint = TextStyle(
-    fontSize: 15,
-    color: LoginColors.textHint,
+    fontSize: 14,
+    color: Color(0xFFB0B0B0),
   );
 
-  static const TextStyle ctaButton = TextStyle(
-    fontSize: 17,
+  static const TextStyle linkText = TextStyle(
+    fontSize: 13,
+    color: primaryGreen,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle primaryButtonText = TextStyle(
+    fontSize: 16,
     fontWeight: FontWeight.w600,
     color: Colors.white,
-    letterSpacing: 0.3,
   );
 
-  static const TextStyle forgotPassword = TextStyle(
+  static const TextStyle dividerText = TextStyle(
     fontSize: 13,
-    color: LoginColors.textSecondary,
+    color: textSecondary,
   );
 
-  static const TextStyle registerNormal = TextStyle(
+  static const TextStyle footerText = TextStyle(
     fontSize: 14,
-    color: LoginColors.textSecondary,
+    color: textSecondary,
   );
 
-  static const TextStyle registerLink = TextStyle(
+  static const TextStyle footerLink = TextStyle(
     fontSize: 14,
-    color: LoginColors.primary,
+    color: primaryGreen,
     fontWeight: FontWeight.w600,
   );
 
-  static const TextStyle dividerLabel = TextStyle(
-    fontSize: 13,
-    color: LoginColors.textHint,
-  );
-
-  static const TextStyle promoBannerTitle = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w700,
-    color: LoginColors.textPrimary,
-  );
-
-  static const TextStyle promoBannerDesc = TextStyle(
-    fontSize: 12,
-    color: LoginColors.textSecondary,
-    height: 1.4,
-  );
-}
-
-// ─── Decorations ──────────────────────────────────────────────────────────────
-
-class LoginDecorations {
-  LoginDecorations._();
-
-  static BoxDecoration get backButton => BoxDecoration(
-    color: LoginColors.surface,
-    borderRadius: BorderRadius.circular(12),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.08),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
+  // ----- Decorations -----
+  static InputDecoration inputDecoration({
+    required String hint,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: inputHint,
+      filled: true,
+      fillColor: inputFill,
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
       ),
-    ],
-  );
-
-  static BoxDecoration get heroImage => const BoxDecoration(
-    borderRadius: BorderRadius.only(
-      bottomLeft: Radius.circular(48),
-    ),
-  );
-
-  static BoxDecoration get heroImageFallback => const BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [Color(0xFF6EE7B7), Color(0xFF3B82F6)],
-    ),
-  );
-
-  static BoxDecoration get socialButton => BoxDecoration(
-    color: LoginColors.surface,
-    borderRadius: BorderRadius.circular(12),
-    border: Border.all(color: LoginColors.border),
-  );
-
-  static BoxDecoration get inputField => BoxDecoration(
-    color: LoginColors.surface,
-    borderRadius: BorderRadius.circular(12),
-    border: Border.all(color: LoginColors.border),
-  );
-
-  static BoxDecoration get ctaButton => BoxDecoration(
-    gradient: const LinearGradient(
-      colors: [LoginColors.primary, LoginColors.primaryDark],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ),
-    borderRadius: BorderRadius.circular(16),
-    boxShadow: [
-      BoxShadow(
-        color: LoginColors.primary.withOpacity(0.35),
-        blurRadius: 16,
-        offset: const Offset(0, 6),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(inputRadius),
+        borderSide: const BorderSide(color: inputBorder),
       ),
-    ],
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(inputRadius),
+        borderSide: const BorderSide(color: inputBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(inputRadius),
+        borderSide: const BorderSide(color: primaryGreen),
+      ),
+    );
+  }
+
+  static ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
+    backgroundColor: primaryGreen,
+    minimumSize: const Size(double.infinity, 52),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(buttonRadius),
+    ),
+    elevation: 0,
   );
 
-  static BoxDecoration get promoBanner => BoxDecoration(
-    color: LoginColors.surface,
-    borderRadius: BorderRadius.circular(16),
-    border: Border.all(color: LoginColors.border),
-  );
-
-  static BoxDecoration get promoImageFallback => BoxDecoration(
-    color: const Color(0xFFDCFCE7),
-    borderRadius: BorderRadius.circular(12),
+  static BoxDecoration socialButtonDecoration = BoxDecoration(
+    shape: BoxShape.circle,
+    color: Colors.white,
+    border: Border.all(color: socialButtonBorder),
   );
 }
