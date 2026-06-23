@@ -18,6 +18,13 @@ export type Destination = {
   averageRating: number;
   totalReviews: number;
   imageUrl?: string;
+  isFavorite?: boolean;
+};
+
+export type FavoriteDestination = {
+  id: string;
+  savedAt: string;
+  destination: Destination;
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -33,7 +40,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const text = await res.text();
     throw new Error(text || res.statusText);
   }
-  return res.json();
+  if (res.status === 204) return undefined as T;
+
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export const api = {
@@ -64,4 +74,9 @@ export const api = {
   }) =>
     request<unknown>('/api/ai/recommend', { method: 'POST', body: JSON.stringify(body) }),
   schedules: () => request<unknown[]>('/api/schedules'),
+  favorites: () => request<FavoriteDestination[]>('/api/favorites'),
+  addFavorite: (destinationId: string) =>
+    request<FavoriteDestination>(`/api/favorites/${destinationId}`, { method: 'POST' }),
+  deleteFavorite: (destinationId: string) =>
+    request<void>(`/api/favorites/${destinationId}`, { method: 'DELETE' }),
 };

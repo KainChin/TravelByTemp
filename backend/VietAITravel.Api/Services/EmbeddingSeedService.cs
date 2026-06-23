@@ -50,7 +50,7 @@ public class EmbeddingSeedService(
                     ?? $"{dest.Name} {dest.Province} {dest.Region} {dest.Category} {dest.Description} {dest.TravelStyle}";
                 dest.EmbeddingText = text;
                 var emb = await ollama.GetEmbeddingAsync(text, ct);
-                dest.Embedding = new Vector(NormalizeDimension(emb, 768));
+                dest.Embedding = new Vector(EmbeddingVector.NormalizeDimension(emb));
                 dest.UpdatedAt = DateTime.UtcNow;
                 count++;
             }
@@ -67,15 +67,5 @@ public class EmbeddingSeedService(
         }
 
         return count;
-    }
-
-    private static float[] NormalizeDimension(float[] embedding, int targetDim)
-    {
-        if (embedding.Length == targetDim) return embedding;
-        if (embedding.Length == 0) return new float[targetDim];
-        var result = new float[targetDim];
-        for (var i = 0; i < targetDim; i++)
-            result[i] = embedding[i % embedding.Length];
-        return result;
     }
 }

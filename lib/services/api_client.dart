@@ -345,6 +345,33 @@ class ApiClient {
     );
     await _decodeEmpty(res);
   }
+
+  Future<List<FavoriteDestination>> fetchFavorites() async {
+    final res = await _client.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites'),
+      headers: _headers,
+    );
+    final list = await _decodeList(res);
+    return list
+        .map((e) => FavoriteDestination.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<FavoriteDestination> addFavorite(String destinationId) async {
+    final res = await _client.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites/$destinationId'),
+      headers: _headers,
+    );
+    return FavoriteDestination.fromJson(await _decode(res));
+  }
+
+  Future<void> deleteFavorite(String destinationId) async {
+    final res = await _client.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites/$destinationId'),
+      headers: _headers,
+    );
+    await _decodeEmpty(res);
+  }
 }
 
 class WeatherSnapshot {
@@ -601,6 +628,29 @@ class Comment {
       updatedAt: json['updatedAt'] == null
           ? null
           : DateTime.tryParse('${json['updatedAt']}'),
+    );
+  }
+}
+
+class FavoriteDestination {
+  FavoriteDestination({
+    required this.id,
+    required this.savedAt,
+    required this.destination,
+  });
+
+  final String id;
+  final DateTime savedAt;
+  final Destination destination;
+
+  factory FavoriteDestination.fromJson(Map<String, dynamic> json) {
+    return FavoriteDestination(
+      id: '${json['id']}',
+      savedAt: DateTime.tryParse('${json['savedAt']}') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      destination: Destination.fromApi(
+        json['destination'] as Map<String, dynamic>,
+      ).copyWith(isFavorite: true),
     );
   }
 }

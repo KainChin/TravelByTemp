@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { api, AuthResponse, Destination } from './api';
+import { api, AuthResponse, Destination, FavoriteDestination } from './api';
 
-type Tab = 'explore' | 'ai' | 'trips';
+type Tab = 'explore' | 'saved' | 'ai' | 'trips';
 
 export default function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [tab, setTab] = useState<Tab>('explore');
   const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteDestination[]>([]);
   const [schedules, setSchedules] = useState<unknown[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,8 +31,27 @@ export default function App() {
   useEffect(() => {
     if (!auth) return;
     localStorage.setItem('token', auth.accessToken);
-    api.destinations().then(setDestinations).catch((e) => setError(e.message));
+    loadExplore();
   }, [auth]);
+
+  const withFavoriteState = (items: Destination[], saved: FavoriteDestination[]) => {
+    const savedIds = new Set(saved.map((f) => f.destination.id));
+    return items.map((d) => ({ ...d, isFavorite: savedIds.has(d.id) }));
+  };
+
+  const loadExplore = async () => {
+    try {
+      const canLoadFavorites = auth?.user.role === 'Traveler' || auth?.user.role === 'Admin';
+      const [items, saved] = await Promise.all([
+        api.destinations(),
+        canLoadFavorites ? api.favorites() : Promise.resolve([]),
+      ]);
+      setFavorites(saved);
+      setDestinations(withFavoriteState(items, saved));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   const handleLogin = async () => {
     setError('');
@@ -72,6 +92,33 @@ export default function App() {
     }
   };
 
+  const loadFavorites = async () => {
+    if (auth?.user.role !== 'Traveler' && auth?.user.role !== 'Admin') return;
+    try {
+      const saved = await api.favorites();
+      setFavorites(saved);
+      setDestinations((items) => withFavoriteState(items, saved));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const toggleFavorite = async (destination: Destination) => {
+    setError('');
+    try {
+      if (destination.isFavorite) {
+        await api.deleteFavorite(destination.id);
+      } else {
+        await api.addFavorite(destination.id);
+      }
+      const saved = await api.favorites();
+      setFavorites(saved);
+      setDestinations((items) => withFavoriteState(items, saved));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   if (!auth) {
     return (
       <div className="app">
@@ -102,6 +149,7 @@ export default function App() {
   }
 
   const canUseAi = auth.user.role === 'Traveler' || auth.user.role === 'Admin';
+  const canUseFavorites = auth.user.role === 'Traveler' || auth.user.role === 'Admin';
 
   return (
     <div className="app">
@@ -124,19 +172,33 @@ export default function App() {
       </header>
 
       <div className="tabs">
-        {(['explore', 'ai', 'trips'] as Tab[]).map((t) => (
+        {(['explore', 'saved', 'ai', 'trips'] as Tab[]).map((t) => (
           <button
             key={t}
             className={tab === t ? 'active' : ''}
-            disabled={t === 'ai' && !canUseAi}
-            title={t === 'ai' && !canUseAi ? 'AI Planner chi danh cho Traveler hoac Admin' : undefined}
+            disabled={(t === 'ai' && !canUseAi) || (t === 'saved' && !canUseFavorites)}
+            title={
+              t === 'ai' && !canUseAi
+                ? 'AI Planner chi danh cho Traveler hoac Admin'
+                : t === 'saved' && !canUseFavorites
+                  ? 'Saved chi danh cho Traveler hoac Admin'
+                  : undefined
+            }
             onClick={() => {
               setError('');
               setTab(t);
+              if (t === 'explore') loadExplore();
+              if (t === 'saved') loadFavorites();
               if (t === 'trips') loadTrips();
             }}
           >
-            {t === 'explore' ? 'Explore' : t === 'ai' ? 'AI Planner' : 'My Trips'}
+            {t === 'explore'
+              ? 'Explore'
+              : t === 'saved'
+                ? 'Saved'
+                : t === 'ai'
+                  ? 'AI Planner'
+                  : 'My Trips'}
           </button>
         ))}
       </div>
@@ -155,8 +217,51 @@ export default function App() {
               </p>
               <p style={{ fontSize: 13 }}>{d.description.slice(0, 100)}...</p>
               <strong style={{ color: 'var(--primary)' }}>{d.estimatedCost.toLocaleString()} VND</strong>
+              {canUseFavorites && (
+                <button
+                  className={d.isFavorite ? 'secondary' : undefined}
+                  onClick={() => toggleFavorite(d)}
+                  style={{ marginTop: 12 }}
+                >
+                  {d.isFavorite ? 'Bo luu' : 'Luu dia diem'}
+                </button>
+              )}
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === 'saved' && (
+        <div className="grid">
+          {favorites.length === 0 ? (
+            <div className="card">
+              <h2>Saved Places</h2>
+              <p style={{ color: 'var(--muted)' }}>Chua co dia diem da luu.</p>
+            </div>
+          ) : (
+            favorites.map((f) => (
+              <div key={f.id} className="card dest">
+                {f.destination.imageUrl && (
+                  <img src={f.destination.imageUrl} alt={f.destination.name} />
+                )}
+                <h3>{f.destination.name}</h3>
+                <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+                  {f.destination.province} - {f.destination.category}
+                </p>
+                <p style={{ fontSize: 13 }}>{f.destination.description.slice(0, 100)}...</p>
+                <strong style={{ color: 'var(--primary)' }}>
+                  {f.destination.estimatedCost.toLocaleString()} VND
+                </strong>
+                <button
+                  className="secondary"
+                  onClick={() => toggleFavorite({ ...f.destination, isFavorite: true })}
+                  style={{ marginTop: 12 }}
+                >
+                  Bo luu
+                </button>
+              </div>
+            ))
+          )}
         </div>
       )}
 

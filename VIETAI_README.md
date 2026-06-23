@@ -38,6 +38,25 @@ docker exec vietai_ollama ollama pull llama3.1:8b
 | TravelManager | manager | Manager@123 |
 | Traveler | traveler | Traveler@123 |
 
+## Cap nhat database cu
+
+`database/postgres/init.sql` chi chay khi PostgreSQL tao database lan dau voi volume trong.
+Neu volume `postgres_data` da ton tai tu truoc, cac thay doi schema moi se khong tu dong duoc apply.
+
+Khi can cap nhat database dang co data, chay cac script trong `database/postgres/updates/`.
+Vi du them bang favorites:
+
+```bash
+docker exec -i vietai_postgres psql -U vietai_user -d vietai_travel_db < database/postgres/updates/20260623_add_user_favorites.sql
+```
+
+Neu muon tao lai database sach tu dau va chap nhan mat data local:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
 ## Flow AI Recommendation
 
 1. Traveler đăng nhập → gửi `POST /api/ai/recommend` với tọa độ, ngân sách, sở thích.

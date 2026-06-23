@@ -309,7 +309,7 @@ public class AiRecommendationService(
 
         var text = dest.EmbeddingText ?? $"{dest.Name} {dest.Province} {dest.Category} {dest.Description}";
         var embedding = await ollama.GetEmbeddingAsync(text, ct);
-        dest.Embedding = new Vector(embedding);
+        dest.Embedding = new Vector(EmbeddingVector.NormalizeDimension(embedding));
         dest.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }

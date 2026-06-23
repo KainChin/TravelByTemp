@@ -5,9 +5,10 @@ import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/data/mock_data.dart';
 import 'package:assignment/models/destination.dart';
+import 'package:assignment/screens/destinations/destination_detail_screen.dart';
 import 'package:assignment/screens/filter/search_filter_screen.dart';
 import 'package:assignment/screens/trips/ai_itinerary_screen.dart';
-import 'package:assignment/screens/trips/map_view_screen.dart';
+import 'package:assignment/services/app_session.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -41,14 +42,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
         longitude: filter == null ? null : session.longitude,
         radiusKm: filter?.radiusKm,
       );
+      final favoriteIds = await _favoriteIds(session);
+      final destinations = items
+          .map((d) => d.copyWith(isFavorite: favoriteIds.contains(d.id)))
+          .toList();
       if (!mounted) return;
       setState(() {
-        _destinations = items.isEmpty && _filter == null ? MockData.destinations : items;
+        _destinations = destinations.isEmpty && _filter == null
+            ? MockData.destinations
+            : destinations;
         _loading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
+    }
+  }
+
+  Future<Set<String>> _favoriteIds(AppSession session) async {
+    try {
+      final favorites = await session.api.fetchFavorites();
+      return favorites.map((f) => f.destination.id).toSet();
+    } catch (_) {
+      return {};
     }
   }
 
@@ -105,10 +121,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   child: _EmptyDestinations(),
                 )
               else
-                _PopularDestinations(destinations: _destinations),
+                _PopularDestinations(
+                  destinations: _destinations,
+                  onSelect: _openDestination,
+                ),
               _SectionHeader(title: 'Map & Route', action: 'View full map'),
               _RouteMap(destination: featured),
-              _DestinationConfirm(destination: featured),
+              _DestinationConfirm(
+                destination: featured,
+                onOpenDetail: () => _openDestination(featured),
+              ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(24, 20, 24, 10),
                 child: Row(
@@ -131,6 +153,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
       ),
     );
+  }
+  void _openDestination(Destination destination) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DestinationDetailScreen(destination: destination),
+      ),
+    ).then((_) => _load());
   }
 }
 
@@ -349,12 +379,17 @@ class _EmptyDestinations extends StatelessWidget {
       ),
     );
   }
+
 }
 
 class _PopularDestinations extends StatelessWidget {
-  const _PopularDestinations({required this.destinations});
+  const _PopularDestinations({
+    required this.destinations,
+    required this.onSelect,
+  });
 
   final List<Destination> destinations;
+  final ValueChanged<Destination> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -366,27 +401,37 @@ class _PopularDestinations extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: list.length,
         separatorBuilder: (context, index) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => _SmallDestinationCard(destination: list[index]),
+        itemBuilder: (_, index) => _SmallDestinationCard(
+          destination: list[index],
+          onTap: () => onSelect(list[index]),
+        ),
       ),
     );
   }
 }
 
 class _SmallDestinationCard extends StatelessWidget {
-  const _SmallDestinationCard({required this.destination});
+  const _SmallDestinationCard({
+    required this.destination,
+    required this.onTap,
+  });
 
   final Destination destination;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 112,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
-      ),
-      child: Column(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 112,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           NetworkImageCard(
@@ -418,6 +463,7 @@ class _SmallDestinationCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -486,9 +532,13 @@ class _RouteMap extends StatelessWidget {
 }
 
 class _DestinationConfirm extends StatelessWidget {
-  const _DestinationConfirm({required this.destination});
+  const _DestinationConfirm({
+    required this.destination,
+    required this.onOpenDetail,
+  });
 
   final Destination destination;
+  final VoidCallback onOpenDetail;
 
   @override
   Widget build(BuildContext context) {
@@ -542,12 +592,39 @@ class _DestinationConfirm extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${destination.name} saved')),
-                      );
+                    onPressed: () async {
+                      try {
+                        final api = VietaiScope.of(context).api;
+                        if (destination.isFavorite) {
+                          await api.deleteFavorite(destination.id);
+                        } else {
+                          await api.addFavorite(destination.id);
+                        }
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              destination.isFavorite
+                                  ? '${destination.name} removed'
+                                  : '${destination.name} saved',
+                            ),
+                          ),
+                        );
+                        final state = context.findAncestorStateOfType<_ExploreScreenState>();
+                        await state?._load();
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
                     },
-                    icon: const Icon(Icons.favorite_border),
+                    icon: Icon(
+                      destination.isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: destination.isFavorite ? Colors.redAccent : null,
+                    ),
                   ),
                 ],
               ),
@@ -555,12 +632,7 @@ class _DestinationConfirm extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MapViewScreen()),
-                    );
-                  },
+                  onPressed: onOpenDetail,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),

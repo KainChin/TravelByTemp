@@ -7,6 +7,7 @@ class Destination {
     required this.id,
     required this.name,
     required this.tagline,
+    required this.description,
     required this.category,
     required this.distanceKm,
     required this.rating,
@@ -16,6 +17,8 @@ class Destination {
     required this.climate,
     this.latitude,
     this.longitude,
+    this.estimatedCost,
+    this.costUnit,
     this.price,
     this.location,
     this.isFavorite = false,
@@ -24,6 +27,7 @@ class Destination {
   final String id;
   final String name;
   final String tagline;
+  final String description;
   final String category;
   final double distanceKm;
   final double rating;
@@ -33,9 +37,53 @@ class Destination {
   final DestinationClimate climate;
   final double? latitude;
   final double? longitude;
+  final double? estimatedCost;
+  final String? costUnit;
   final String? price;
   final String? location;
   final bool isFavorite;
+
+  Destination copyWith({
+    String? id,
+    String? name,
+    String? tagline,
+    String? description,
+    String? category,
+    double? distanceKm,
+    double? rating,
+    int? reviewCount,
+    String? imageUrl,
+    double? avgTempC,
+    DestinationClimate? climate,
+    double? latitude,
+    double? longitude,
+    double? estimatedCost,
+    String? costUnit,
+    String? price,
+    String? location,
+    bool? isFavorite,
+  }) {
+    return Destination(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      tagline: tagline ?? this.tagline,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      distanceKm: distanceKm ?? this.distanceKm,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      imageUrl: imageUrl ?? this.imageUrl,
+      avgTempC: avgTempC ?? this.avgTempC,
+      climate: climate ?? this.climate,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      estimatedCost: estimatedCost ?? this.estimatedCost,
+      costUnit: costUnit ?? this.costUnit,
+      price: price ?? this.price,
+      location: location ?? this.location,
+      isFavorite: isFavorite ?? this.isFavorite,
+    );
+  }
 
   String get distanceLabel => '${distanceKm.toStringAsFixed(0)}km away';
 
@@ -68,6 +116,7 @@ class Destination {
       id: json['id'] as String,
       name: name,
       tagline: json['province'] as String? ?? category,
+      description: json['description'] as String? ?? '',
       category: _mapCategory(category),
       distanceKm: (json['distanceKm'] as num?)?.toDouble() ?? 0,
       rating: (json['averageRating'] as num?)?.toDouble() ?? 4.5,
@@ -81,6 +130,12 @@ class Destination {
       climate: climate,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      estimatedCost: (json['estimatedCost'] as num?)?.toDouble(),
+      costUnit: json['costUnit'] as String?,
+      price: _priceLabel(
+        (json['estimatedCost'] as num?)?.toDouble(),
+        json['costUnit'] as String?,
+      ),
       location: json['province'] as String?,
     );
   }
@@ -105,6 +160,14 @@ class Destination {
     }
     return apiImageUrl ??
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600';
+  }
+
+  static String? _priceLabel(double? value, String? unit) {
+    if (value == null) return null;
+    final formatted = value >= 1000000
+        ? '${(value / 1000000).toStringAsFixed(1)}M'
+        : value.toStringAsFixed(0);
+    return '$formatted VND${unit == null ? '' : ' / $unit'}';
   }
 }
 

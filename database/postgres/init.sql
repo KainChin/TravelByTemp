@@ -119,6 +119,16 @@ CREATE TABLE comments (
     CONSTRAINT ck_comments_rating CHECK (rating BETWEEN 1 AND 5)
 );
 
+CREATE TABLE user_favorites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    destination_id UUID NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_favorites_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_favorites_destinations FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_user_favorites_user_destination UNIQUE (user_id, destination_id)
+);
+
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
@@ -128,6 +138,8 @@ CREATE INDEX idx_destinations_is_active ON destinations(is_active);
 CREATE INDEX idx_schedules_user_id ON schedules(user_id);
 CREATE INDEX idx_schedule_destinations_schedule_id ON schedule_destinations(schedule_id);
 CREATE INDEX idx_comments_destination_id ON comments(destination_id);
+CREATE INDEX idx_user_favorites_user_id ON user_favorites(user_id);
+CREATE INDEX idx_user_favorites_destination_id ON user_favorites(destination_id);
 
 CREATE OR REPLACE VIEW vw_destination_ratings AS
 SELECT d.id AS destination_id, d.name AS destination_name, d.province, d.region, d.category,
