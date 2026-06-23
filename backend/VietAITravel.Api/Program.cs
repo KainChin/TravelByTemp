@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using VietAITravel.Api.DTOs;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Pgvector.EntityFrameworkCore;
@@ -70,9 +71,20 @@ var ollamaOpts = new OllamaOptions
 };
 builder.Services.AddSingleton(ollamaOpts);
 builder.Services.AddHttpClient<OllamaService>(c => c.BaseAddress = new Uri(ollamaOpts.BaseUrl));
+builder.Services.AddHttpClient("ollama-chat", c => c.Timeout = TimeSpan.FromMinutes(5));
 builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddScoped<VectorSearchService>();
 builder.Services.AddScoped<AiRecommendationService>();
+
+var openAiOpts = new OpenAiOptions
+{
+    ApiKey = builder.Configuration["OpenAI:ApiKey"] ?? "",
+    BaseUrl = builder.Configuration["OpenAI:BaseUrl"] ?? "https://api.openai.com/v1",
+    VisionModel = builder.Configuration["OpenAI:VisionModel"] ?? "gpt-4o-mini"
+};
+builder.Services.AddSingleton(openAiOpts);
+builder.Services.AddHttpClient("openai", c => c.Timeout = TimeSpan.FromSeconds(90));
+builder.Services.AddScoped<TravelChatService>();
 
 var mongoOpts = new MongoOptions
 {
@@ -109,6 +121,60 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapPost("/api/chat", async (
+    ChatRequest request,
+    TravelChatService service,
+    CancellationToken ct) =>
+{
+    try
+    {
+        return Results.Ok(await service.ChatAsync(request, ct));
+    }
+    catch (TravelAiException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: ex.StatusCode);
+    }
+});
+
+app.MapPost("/api/chat-ai", async (
+    HttpRequest request,
+    TravelChatService service,
+    CancellationToken ct) =>
+{
+    try
+    {
+        if (!request.HasFormContentType)
+            return Results.Problem("Request must be multipart/form-data.", statusCode: StatusCodes.Status400BadRequest);
+
+        var form = await request.ReadFormAsync(ct);
+        var message = form["message"].ToString();
+        var image = form.Files.GetFile("image");
+        if (image is null)
+            return Results.Problem("Image file field 'image' is required.", statusCode: StatusCodes.Status400BadRequest);
+
+        return Results.Ok(await service.ChatWithImageAsync(message, image, ct));
+    }
+    catch (TravelAiException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: ex.StatusCode);
+    }
+});
+
+app.MapPost("/api/trip/generate-itinerary", async (
+    GenerateItineraryRequest request,
+    TravelChatService service,
+    CancellationToken ct) =>
+{
+    try
+    {
+        return Results.Ok(await service.GenerateItineraryAsync(request, ct));
+    }
+    catch (TravelAiException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: ex.StatusCode);
+    }
+});
 
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 

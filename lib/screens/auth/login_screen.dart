@@ -1,4 +1,6 @@
+import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:flutter/material.dart';
+
 import 'login_screen_styles.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,50 +12,47 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController(text: 'traveler');
+  final _passwordController = TextEditingController(text: 'Traveler@123');
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  /// Xử lý đăng nhập bằng email/số điện thoại + mật khẩu.
-  /// TODO: Gọi API đăng nhập tại đây (ví dụ: AuthService.login(...)).
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     try {
-      // TODO: Gọi API đăng nhập thật ở đây.
-      // final result = await AuthService.login(
-      //   identifier: _emailController.text.trim(),
-      //   password: _passwordController.text,
-      // );
-      // Xử lý kết quả: lưu token, điều hướng, hiển thị lỗi...
-
-      await Future.delayed(const Duration(seconds: 1)); // placeholder
+      await VietaiScope.of(context).login(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
     } catch (e) {
-      // TODO: Hiển thị lỗi đăng nhập (SnackBar / Dialog) tại đây.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Dang nhap that bai. Hay kiem tra backend va tai khoan.\n$e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// TODO: Gọi API đăng nhập bằng Google tại đây.
-  void _handleGoogleLogin() {}
-
-  /// TODO: Gọi API đăng nhập bằng Facebook tại đây.
-  void _handleFacebookLogin() {}
-
-  /// TODO: Gọi API đăng nhập bằng Apple tại đây.
-  void _handleAppleLogin() {}
+  void _showComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Chuc nang nay chua duoc ket noi.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,9 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildSocialButtons(),
               const SizedBox(height: 24),
               _buildFooter(),
-              const SizedBox(height: 16),
-              // TODO: Thay bằng ảnh minh hoạ thật (núi/tháp ở dưới màn hình).
-              // Ví dụ: Image.asset('assets/images/login_bottom_illustration.png'),
               const SizedBox(height: 24),
             ],
           ),
@@ -103,23 +99,20 @@ class _LoginScreenState extends State<LoginScreen> {
               icon: const Icon(Icons.arrow_back),
               color: LoginScreenStyles.textPrimary,
             ),
-            // TODO: Thay bằng dropdown đổi ngôn ngữ thực tế (i18n) nếu cần.
             TextButton.icon(
-              onPressed: () {},
+              onPressed: _showComingSoon,
               icon: const Icon(
                 Icons.language,
                 size: 18,
                 color: LoginScreenStyles.textPrimary,
               ),
               label: const Text(
-                'Tiếng Việt',
+                'Tieng Viet',
                 style: TextStyle(color: LoginScreenStyles.textPrimary),
               ),
             ),
           ],
         ),
-        // TODO: Thay bằng ảnh minh hoạ thật (khinh khí cầu/núi rừng).
-        // Ví dụ: Image.asset('assets/images/login_top_illustration.png', height: 140),
         const SizedBox(height: 16),
       ],
     );
@@ -129,10 +122,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Chào mừng trở lại! 👋', style: LoginScreenStyles.title),
+        Text('Chao mung tro lai!', style: LoginScreenStyles.title),
         SizedBox(height: 6),
         Text(
-          'Đăng nhập để tiếp tục khám phá những điểm đến tuyệt vời của Việt Nam',
+          'Dang nhap de tiep tuc kham pha VietAI Travel.',
           style: LoginScreenStyles.subtitle,
         ),
       ],
@@ -145,32 +138,30 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Email hoặc số điện thoại',
-            style: LoginScreenStyles.inputLabel,
-          ),
+          const Text('Ten dang nhap', style: LoginScreenStyles.inputLabel),
           const SizedBox(height: 8),
           TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
+            controller: _usernameController,
+            textInputAction: TextInputAction.next,
             decoration: LoginScreenStyles.inputDecoration(
-              hint: 'Nhập email hoặc số điện thoại',
+              hint: 'Vi du: traveler',
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Vui lòng nhập email hoặc số điện thoại';
+                return 'Vui long nhap ten dang nhap';
               }
               return null;
             },
           ),
           const SizedBox(height: LoginScreenStyles.fieldSpacing),
-          const Text('Mật khẩu', style: LoginScreenStyles.inputLabel),
+          const Text('Mat khau', style: LoginScreenStyles.inputLabel),
           const SizedBox(height: 8),
           TextFormField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
+            onFieldSubmitted: (_) => _isLoading ? null : _handleLogin(),
             decoration: LoginScreenStyles.inputDecoration(
-              hint: 'Nhập mật khẩu',
+              hint: 'Nhap mat khau',
               suffixIcon: IconButton(
                 icon: Icon(
                   _isPasswordVisible
@@ -185,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập mật khẩu';
+                return 'Vui long nhap mat khau';
               }
               return null;
             },
@@ -194,12 +185,10 @@ class _LoginScreenState extends State<LoginScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {
-                // TODO: Điều hướng sang màn hình Quên mật khẩu.
-              },
+              onPressed: _showComingSoon,
               style: TextButton.styleFrom(padding: EdgeInsets.zero),
               child: const Text(
-                'Quên mật khẩu?',
+                'Quen mat khau?',
                 style: LoginScreenStyles.linkText,
               ),
             ),
@@ -215,27 +204,27 @@ class _LoginScreenState extends State<LoginScreen> {
       style: LoginScreenStyles.primaryButtonStyle,
       child: _isLoading
           ? const SizedBox(
-        height: 22,
-        width: 22,
-        child: CircularProgressIndicator(
-          strokeWidth: 2.5,
-          color: Colors.white,
-        ),
-      )
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
           : const Text(
-        'Đăng nhập',
-        style: LoginScreenStyles.primaryButtonText,
-      ),
+              'Dang nhap',
+              style: LoginScreenStyles.primaryButtonText,
+            ),
     );
   }
 
   Widget _buildDivider() {
-    return Row(
-      children: const [
+    return const Row(
+      children: [
         Expanded(child: Divider(color: LoginScreenStyles.inputBorder)),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text('hoặc', style: LoginScreenStyles.dividerText),
+          child: Text('hoac', style: LoginScreenStyles.dividerText),
         ),
         Expanded(child: Divider(color: LoginScreenStyles.inputBorder)),
       ],
@@ -246,11 +235,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _socialButton(icon: Icons.g_mobiledata, onTap: _handleGoogleLogin),
+        _socialButton(icon: Icons.g_mobiledata, onTap: _showComingSoon),
         const SizedBox(width: 20),
-        _socialButton(icon: Icons.facebook, onTap: _handleFacebookLogin),
+        _socialButton(icon: Icons.facebook, onTap: _showComingSoon),
         const SizedBox(width: 20),
-        _socialButton(icon: Icons.apple, onTap: _handleAppleLogin),
+        _socialButton(icon: Icons.apple, onTap: _showComingSoon),
       ],
     );
   }
@@ -279,15 +268,13 @@ class _LoginScreenState extends State<LoginScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
-            'Chưa có tài khoản? ',
+            'Chua co tai khoan? ',
             style: LoginScreenStyles.footerText,
           ),
           GestureDetector(
-            onTap: () {
-              // TODO: Điều hướng sang màn hình Đăng ký.
-            },
+            onTap: _showComingSoon,
             child: const Text(
-              'Đăng ký ngay',
+              'Dang ky ngay',
               style: LoginScreenStyles.footerLink,
             ),
           ),
