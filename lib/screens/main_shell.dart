@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:assignment/screens/explore/screens/explore_screen.dart';
 import 'package:assignment/screens/messages/messages_screen.dart';
 import 'package:assignment/screens/profile/profile_screen.dart';
 import 'package:assignment/screens/trips/screens/trip_planning_screen.dart';
 
-import 'explore/screens/article_detail_screen.dart'; // IMPORT MỚI
 
 class SavedScreen extends StatelessWidget {
   const SavedScreen({super.key});
@@ -13,8 +12,8 @@ class SavedScreen extends StatelessWidget {
 }
 
 class MainShell extends StatefulWidget {
-  /// Tên người dùng đã đăng nhập — truyền từ màn hình Login/Auth khi
-  /// điều hướng tới MainShell, ví dụ:
+  /// TÃªn ngÆ°á»i dÃ¹ng Ä‘Ã£ Ä‘Äƒng nháº­p â€” truyá»n tá»« mÃ n hÃ¬nh Login/Auth khi
+  /// Ä‘iá»u hÆ°á»›ng tá»›i MainShell, vÃ­ dá»¥:
   /// `Navigator.pushReplacement(context, MaterialPageRoute(
   ///   builder: (_) => MainShell(currentUserName: userModel.fullName),
   /// ));`
@@ -27,10 +26,10 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 2; // Đặt là 2 để mặc định mở tab Trips
+  int _currentIndex = 2; // Äáº·t lÃ  2 Ä‘á»ƒ máº·c Ä‘á»‹nh má»Ÿ tab Trips
 
-  // Không còn là `static final` vì danh sách màn hình giờ phụ thuộc vào
-  // currentUserName của widget (chỉ biết được ở instance, không phải static).
+  // KhÃ´ng cÃ²n lÃ  `static final` vÃ¬ danh sÃ¡ch mÃ n hÃ¬nh giá» phá»¥ thuá»™c vÃ o
+  // currentUserName cá»§a widget (chá»‰ biáº¿t Ä‘Æ°á»£c á»Ÿ instance, khÃ´ng pháº£i static).
   late final List<Widget> _screens = [
     const ExploreScreen(),
     const SavedScreen(),
@@ -50,7 +49,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  // Giữ nguyên logic _buildBottomNav của bạn vì nó đã đẹp rồi
+  // Giá»¯ nguyÃªn logic _buildBottomNav cá»§a báº¡n vÃ¬ nÃ³ Ä‘Ã£ Ä‘áº¹p rá»“i
   Widget _buildBottomNav() {
     const activeColor = Color(0xFF2ECC71);
     const items = [

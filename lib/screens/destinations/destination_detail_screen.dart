@@ -4,7 +4,7 @@ import 'package:assignment/core/widgets/gradient_button.dart';
 import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/models/destination.dart';
-import 'package:assignment/screens/trips/ai_itinerary_screen.dart';
+import 'package:assignment/screens/trips/screens/create_trip_screen.dart';
 import 'package:assignment/services/api_client.dart';
 
 class DestinationDetailScreen extends StatefulWidget {
@@ -164,7 +164,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const AiItineraryScreen()),
+                        MaterialPageRoute(builder: (_) => const CreateTripScreen()),
                       );
                     },
                   ),

@@ -1,394 +1,249 @@
--- ============================================================
--- VietTravel AI · PostgreSQL Database Schema
--- Engine: PostgreSQL 15+
--- Convention: UUID PK, soft-delete, UTC timestamps (TIMESTAMPTZ)
--- Generated from: VietTravel_AI_Database_Architecture.docx
--- ============================================================
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- gen_random_uuid()
+CREATE TABLE roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
--- ─── 1. USERS ───────────────────────────────────────────────
+INSERT INTO roles (name, description) VALUES
+('Admin', 'Quản trị toàn bộ hệ thống, tài khoản, dữ liệu và cấu hình'),
+('TravelManager', 'Quản lý địa điểm du lịch, nội dung, đánh giá và dữ liệu gợi ý'),
+('Traveler', 'Người dùng cuối, tạo lịch trình và nhận gợi ý từ AI');
+
 CREATE TABLE users (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email              VARCHAR(255) NOT NULL,
-    phone_number       VARCHAR(20),
-    password_hash      TEXT NOT NULL,
-    full_name          VARCHAR(150) NOT NULL,
-    avatar_url         TEXT,
-    date_of_birth      DATE,
-    gender             VARCHAR(20) CHECK (gender IN ('male','female','other','prefer_not_to_say')),
-    is_active          BOOLEAN NOT NULL DEFAULT TRUE,
-    is_email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
-    last_login_at      TIMESTAMPTZ,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at         TIMESTAMPTZ,
-    is_deleted         BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_users_email UNIQUE (email),
-    CONSTRAINT uq_users_phone UNIQUE (phone_number)
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id UUID NOT NULL,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(500) NOT NULL,
+    full_name VARCHAR(150) NOT NULL,
+    avatar_url VARCHAR(500),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT fk_users_roles FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
--- ─── 2. REFRESH TOKENS ──────────────────────────────────────
 CREATE TABLE refresh_tokens (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash   TEXT NOT NULL,
-    device_info  JSONB,
-    ip_address   INET,
-    expires_at   TIMESTAMPTZ NOT NULL,
-    is_revoked   BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at   TIMESTAMPTZ,
-    is_deleted   BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_refresh_token_hash UNIQUE (token_hash)
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    token VARCHAR(500) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_refresh_tokens_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- ─── 3. PASSWORD RESET TOKENS ───────────────────────────────
-CREATE TABLE password_reset_tokens (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash   TEXT NOT NULL,
-    expires_at   TIMESTAMPTZ NOT NULL,
-    is_used      BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at   TIMESTAMPTZ,
-    is_deleted   BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_pwd_reset_token_hash UNIQUE (token_hash)
+CREATE TABLE destinations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(200) NOT NULL,
+    slug VARCHAR(250) NOT NULL UNIQUE,
+    description TEXT NOT NULL,
+    province VARCHAR(100) NOT NULL,
+    region VARCHAR(20) NOT NULL,
+    latitude DECIMAL(9,6) NOT NULL,
+    longitude DECIMAL(9,6) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    estimated_cost DECIMAL(18,2) NOT NULL,
+    cost_unit VARCHAR(50) NOT NULL DEFAULT 'VND/person',
+    opening_hours VARCHAR(200),
+    image_url VARCHAR(500),
+    best_time_to_visit VARCHAR(200),
+    suitable_weather VARCHAR(300),
+    travel_style VARCHAR(200),
+    ai_recommendation_note TEXT,
+    embedding_text TEXT,
+    embedding VECTOR(768),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT ck_destinations_region CHECK (region IN ('North', 'Central', 'South')),
+    CONSTRAINT ck_destinations_cost CHECK (estimated_cost >= 0)
 );
 
--- ─── 4. USER FAVORITES ──────────────────────────────────────
+CREATE TABLE schedules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    total_days INT NOT NULL DEFAULT 1,
+    budget_input DECIMAL(18,2) NOT NULL,
+    preference_input TEXT,
+    user_latitude DECIMAL(9,6),
+    user_longitude DECIMAL(9,6),
+    user_location_name VARCHAR(200),
+    current_temperature DECIMAL(4,1),
+    current_weather_description VARCHAR(200),
+    mongo_ai_log_id VARCHAR(100),
+    ai_model_used VARCHAR(100),
+    embedding_model_used VARCHAR(100),
+    is_public BOOLEAN NOT NULL DEFAULT FALSE,
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT fk_schedules_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT ck_schedules_total_days CHECK (total_days >= 1),
+    CONSTRAINT ck_schedules_budget CHECK (budget_input >= 0)
+);
+
+CREATE TABLE schedule_destinations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    schedule_id UUID NOT NULL,
+    destination_id UUID NOT NULL,
+    day_number INT NOT NULL,
+    order_in_day INT NOT NULL DEFAULT 1,
+    note TEXT,
+    estimated_time TIME,
+    ai_reason TEXT,
+    weather_fit_note TEXT,
+    CONSTRAINT fk_schedule_destinations_schedules FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
+    CONSTRAINT fk_schedule_destinations_destinations FOREIGN KEY (destination_id) REFERENCES destinations(id),
+    CONSTRAINT ck_schedule_destinations_day CHECK (day_number >= 1),
+    CONSTRAINT ck_schedule_destinations_order CHECK (order_in_day >= 1),
+    CONSTRAINT uq_schedule_day_order UNIQUE (schedule_id, day_number, order_in_day)
+);
+
+CREATE TABLE comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    destination_id UUID NOT NULL,
+    rating INT NOT NULL,
+    content TEXT,
+    is_approved BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT fk_comments_users FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_comments_destinations FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_comments_user_destination UNIQUE (user_id, destination_id),
+    CONSTRAINT ck_comments_rating CHECK (rating BETWEEN 1 AND 5)
+);
+
 CREATE TABLE user_favorites (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    item_id         VARCHAR(100) NOT NULL,
-    item_type       VARCHAR(50) NOT NULL CHECK (item_type IN ('destination','article','hotel','food','cafe')),
-    item_name       VARCHAR(255),
-    item_thumbnail  TEXT,
-    notes           TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,
-    is_deleted      BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_user_favorite UNIQUE (user_id, item_id, item_type)
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    destination_id UUID NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_favorites_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_favorites_destinations FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_user_favorites_user_destination UNIQUE (user_id, destination_id)
 );
 
--- ─── 5. CONVERSATIONS ───────────────────────────────────────
-CREATE TABLE conversations (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title               VARCHAR(255),
-    status              VARCHAR(20) NOT NULL DEFAULT 'active'
-                            CHECK (status IN ('active','archived','completed')),
-    context_summary     TEXT,
-    total_tokens_used   INTEGER NOT NULL DEFAULT 0,
-    ai_model            VARCHAR(100),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ,
-    is_deleted          BOOLEAN NOT NULL DEFAULT FALSE
-);
+CREATE INDEX idx_users_role_id ON users(role_id);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_destinations_region ON destinations(region);
+CREATE INDEX idx_destinations_category ON destinations(category);
+CREATE INDEX idx_destinations_is_active ON destinations(is_active);
+CREATE INDEX idx_schedules_user_id ON schedules(user_id);
+CREATE INDEX idx_schedule_destinations_schedule_id ON schedule_destinations(schedule_id);
+CREATE INDEX idx_comments_destination_id ON comments(destination_id);
+CREATE INDEX idx_user_favorites_user_id ON user_favorites(user_id);
+CREATE INDEX idx_user_favorites_destination_id ON user_favorites(destination_id);
 
--- ─── 6. TRIPS ───────────────────────────────────────────────
-CREATE TABLE trips (
-    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id               UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    conversation_id       UUID REFERENCES conversations(id) ON DELETE SET NULL,
-    title                 VARCHAR(255) NOT NULL,
-    destination_name      VARCHAR(255) NOT NULL,
-    destination_province  VARCHAR(100),
-    start_date            DATE,
-    end_date              DATE,
-    number_of_days        SMALLINT CHECK (number_of_days > 0),
-    status                VARCHAR(20) NOT NULL DEFAULT 'draft'
-                              CHECK (status IN ('draft','planned','ongoing','completed','cancelled')),
-    budget                NUMERIC(15,2) CHECK (budget >= 0),
-    estimated_cost        NUMERIC(15,2) CHECK (estimated_cost >= 0),
-    actual_cost           NUMERIC(15,2) CHECK (actual_cost >= 0),
-    cover_image_url       TEXT,
-    notes                 TEXT,
-    is_archived           BOOLEAN NOT NULL DEFAULT FALSE,
-    duplicated_from_id    UUID REFERENCES trips(id) ON DELETE SET NULL,
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at            TIMESTAMPTZ,
-    is_deleted            BOOLEAN NOT NULL DEFAULT FALSE
-);
+CREATE OR REPLACE VIEW vw_destination_ratings AS
+SELECT d.id AS destination_id, d.name AS destination_name, d.province, d.region, d.category,
+       COUNT(c.id) AS total_reviews, ROUND(AVG(c.rating)::numeric, 2) AS average_rating
+FROM destinations d
+LEFT JOIN comments c ON c.destination_id = d.id AND c.is_approved = TRUE
+WHERE d.is_active = TRUE
+GROUP BY d.id, d.name, d.province, d.region, d.category;
 
--- ─── 7. TRIP DAYS ───────────────────────────────────────────
-CREATE TABLE trip_days (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    trip_id     UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-    day_number  SMALLINT NOT NULL CHECK (day_number > 0),
-    day_date    DATE,
-    title       VARCHAR(255),
-    notes       TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ,
-    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_trip_day_number UNIQUE (trip_id, day_number)
-);
-
--- ─── 8. TRIP ACTIVITIES ─────────────────────────────────────
-CREATE TABLE trip_activities (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    trip_day_id       UUID NOT NULL REFERENCES trip_days(id) ON DELETE CASCADE,
-    title             VARCHAR(255) NOT NULL,
-    description       TEXT,
-    location_name     VARCHAR(255),
-    location_ref_id   VARCHAR(100),
-    activity_type     VARCHAR(50) CHECK (activity_type IN ('checkin','sightseeing','food','transport','shopping','other')),
-    start_time        TIME,
-    end_time          TIME,
-    estimated_cost    NUMERIC(12,2) CHECK (estimated_cost >= 0),
-    actual_cost       NUMERIC(12,2) CHECK (actual_cost >= 0),
-    sort_order        SMALLINT NOT NULL DEFAULT 0,
-    is_ai_generated   BOOLEAN NOT NULL DEFAULT FALSE,
-    ai_confidence     NUMERIC(4,3) CHECK (ai_confidence BETWEEN 0 AND 1),
-    notes             TEXT,
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at        TIMESTAMPTZ,
-    is_deleted        BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- ─── 9. MESSAGES ────────────────────────────────────────────
-CREATE TABLE messages (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id     UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    role                VARCHAR(20) NOT NULL CHECK (role IN ('user','assistant','system')),
-    content             TEXT NOT NULL,
-    content_type        VARCHAR(30) NOT NULL DEFAULT 'text'
-                            CHECK (content_type IN ('text','itinerary','suggestion','tip')),
-    prompt_tokens       INTEGER,
-    completion_tokens   INTEGER,
-    ai_model            VARCHAR(100),
-    metadata            JSONB,
-    sort_order          INTEGER NOT NULL DEFAULT 0,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ,
-    is_deleted          BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- ─── 10. LANDMARK RECOGNITIONS ──────────────────────────────
-CREATE TABLE landmark_recognitions (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id                  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    image_url                TEXT NOT NULL,
-    image_hash               VARCHAR(64),
-    recognized_place_name    VARCHAR(255),
-    recognized_place_ref_id  VARCHAR(100),
-    confidence_score         NUMERIC(4,3) CHECK (confidence_score BETWEEN 0 AND 1),
-    recognition_time_ms      INTEGER,
-    ai_model                 VARCHAR(100),
-    raw_ai_response          JSONB,
-    linked_trip_id           UUID REFERENCES trips(id) ON DELETE SET NULL,
-    status                   VARCHAR(20) NOT NULL DEFAULT 'pending'
-                                 CHECK (status IN ('pending','completed','failed')),
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at               TIMESTAMPTZ,
-    is_deleted               BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- ─── 11. USER PREFERENCE TAGS ───────────────────────────────
-CREATE TABLE user_preference_tags (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    tag         VARCHAR(50) NOT NULL
-                    CHECK (tag IN ('photography','foodie','nature','adventure',
-                                   'luxury','budget','family','couple','culture')),
-    weight      NUMERIC(4,3) NOT NULL DEFAULT 0.5 CHECK (weight BETWEEN 0 AND 1),
-    source      VARCHAR(30) NOT NULL DEFAULT 'manual'
-                    CHECK (source IN ('manual','inferred_trips','inferred_chat','inferred_saves')),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ,
-    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_user_tag UNIQUE (user_id, tag)
-);
-
--- ─── 12. RECOMMENDATION LOGS ────────────────────────────────
-CREATE TABLE recommendation_logs (
-    id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id                UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    recommendation_type    VARCHAR(50) NOT NULL
-                               CHECK (recommendation_type IN ('destination','food','hotel','trip_idea','activity')),
-    recommended_item_id    VARCHAR(100),
-    recommended_item_name  VARCHAR(255),
-    reason_tags            TEXT[],
-    ai_model               VARCHAR(100),
-    score                  NUMERIC(5,4),
-    was_viewed             BOOLEAN NOT NULL DEFAULT FALSE,
-    was_saved              BOOLEAN NOT NULL DEFAULT FALSE,
-    was_tripped            BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at             TIMESTAMPTZ,
-    is_deleted             BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- ─── 13. NOTIFICATIONS ──────────────────────────────────────
-CREATE TABLE notifications (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type        VARCHAR(50) NOT NULL
-                    CHECK (type IN ('trip_created','trip_updated','trip_reminder',
-                                    'ai_suggestion','recommendation','system')),
-    title       VARCHAR(255) NOT NULL,
-    message     TEXT NOT NULL,
-    is_read     BOOLEAN NOT NULL DEFAULT FALSE,
-    read_at     TIMESTAMPTZ,
-    action_url  TEXT,
-    metadata    JSONB,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ,
-    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- ============================================================
--- UPDATED_AT TRIGGER (auto-update updated_at on every UPDATE)
--- ============================================================
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+CREATE OR REPLACE FUNCTION get_destinations(
+    p_region VARCHAR DEFAULT NULL, p_category VARCHAR DEFAULT NULL,
+    p_province VARCHAR DEFAULT NULL, p_max_budget DECIMAL DEFAULT NULL)
+RETURNS TABLE (
+    id UUID, name VARCHAR, slug VARCHAR, description TEXT, province VARCHAR, region VARCHAR,
+    category VARCHAR, estimated_cost DECIMAL, cost_unit VARCHAR, image_url VARCHAR,
+    total_reviews BIGINT, average_rating NUMERIC)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT d.id, d.name, d.slug, d.description, d.province, d.region, d.category,
+           d.estimated_cost, d.cost_unit, d.image_url,
+           COALESCE(r.total_reviews, 0), COALESCE(r.average_rating, 0)
+    FROM destinations d
+    LEFT JOIN vw_destination_ratings r ON r.destination_id = d.id
+    WHERE d.is_active = TRUE
+      AND (p_region IS NULL OR d.region = p_region)
+      AND (p_category IS NULL OR d.category = p_category)
+      AND (p_province IS NULL OR d.province = p_province)
+      AND (p_max_budget IS NULL OR d.estimated_cost <= p_max_budget)
+    ORDER BY COALESCE(r.average_rating, 0) DESC, d.estimated_cost ASC, d.name ASC;
+END;
 $$ LANGUAGE plpgsql;
 
-DO $$ DECLARE t TEXT;
-BEGIN FOR t IN SELECT unnest(ARRAY[
-  'users','refresh_tokens','password_reset_tokens','user_favorites',
-  'conversations','trips','trip_days','trip_activities','messages',
-  'landmark_recognitions','user_preference_tags',
-  'recommendation_logs','notifications'
-]) LOOP
-  EXECUTE format('CREATE TRIGGER trg_%s_updated_at BEFORE UPDATE ON %s FOR EACH ROW EXECUTE FUNCTION set_updated_at()', t, t);
-END LOOP; END; $$;
+CREATE OR REPLACE FUNCTION search_destinations_by_vector(
+    p_query_embedding VECTOR(768), p_match_count INT DEFAULT 10, p_max_budget DECIMAL DEFAULT NULL)
+RETURNS TABLE (
+    id UUID, name VARCHAR, slug VARCHAR, description TEXT, province VARCHAR, region VARCHAR,
+    category VARCHAR, estimated_cost DECIMAL, image_url VARCHAR, similarity DOUBLE PRECISION)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT d.id, d.name, d.slug, d.description, d.province, d.region, d.category,
+           d.estimated_cost, d.image_url, 1 - (d.embedding <=> p_query_embedding) AS similarity
+    FROM destinations d
+    WHERE d.is_active = TRUE AND d.embedding IS NOT NULL
+      AND (p_max_budget IS NULL OR d.estimated_cost <= p_max_budget)
+    ORDER BY d.embedding <=> p_query_embedding
+    LIMIT p_match_count;
+END;
+$$ LANGUAGE plpgsql;
 
--- ============================================================
--- INDEXES
--- ============================================================
-CREATE INDEX idx_users_email           ON users (email);
-CREATE INDEX idx_users_active          ON users (id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_rt_user_id            ON refresh_tokens (user_id);
-CREATE INDEX idx_rt_token_hash         ON refresh_tokens (token_hash);
-CREATE INDEX idx_prt_user_id           ON password_reset_tokens (user_id);
-CREATE INDEX idx_uf_user_type          ON user_favorites (user_id, item_type);
-CREATE INDEX idx_trips_user_id         ON trips (user_id);
-CREATE INDEX idx_trips_user_status     ON trips (user_id, status);
-CREATE INDEX idx_trips_active          ON trips (user_id) WHERE is_deleted = FALSE AND is_archived = FALSE;
-CREATE INDEX idx_td_trip_id            ON trip_days (trip_id);
-CREATE INDEX idx_ta_trip_day_id        ON trip_activities (trip_day_id);
-CREATE INDEX idx_ta_sort               ON trip_activities (trip_day_id, sort_order);
-CREATE INDEX idx_conv_user_id          ON conversations (user_id);
-CREATE INDEX idx_conv_status           ON conversations (status);
-CREATE INDEX idx_msg_conv_sort         ON messages (conversation_id, sort_order);
-CREATE INDEX idx_messages_metadata     ON messages USING GIN (metadata);
-CREATE INDEX idx_lr_user_id            ON landmark_recognitions (user_id);
-CREATE INDEX idx_lr_status             ON landmark_recognitions (status);
-CREATE INDEX idx_upt_user_id           ON user_preference_tags (user_id);
-CREATE INDEX idx_rl_user_id            ON recommendation_logs (user_id);
-CREATE INDEX idx_notif_unread          ON notifications (user_id) WHERE is_read = FALSE;
+CREATE OR REPLACE FUNCTION create_ai_schedule(
+    p_user_id UUID, p_title VARCHAR, p_total_days INT, p_budget_input DECIMAL, p_preference_input TEXT,
+    p_user_latitude DECIMAL, p_user_longitude DECIMAL, p_user_location_name VARCHAR,
+    p_current_temperature DECIMAL, p_current_weather_description VARCHAR, p_mongo_ai_log_id VARCHAR,
+    p_ai_model_used VARCHAR, p_embedding_model_used VARCHAR)
+RETURNS UUID AS $$
+DECLARE new_schedule_id UUID;
+BEGIN
+    INSERT INTO schedules (user_id, title, total_days, budget_input, preference_input,
+        user_latitude, user_longitude, user_location_name, current_temperature,
+        current_weather_description, mongo_ai_log_id, ai_model_used, embedding_model_used)
+    VALUES (p_user_id, p_title, p_total_days, p_budget_input, p_preference_input,
+        p_user_latitude, p_user_longitude, p_user_location_name, p_current_temperature,
+        p_current_weather_description, p_mongo_ai_log_id, p_ai_model_used, p_embedding_model_used)
+    RETURNING id INTO new_schedule_id;
+    RETURN new_schedule_id;
+END;
+$$ LANGUAGE plpgsql;
 
--- ============================================================
--- ROW LEVEL SECURITY (apply per Section 9.2 of architecture doc)
--- Uncomment and adapt if the application sets app.current_user_id
--- ============================================================
--- ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
--- CREATE POLICY trips_user_policy ON trips
---   USING (user_id = current_setting('app.current_user_id')::UUID);
+CREATE OR REPLACE FUNCTION add_destination_to_schedule(
+    p_schedule_id UUID, p_destination_id UUID, p_day_number INT, p_order_in_day INT,
+    p_note TEXT DEFAULT NULL, p_estimated_time TIME DEFAULT NULL,
+    p_ai_reason TEXT DEFAULT NULL, p_weather_fit_note TEXT DEFAULT NULL)
+RETURNS UUID AS $$
+DECLARE new_id UUID;
+BEGIN
+    INSERT INTO schedule_destinations (schedule_id, destination_id, day_number, order_in_day,
+        note, estimated_time, ai_reason, weather_fit_note)
+    VALUES (p_schedule_id, p_destination_id, p_day_number, p_order_in_day,
+        p_note, p_estimated_time, p_ai_reason, p_weather_fit_note)
+    RETURNING id INTO new_id;
+    RETURN new_id;
+END;
+$$ LANGUAGE plpgsql;
 
--- ============================================================
--- SEED DATA (Development / Testing)
--- ============================================================
-
--- Sample user (password: "Password123!" bcrypt hashed)
-INSERT INTO users (id, email, password_hash, full_name, gender, is_active, is_email_verified)
-VALUES (
-  'a1b2c3d4-0000-0000-0000-000000000001',
-  'nguyen.van.an@example.com',
-  '$2a$12$examplehashexamplehashexamplehash12345678901234',
-  'Nguyễn Văn An',
-  'male',
-  TRUE, TRUE
-);
-
--- Sample conversation (AI chat about Da Lat)
-INSERT INTO conversations (id, user_id, title, status, ai_model, total_tokens_used)
-VALUES (
-  'c0000001-0000-0000-0000-000000000001',
-  'a1b2c3d4-0000-0000-0000-000000000001',
-  'Lên kế hoạch du lịch Đà Lạt',
-  'completed',
-  'gemini-1.5-pro',
-  3450
-);
-
--- Sample messages
-INSERT INTO messages (conversation_id, role, content, content_type, sort_order, completion_tokens, ai_model)
-VALUES
-  ('c0000001-0000-0000-0000-000000000001', 'user',
-   'Tôi có 5 triệu VND. Gợi ý hành trình 3 ngày ở Đà Lạt.', 'text', 1, NULL, NULL),
-  ('c0000001-0000-0000-0000-000000000001', 'assistant',
-   'Với 5 triệu VND, đây là hành trình 3D2N tuyệt vời cho Đà Lạt...', 'itinerary', 2, 820, 'gemini-1.5-pro');
-
--- Sample trip (created from conversation)
-INSERT INTO trips (id, user_id, conversation_id, title, destination_name, destination_province,
-                   start_date, end_date, number_of_days, status, budget)
-VALUES (
-  '700a0001-0000-0000-0000-000000000001',
-  'a1b2c3d4-0000-0000-0000-000000000001',
-  'c0000001-0000-0000-0000-000000000001',
-  'Đà Lạt 3D2N - Mùa hoa',
-  'Đà Lạt', 'Lâm Đồng',
-  '2025-12-20', '2025-12-22',
-  3, 'planned', 5000000
-);
-
--- Trip days
-INSERT INTO trip_days (id, trip_id, day_number, day_date, title) VALUES
-  ('da000001-0000-0000-0000-000000000001', '700a0001-0000-0000-0000-000000000001', 1, '2025-12-20', 'Khám phá trung tâm'),
-  ('da000002-0000-0000-0000-000000000001', '700a0001-0000-0000-0000-000000000001', 2, '2025-12-21', 'LangBiang & thiên nhiên'),
-  ('da000003-0000-0000-0000-000000000001', '700a0001-0000-0000-0000-000000000001', 3, '2025-12-22', 'Mua sắm & về nhà');
-
--- Trip activities - Day 1
-INSERT INTO trip_activities (trip_day_id, title, activity_type, sort_order, is_ai_generated, estimated_cost) VALUES
-  ('da000001-0000-0000-0000-000000000001', 'Check-in khách sạn', 'checkin', 1, TRUE, 400000),
-  ('da000001-0000-0000-0000-000000000001', 'Hồ Xuân Hương buổi chiều', 'sightseeing', 2, TRUE, 0),
-  ('da000001-0000-0000-0000-000000000001', 'Chợ Đêm Đà Lạt', 'food', 3, TRUE, 200000);
-
--- Saved items
-INSERT INTO user_favorites (user_id, item_id, item_type, item_name) VALUES
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'destination_dalat', 'destination', 'Đà Lạt'),
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'hotel_023', 'hotel', 'Dalat Palace Heritage Hotel'),
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'food_banh_mi_hoa', 'food', 'Bánh Mì Hoa');
-
--- User preference tags
-INSERT INTO user_preference_tags (user_id, tag, weight, source) VALUES
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'photography', 0.9, 'manual'),
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'nature', 0.8, 'inferred_trips'),
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'foodie', 0.7, 'inferred_saves'),
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'budget', 0.6, 'inferred_chat');
-
--- Landmark recognition
-INSERT INTO landmark_recognitions
-  (user_id, image_url, recognized_place_name, confidence_score, recognition_time_ms, status, ai_model)
-VALUES (
-  'a1b2c3d4-0000-0000-0000-000000000001',
-  'https://cdn.viettravel.app/uploads/a1b2.jpg',
-  'Hồ Xuân Hương, Đà Lạt',
-  0.947, 1230, 'completed', 'google-vision-v1'
-);
-
--- Notification
-INSERT INTO notifications (user_id, type, title, message, action_url)
-VALUES (
-  'a1b2c3d4-0000-0000-0000-000000000001',
-  'trip_created',
-  'Chuyến đi đã được tạo!',
-  'Hành trình Đà Lạt 3D2N của bạn đã sẵn sàng.',
-  '/trips/700a0001-0000-0000-0000-000000000001'
-);
+INSERT INTO destinations (name, slug, description, province, region, latitude, longitude, category,
+    estimated_cost, opening_hours, image_url, best_time_to_visit, suitable_weather, travel_style,
+    ai_recommendation_note, embedding_text) VALUES
+('Vịnh Hạ Long', 'vinh-ha-long',
+ 'Di sản thiên nhiên thế giới với hàng nghìn đảo đá vôi hùng vĩ trên biển.',
+ 'Quảng Ninh', 'North', 20.910100, 107.183900, 'Nature', 1500000, 'Cả ngày',
+ 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600',
+ 'Tháng 10 đến tháng 4', 'Trời quang, ít mưa', 'Thiên nhiên, biển đảo',
+ 'Phù hợp du thuyền và khám phá.', 'Vịnh Hạ Long Quảng Ninh miền Bắc thiên nhiên biển đảo'),
+('Phố Cổ Hội An', 'pho-co-hoi-an',
+ 'Khu phố cổ UNESCO với đèn lồng, ẩm thực và kiến trúc cổ.',
+ 'Quảng Nam', 'Central', 15.880000, 108.338000, 'Cultural', 500000, '06:00 - 22:00',
+ 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=600',
+ 'Tháng 3 đến tháng 8', 'Trời ấm, ít mưa', 'Văn hóa, ẩm thực',
+ 'Phù hợp phố cổ và ẩm thực.', 'Hội An Quảng Nam miền Trung văn hóa phố cổ ẩm thực'),
+('Thành phố Đà Lạt', 'thanh-pho-da-lat',
+ 'Thành phố ngàn hoa với khí hậu mát mẻ quanh năm.',
+ 'Lâm Đồng', 'South', 11.940400, 108.458300, 'Mountain', 800000, 'Cả ngày',
+ 'https://images.unsplash.com/photo-1583417319070-4a5401d975a2?w=600',
+ 'Tháng 10 đến tháng 4', 'Thời tiết mát mẻ', 'Nghỉ dưỡng, thiên nhiên',
+ 'Phù hợp nghỉ dưỡng mát mẻ.', 'Đà Lạt Lâm Đồng miền Nam núi khí hậu mát mẻ nghỉ dưỡng');
