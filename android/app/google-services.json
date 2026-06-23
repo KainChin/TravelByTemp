@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "518596179238",
+    "project_id": "travelbytemp",
+    "storage_bucket": "travelbytemp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:518596179238:android:258abd07e7209ee3f93de7",
+        "android_client_info": {
+          "package_name": "com.example.assignment"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "518596179238-6uegclvgfj8hjr9tc19pfjs7548le0lo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDivTbvgwDJK7R4iN0WoqhuhOGE_ofQtKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "518596179238-6uegclvgfj8hjr9tc19pfjs7548le0lo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
