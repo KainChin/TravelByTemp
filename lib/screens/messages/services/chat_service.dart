@@ -1,0 +1,71 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
+/// Thrown by [ChatService] for any recoverable failure (timeout, no network,
+/// non-200 response, malformed body). The Flutter app should never talk to
+/// Ollama directly — it always goes through the .NET backend below.
+///
+/// Flutter  ──HTTP──>  .NET Backend  ──>  Ollama (local)
+class ChatServiceException implements Exception {
+  final String message;
+  ChatServiceException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class ChatService {
+  /// Base endpoint exposed by the .NET backend. Update this to your machine's
+  /// LAN IP (e.g. http://192.168.1.10:5000/api/chat) when testing on a
+  /// physical device, or http://10.0.2.2:5000/api/chat for the Android
+  /// emulator — see the "Backend connection" notes for details.
+  static const String baseUrl = 'http://localhost:5000/api/chat';
+
+  final http.Client _client;
+  final Duration timeout;
+
+  ChatService({http.Client? client, this.timeout = const Duration(seconds: 30)})
+      : _client = client ?? http.Client();
+
+  /// Sends [message] to the backend and returns the AI's plain-text reply.
+  Future<String> sendMessage(String message) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse(baseUrl),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'message': message}),
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic> && decoded['response'] is String) {
+          return decoded['response'] as String;
+        }
+        throw ChatServiceException('Phản hồi từ server không đúng định dạng.');
+      }
+
+      throw ChatServiceException(
+        'Server trả về lỗi (mã ${response.statusCode}). Vui lòng thử lại.',
+      );
+    } on TimeoutException {
+      throw ChatServiceException('Hết thời gian chờ phản hồi. Vui lòng thử lại.');
+    } on SocketException {
+      throw ChatServiceException(
+        'Không thể kết nối tới server. Kiểm tra kết nối mạng hoặc backend.',
+      );
+    } on FormatException {
+      throw ChatServiceException('Không thể đọc phản hồi từ server.');
+    } on ChatServiceException {
+      rethrow;
+    } catch (e) {
+      throw ChatServiceException('Đã xảy ra lỗi không xác định: $e');
+    }
+  }
+
+  void dispose() => _client.close();
+}
