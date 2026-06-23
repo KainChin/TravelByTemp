@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:assignment/core/theme/app_colors.dart';
 import 'package:assignment/core/widgets/gradient_button.dart';
 
+class DestinationSearchFilter {
+  const DestinationSearchFilter({
+    required this.maxBudget,
+    required this.radiusKm,
+    this.category,
+  });
+
+  final double maxBudget;
+  final double radiusKm;
+  final String? category;
+}
+
 class SearchFilterScreen extends StatefulWidget {
   const SearchFilterScreen({super.key});
 
@@ -11,6 +23,8 @@ class SearchFilterScreen extends StatefulWidget {
 
 class _SearchFilterScreenState extends State<SearchFilterScreen> {
   RangeValues _budget = const RangeValues(500, 5000);
+  double _radiusKm = 3;
+  String? _category;
   String _duration = '2-3 ngày';
   String _destCount = '2 điểm';
   String _travelStyle = 'Bất kỳ';
@@ -37,6 +51,10 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                 children: [
                   _card(_budgetSection()),
+                  const SizedBox(height: 12),
+                  _card(_radiusSection()),
+                  const SizedBox(height: 12),
+                  _card(_categorySection()),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -78,9 +96,16 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
           padding: const EdgeInsets.all(16),
           child: GradientButton(
             label: 'Áp dụng bộ lọc',
-            subtitle: '35 chuyến đi phù hợp',
+            subtitle: '${_radiusKm.toStringAsFixed(0)} km radius',
             icon: Icons.auto_fix_high,
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(
+              context,
+              DestinationSearchFilter(
+                maxBudget: _budget.end * 1000,
+                radiusKm: _radiusKm,
+                category: _category,
+              ),
+            ),
           ),
         ),
       ),
@@ -123,6 +148,8 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
           TextButton.icon(
             onPressed: () => setState(() {
               _budget = const RangeValues(500, 5000);
+              _radiusKm = 3;
+              _category = null;
               _duration = 'Bất kỳ';
               _destCount = 'Bất kỳ';
             }),
@@ -197,6 +224,62 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
             ),
             const Text('₫5,000,000+', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _radiusSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Distance from you', Icons.near_me_outlined),
+        const SizedBox(height: 16),
+        Slider(
+          value: _radiusKm,
+          min: 1,
+          max: 50,
+          divisions: 49,
+          activeColor: AppColors.primary,
+          label: '${_radiusKm.toStringAsFixed(0)} km',
+          onChanged: (v) => setState(() => _radiusKm = v),
+        ),
+        Text(
+          'Find places within ${_radiusKm.toStringAsFixed(0)} km of your current location.',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _categorySection() {
+    final options = <(String, String?)>[
+      ('Any', null),
+      ('Beach / Nature', 'Nature'),
+      ('Mountain', 'Mountain'),
+      ('Culture', 'Cultural'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Destination type', Icons.category_outlined),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final selected = _category == option.$2;
+            return ChoiceChip(
+              label: Text(option.$1),
+              selected: selected,
+              onSelected: (_) => setState(() => _category = option.$2),
+              selectedColor: AppColors.primaryLight,
+              side: BorderSide(
+                color: selected ? AppColors.primary : AppColors.cardBorder,
+              ),
+            );
+          }).toList(),
         ),
       ],
     );

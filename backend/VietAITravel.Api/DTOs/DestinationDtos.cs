@@ -2,7 +2,8 @@ namespace VietAITravel.Api.DTOs;
 
 public record DestinationDto(
     Guid Id, string Name, string Slug, string Description, string Province, string Region,
-    string Category, decimal EstimatedCost, string CostUnit, string? ImageUrl,
+    decimal Latitude, decimal Longitude, string Category, decimal EstimatedCost, string CostUnit,
+    string? ImageUrl, double? DistanceKm = null,
     double? AverageRating = null, long? TotalReviews = null);
 
 public record CreateDestinationRequest(

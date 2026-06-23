@@ -110,11 +110,17 @@ class ApiClient {
     String? region,
     String? category,
     double? maxBudget,
+    double? latitude,
+    double? longitude,
+    double? radiusKm,
   }) async {
     final q = <String, String>{};
     if (region != null) q['region'] = region;
     if (category != null) q['category'] = category;
     if (maxBudget != null) q['maxBudget'] = maxBudget.toString();
+    if (latitude != null) q['latitude'] = latitude.toString();
+    if (longitude != null) q['longitude'] = longitude.toString();
+    if (radiusKm != null) q['radiusKm'] = radiusKm.toString();
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/destinations')
         .replace(queryParameters: q.isEmpty ? null : q);
     final res = await _client.get(uri, headers: _headers);

@@ -202,5 +202,5 @@ public class ManagerController(
 
     private static DestinationDto Map(Destination dest) =>
         new(dest.Id, dest.Name, dest.Slug, dest.Description, dest.Province, dest.Region,
-            dest.Category, dest.EstimatedCost, dest.CostUnit, dest.ImageUrl);
+            dest.Latitude, dest.Longitude, dest.Category, dest.EstimatedCost, dest.CostUnit, dest.ImageUrl);
 }

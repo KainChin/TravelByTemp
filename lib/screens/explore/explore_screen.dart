@@ -18,6 +18,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   List<Destination> _destinations = MockData.destinations;
+  DestinationSearchFilter? _filter;
   var _loading = true;
 
   static const _heroImage =
@@ -32,10 +33,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<void> _load() async {
     final session = VietaiScope.of(context);
     try {
-      final items = await session.api.fetchDestinations();
+      final filter = _filter;
+      final items = await session.api.fetchDestinations(
+        category: filter?.category,
+        maxBudget: filter?.maxBudget,
+        latitude: filter == null ? null : session.latitude,
+        longitude: filter == null ? null : session.longitude,
+        radiusKm: filter?.radiusKm,
+      );
       if (!mounted) return;
       setState(() {
-        _destinations = items.isEmpty ? MockData.destinations : items;
+        _destinations = items.isEmpty && _filter == null ? MockData.destinations : items;
         _loading = false;
       });
     } catch (_) {
@@ -68,11 +76,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   await _load();
                 },
               ),
-              _SearchBar(onTap: () {
-                Navigator.push(
+              _SearchBar(onTap: () async {
+                final filter = await Navigator.push<DestinationSearchFilter>(
                   context,
                   MaterialPageRoute(builder: (_) => const SearchFilterScreen()),
                 );
+                if (filter == null || !mounted) return;
+                setState(() {
+                  _filter = filter;
+                  _loading = true;
+                });
+                await _load();
               }),
               _CurrentLocation(
                 location: session.locationName,
@@ -84,6 +98,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const Padding(
                   padding: EdgeInsets.all(28),
                   child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                )
+              else if (_destinations.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                  child: _EmptyDestinations(),
                 )
               else
                 _PopularDestinations(destinations: _destinations),
@@ -298,6 +317,34 @@ class _SectionHeader extends StatelessWidget {
           Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const Spacer(),
           Text(action, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyDestinations extends StatelessWidget {
+  const _EmptyDestinations();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.travel_explore, color: AppColors.primary),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No destinations match this filter. Try a larger radius or budget.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
         ],
       ),
     );
