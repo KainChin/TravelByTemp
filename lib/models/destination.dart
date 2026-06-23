@@ -45,6 +45,8 @@ class Destination {
   factory Destination.fromApi(Map<String, dynamic> json) {
     final region = json['region'] as String? ?? 'South';
     final category = json['category'] as String? ?? 'Nature';
+    final slug = json['slug'] as String? ?? '';
+    final name = json['name'] as String? ?? '';
     final avgTemp = switch (region) {
       'North' => 22.0,
       'Central' => 26.0,
@@ -60,14 +62,17 @@ class Destination {
 
     return Destination(
       id: json['id'] as String,
-      name: json['name'] as String,
+      name: name,
       tagline: json['province'] as String? ?? category,
       category: _mapCategory(category),
       distanceKm: 0,
       rating: (json['averageRating'] as num?)?.toDouble() ?? 4.5,
       reviewCount: (json['totalReviews'] as num?)?.toInt() ?? 0,
-      imageUrl: json['imageUrl'] as String? ??
-          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600',
+      imageUrl: _imageForDestination(
+        slug: slug,
+        name: name,
+        apiImageUrl: json['imageUrl'] as String?,
+      ),
       avgTempC: avgTemp,
       climate: climate,
       location: json['province'] as String?,
@@ -81,6 +86,19 @@ class Destination {
       'mountain' => 'Mountains',
       _ => apiCategory,
     };
+  }
+
+  static String _imageForDestination({
+    required String slug,
+    required String name,
+    required String? apiImageUrl,
+  }) {
+    final key = '$slug $name'.toLowerCase();
+    if (key.contains('da-lat') || key.contains('đà lạt') || key.contains('da lat')) {
+      return 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600';
+    }
+    return apiImageUrl ??
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600';
   }
 }
 

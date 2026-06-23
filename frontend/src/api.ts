@@ -15,6 +15,8 @@ export type Destination = {
   region: string;
   category: string;
   estimatedCost: number;
+  averageRating: number;
+  totalReviews: number;
   imageUrl?: string;
 };
 

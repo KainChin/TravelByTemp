@@ -26,8 +26,25 @@ class AuthUser {
 }
 
 class AuthSession {
-  AuthSession({required this.accessToken, required this.user});
+  AuthSession({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.expiresAt,
+    required this.user,
+  });
 
   final String accessToken;
+  final String refreshToken;
+  final DateTime expiresAt;
   final AuthUser user;
+
+  factory AuthSession.fromJson(Map<String, dynamic> json) {
+    return AuthSession(
+      accessToken: json['accessToken'] as String,
+      refreshToken: json['refreshToken'] as String? ?? '',
+      expiresAt: DateTime.tryParse('${json['expiresAt']}') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      user: AuthUser.fromJson(json),
+    );
+  }
 }

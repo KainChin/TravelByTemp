@@ -49,24 +49,32 @@ class _MapViewScreenState extends State<MapViewScreen> {
             icon: const Icon(Icons.arrow_back),
           ),
           const Spacer(),
-          _iconBtn(Icons.share_outlined),
+          _iconBtn(Icons.share_outlined, 'Route shared'),
           const SizedBox(width: 8),
-          _iconBtn(Icons.favorite_border),
+          _iconBtn(Icons.favorite_border, 'Route saved'),
         ],
       ),
     );
   }
 
-  Widget _iconBtn(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.cardBorder),
-        color: Colors.white,
+  Widget _iconBtn(IconData icon, String message) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => _showMessage(message),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.cardBorder),
+          color: Colors.white,
+        ),
+        child: Icon(icon, size: 20),
       ),
-      child: Icon(icon, size: 20),
     );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildTitle() {
@@ -194,10 +202,10 @@ class _MapViewScreenState extends State<MapViewScreen> {
             bottom: 60,
             child: Column(
               children: [
-                _mapFab(Icons.my_location),
+                _mapFab(Icons.my_location, 'Centered on current location'),
                 const SizedBox(height: 8),
-                _mapFab(Icons.add),
-                _mapFab(Icons.remove),
+                _mapFab(Icons.add, 'Zoom in'),
+                _mapFab(Icons.remove, 'Zoom out'),
               ],
             ),
           ),
@@ -260,16 +268,20 @@ class _MapViewScreenState extends State<MapViewScreen> {
     );
   }
 
-  Widget _mapFab(IconData icon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)],
+  Widget _mapFab(IconData icon, String message) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => _showMessage(message),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)],
+        ),
+        child: Icon(icon, size: 18),
       ),
-      child: Icon(icon, size: 18),
     );
   }
 
@@ -347,7 +359,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
               Text(duration, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               const Spacer(),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () => _showMessage('Editing $city'),
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Edit Day', style: TextStyle(fontSize: 12)),
               ),

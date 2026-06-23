@@ -16,10 +16,10 @@ export default function App() {
   const [aiForm, setAiForm] = useState({
     latitude: 10.7769,
     longitude: 106.7009,
-    locationName: 'TP. Hồ Chí Minh',
+    locationName: 'TP. Ho Chi Minh',
     budgetInput: 2000000,
     totalDays: 3,
-    preferenceInput: 'thiên nhiên, mát mẻ, chụp ảnh',
+    preferenceInput: 'thien nhien, mat me, chup anh',
   });
 
   useEffect(() => {
@@ -77,9 +77,9 @@ export default function App() {
       <div className="app">
         <header><span className="logo">VietAI Travel</span></header>
         <div className="card" style={{ maxWidth: 400, margin: '40px auto' }}>
-          <h2>Đăng nhập</h2>
+          <h2>Dang nhap</h2>
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-            Traveler: traveler / Traveler@123 · Manager: manager / Manager@123 · Admin: admin / Admin@123
+            Traveler: traveler / Traveler@123 - Manager: manager / Manager@123 - Admin: admin / Admin@123
           </p>
           <input
             placeholder="Username"
@@ -94,12 +94,14 @@ export default function App() {
           />
           {error && <p className="error">{error}</p>}
           <button onClick={handleLogin} disabled={loading}>
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? 'Dang dang nhap...' : 'Dang nhap'}
           </button>
         </div>
       </div>
     );
   }
+
+  const canUseAi = auth.user.role === 'Traveler' || auth.user.role === 'Admin';
 
   return (
     <div className="app">
@@ -116,14 +118,24 @@ export default function App() {
               setAuth(null);
             }}
           >
-            Đăng xuất
+            Dang xuat
           </button>
         </div>
       </header>
 
       <div className="tabs">
         {(['explore', 'ai', 'trips'] as Tab[]).map((t) => (
-          <button key={t} className={tab === t ? 'active' : ''} onClick={() => { setTab(t); if (t === 'trips') loadTrips(); }}>
+          <button
+            key={t}
+            className={tab === t ? 'active' : ''}
+            disabled={t === 'ai' && !canUseAi}
+            title={t === 'ai' && !canUseAi ? 'AI Planner chi danh cho Traveler hoac Admin' : undefined}
+            onClick={() => {
+              setError('');
+              setTab(t);
+              if (t === 'trips') loadTrips();
+            }}
+          >
             {t === 'explore' ? 'Explore' : t === 'ai' ? 'AI Planner' : 'My Trips'}
           </button>
         ))}
@@ -137,7 +149,10 @@ export default function App() {
             <div key={d.id} className="card dest">
               {d.imageUrl && <img src={d.imageUrl} alt={d.name} />}
               <h3>{d.name}</h3>
-              <p style={{ fontSize: 13, color: 'var(--muted)' }}>{d.province} · {d.category}</p>
+              <p style={{ fontSize: 13, color: 'var(--muted)' }}>{d.province} - {d.category}</p>
+              <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+                Rating: {d.averageRating.toFixed(1)} ({d.totalReviews} reviews)
+              </p>
               <p style={{ fontSize: 13 }}>{d.description.slice(0, 100)}...</p>
               <strong style={{ color: 'var(--primary)' }}>{d.estimatedCost.toLocaleString()} VND</strong>
             </div>
@@ -147,20 +162,23 @@ export default function App() {
 
       {tab === 'ai' && (
         <div className="card">
-          <h2>AI Itinerary — Just for You ✨</h2>
+          <h2>AI Itinerary</h2>
+          {!canUseAi && (
+            <p className="error">AI Planner chi danh cho Traveler hoac Admin. Hay dang xuat va dang nhap bang traveler / Traveler@123.</p>
+          )}
           <p style={{ color: 'var(--muted)' }}>
-            Gợi ý dựa trên vị trí, thời tiết (Open-Meteo), pgvector + Ollama local — không dùng LLM thương mại.
+            Goi y dua tren vi tri, thoi tiet, pgvector va Ollama local.
           </p>
-          <input value={aiForm.locationName} onChange={(e) => setAiForm({ ...aiForm, locationName: e.target.value })} placeholder="Vị trí" />
+          <input value={aiForm.locationName} onChange={(e) => setAiForm({ ...aiForm, locationName: e.target.value })} placeholder="Vi tri" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <input type="number" step="0.0001" value={aiForm.latitude} onChange={(e) => setAiForm({ ...aiForm, latitude: +e.target.value })} placeholder="Latitude" />
             <input type="number" step="0.0001" value={aiForm.longitude} onChange={(e) => setAiForm({ ...aiForm, longitude: +e.target.value })} placeholder="Longitude" />
           </div>
-          <input type="number" value={aiForm.budgetInput} onChange={(e) => setAiForm({ ...aiForm, budgetInput: +e.target.value })} placeholder="Ngân sách (VND)" />
-          <input type="number" value={aiForm.totalDays} onChange={(e) => setAiForm({ ...aiForm, totalDays: +e.target.value })} placeholder="Số ngày" />
-          <textarea rows={3} value={aiForm.preferenceInput} onChange={(e) => setAiForm({ ...aiForm, preferenceInput: e.target.value })} placeholder="Sở thích" />
-          <button className="gradient" onClick={handleRecommend} disabled={loading}>
-            {loading ? 'AI đang tạo lịch trình...' : 'Tạo lịch trình AI'}
+          <input type="number" value={aiForm.budgetInput} onChange={(e) => setAiForm({ ...aiForm, budgetInput: +e.target.value })} placeholder="Ngan sach (VND)" />
+          <input type="number" value={aiForm.totalDays} onChange={(e) => setAiForm({ ...aiForm, totalDays: +e.target.value })} placeholder="So ngay" />
+          <textarea rows={3} value={aiForm.preferenceInput} onChange={(e) => setAiForm({ ...aiForm, preferenceInput: e.target.value })} placeholder="So thich" />
+          <button className="gradient" onClick={handleRecommend} disabled={loading || !canUseAi}>
+            {loading ? 'AI dang tao lich trinh...' : 'Tao lich trinh AI'}
           </button>
           {aiResult && (
             <pre style={{ background: '#f0f0f0', padding: 12, borderRadius: 12, overflow: 'auto', fontSize: 12 }}>
@@ -174,7 +192,7 @@ export default function App() {
         <div className="card">
           <h2>My Trips</h2>
           {schedules.length === 0 ? (
-            <p style={{ color: 'var(--muted)' }}>Chưa có lịch trình. Dùng AI Planner để tạo.</p>
+            <p style={{ color: 'var(--muted)' }}>Chua co lich trinh. Dung AI Planner de tao.</p>
           ) : (
             <pre style={{ fontSize: 13 }}>{JSON.stringify(schedules, null, 2)}</pre>
           )}

@@ -42,7 +42,7 @@ abstract final class MockData {
       rating: 4.9,
       reviewCount: 2100,
       imageUrl:
-          'https://images.unsplash.com/photo-1583417319070-4a5401d975a2?w=600',
+          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600',
       avgTempC: 18,
       climate: DestinationClimate.cool,
     ),

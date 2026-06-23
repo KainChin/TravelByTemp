@@ -9,13 +9,13 @@ class MessagesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildListHeader(),
+        _buildListHeader(context),
         Expanded(child: _ChatView()),
       ],
     );
   }
 
-  Widget _buildListHeader() {
+  Widget _buildListHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Row(
@@ -39,11 +39,18 @@ class MessagesScreen extends StatelessWidget {
               border: Border.all(color: AppColors.cardBorder),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.delete_outline, size: 22),
+            child: InkWell(
+              onTap: () => _showMessage(context, 'Chat cleared'),
+              child: const Icon(Icons.delete_outline, size: 22),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  static void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -63,7 +70,7 @@ class _ChatView extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () => _showMessage(context, 'Already in the active chat'),
                   icon: const Icon(Icons.arrow_back, size: 22),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -96,8 +103,14 @@ class _ChatView extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(onPressed: () {}, icon: const Icon(Icons.phone_outlined, size: 22)),
-                IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert, size: 22)),
+                IconButton(
+                  onPressed: () => _showMessage(context, 'Voice call is not available yet'),
+                  icon: const Icon(Icons.phone_outlined, size: 22),
+                ),
+                IconButton(
+                  onPressed: () => _showMessage(context, 'Conversation options opened'),
+                  icon: const Icon(Icons.more_vert, size: 22),
+                ),
               ],
             ),
           ),
@@ -170,12 +183,12 @@ class _ChatView extends StatelessWidget {
             ],
           ),
         ),
-        _buildInputBar(),
+        _buildInputBar(context),
       ],
     );
   }
 
-  Widget _buildInputBar() {
+  Widget _buildInputBar(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
@@ -184,7 +197,10 @@ class _ChatView extends StatelessWidget {
       ),
       child: Row(
         children: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.add_circle_outline)),
+          IconButton(
+            onPressed: () => _showMessage(context, 'Attachment picker is not available yet'),
+            icon: const Icon(Icons.add_circle_outline),
+          ),
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -206,11 +222,11 @@ class _ChatView extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _showMessage(context, 'Emoji picker is not available yet'),
                     icon: const Icon(Icons.emoji_emotions_outlined, color: AppColors.primary),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _showMessage(context, 'Voice input is not available yet'),
                     icon: const Icon(Icons.mic, color: AppColors.primary),
                   ),
                 ],
@@ -220,6 +236,10 @@ class _ChatView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

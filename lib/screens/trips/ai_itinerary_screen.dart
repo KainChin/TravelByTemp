@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:assignment/core/theme/app_colors.dart';
-import 'package:assignment/core/widgets/gradient_button.dart';
 import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
-import 'package:assignment/screens/trips/map_view_screen.dart';
 import 'package:assignment/services/api_client.dart';
 
 class AiItineraryScreen extends StatefulWidget {
@@ -13,44 +11,53 @@ class AiItineraryScreen extends StatefulWidget {
   State<AiItineraryScreen> createState() => _AiItineraryScreenState();
 }
 
-class _AiItineraryScreenState extends State<AiItineraryScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _AiItineraryScreenState extends State<AiItineraryScreen> {
   var _generating = false;
+  var _selectedDay = 1;
+  var _extraDays = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  final _sampleItems = const [
+    _PlanItem('08:00', Icons.hotel_outlined, 'Check-in Hotel', 'TTC Hotel - Da Lat', 'Relax & take a break', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=300'),
+    _PlanItem('10:00', Icons.camera_alt_outlined, 'Dalat Railway Station', 'Explore the historic train station', 'French-style landmark', 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=300'),
+    _PlanItem('12:30', Icons.restaurant_outlined, 'Lunch: Banh Can Le', 'Try local speciality', 'Warm street-food stop', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300'),
+    _PlanItem('14:00', Icons.landscape_outlined, 'Tuyen Lam Lake', 'Peaceful lake & pine forest', 'Slow scenic afternoon', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=300'),
+    _PlanItem('16:30', Icons.local_cafe_outlined, 'An Cafe', 'Enjoy coffee with a view', 'Garden cafe break', 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=300'),
+    _PlanItem('19:00', Icons.dinner_dining_outlined, 'Dinner: Memory Restaurant', 'Cozy local fusion cuisine', 'End the day slowly', 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300'),
+  ];
 
   Future<void> _generateItinerary() async {
     final session = VietaiScope.of(context);
     final budgetCtrl = TextEditingController(text: '2000000');
-    final daysCtrl = TextEditingController(text: '3');
-    final prefCtrl = TextEditingController(text: 'thiên nhiên, mát mẻ, chụp ảnh');
+    final daysCtrl = TextEditingController(text: '2');
+    final prefCtrl = TextEditingController(text: 'nature, cool weather, food, photos');
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Tạo lịch trình AI'),
+        title: const Text('Generate AI itinerary'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: budgetCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ngân sách (VND)')),
-            TextField(controller: daysCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số ngày')),
-            TextField(controller: prefCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Sở thích')),
+            TextField(
+              controller: budgetCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Budget (VND)'),
+            ),
+            TextField(
+              controller: daysCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Days'),
+            ),
+            TextField(
+              controller: prefCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Preferences'),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Tạo')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
         ],
       ),
     );
@@ -61,12 +68,12 @@ class _AiItineraryScreenState extends State<AiItineraryScreen>
     try {
       await session.generateItinerary(
         budget: double.tryParse(budgetCtrl.text) ?? 2000000,
-        days: int.tryParse(daysCtrl.text) ?? 3,
+        days: int.tryParse(daysCtrl.text) ?? 2,
         preferences: prefCtrl.text,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã tạo lịch trình từ Ollama + pgvector')),
+          const SnackBar(content: Text('AI itinerary generated')),
         );
       }
     } on ApiException catch (e) {
@@ -85,324 +92,350 @@ class _AiItineraryScreenState extends State<AiItineraryScreen>
   Widget build(BuildContext context) {
     final session = VietaiScope.of(context);
     final result = session.lastAiResult;
-    final isWide = MediaQuery.sizeOf(context).width > 700;
+    final items = _itemsFromResult(result);
+    final totalDays = _totalDays(result);
+    final title = result?.title ?? 'Create Itinerary';
+    final subtitle = result == null
+        ? 'Da Lat - 2 Days 1 Night'
+        : '${result.recommendedDestinations.length} places - ${result.currentTemperature.toStringAsFixed(0)}C';
 
-    if (result == null) {
-      return Scaffold(
-        backgroundColor: AppColors.surface,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7FAF8),
+      body: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _Header(title: title, subtitle: subtitle),
+            _DaySelector(
+              selectedDay: _selectedDay,
+              totalDays: totalDays,
+              onChanged: (day) => setState(() => _selectedDay = day),
+              onAddDay: () {
+                setState(() {
+                  _extraDays += 1;
+                  _selectedDay = totalDays + 1;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Day ${totalDays + 1} added')),
+                );
+              },
+            ),
+            const _ScenicBand(),
+            _Timeline(items: items),
+            _AddActivity(onTap: _generateItinerary, loading: _generating),
+            _AiSuggestion(onTap: _generateItinerary, loading: _generating),
+            _DaySummary(
+              itemCount: items.length,
+              day: _selectedDay,
+              onEditBudget: _generateItinerary,
+              onSave: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Day $_selectedDay saved')),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _totalDays(AiRecommendResult? result) {
+    final generatedDays = result == null || result.dailyPlan.isEmpty
+        ? 2
+        : result.dailyPlan.map((d) => d.day).reduce((a, b) => a > b ? a : b);
+    return generatedDays + _extraDays;
+  }
+
+  List<_PlanItem> _itemsFromResult(AiRecommendResult? result) {
+    if (result == null || result.dailyPlan.isEmpty) return _sampleItems;
+
+    final day = result.dailyPlan.firstWhere(
+      (d) => d.day == _selectedDay,
+      orElse: () => result.dailyPlan.first,
+    );
+
+    if (day.items.isEmpty) return _sampleItems;
+
+    return day.items.map((item) {
+      return _PlanItem(
+        item.time.isEmpty ? '--:--' : item.time,
+        Icons.place_outlined,
+        item.activity.isEmpty ? 'Explore destination' : item.activity,
+        item.note ?? 'AI recommended activity',
+        'Optimized for your route',
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=300',
+      );
+    }).toList();
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 10),
+      child: Row(
+        children: [
+          _RoundButton(icon: Icons.arrow_back, onTap: () => Navigator.maybePop(context)),
+          const SizedBox(width: 16),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.event_note_outlined, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          _RoundButton(
+            icon: Icons.more_horiz,
+            onTap: () {
+              showModalBottomSheet<void>(
+                context: context,
+                builder: (ctx) => SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.refresh),
+                        title: const Text('Regenerate itinerary'),
+                        onTap: () => Navigator.pop(ctx),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.share_outlined),
+                        title: const Text('Share itinerary'),
+                        onTap: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DaySelector extends StatelessWidget {
+  const _DaySelector({
+    required this.selectedDay,
+    required this.totalDays,
+    required this.onChanged,
+    required this.onAddDay,
+  });
+
+  final int selectedDay;
+  final int totalDays;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onAddDay;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome, size: 64, color: AppColors.primary),
-                  const SizedBox(height: 16),
-                  const Text('AI Itinerary', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Nhiệt độ ${session.userTemperatureC.toStringAsFixed(0)}°C tại ${session.locationName}\n'
-                    'Gợi ý qua vector search + Ollama local',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: _generating ? null : _generateItinerary,
-                    icon: _generating
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.auto_awesome),
-                    label: Text(_generating ? 'Đang tạo...' : 'Tạo lịch trình AI'),
-                  ),
+                  for (var day = 1; day <= totalDays; day++) ...[
+                    _DayCard(
+                      day: day,
+                      date: 'Day $day',
+                      selected: selectedDay == day,
+                      onTap: () => onChanged(day),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                 ],
               ),
             ),
           ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            _buildTitle(result.title, result.summary),
-            _buildSummaryBar(result, session),
-            _buildTabs(),
-            Expanded(
-              child: isWide ? _buildWideLayout(result) : _buildMobileLayout(result),
+          OutlinedButton.icon(
+            onPressed: onAddDay,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Day'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primaryDark,
+              side: const BorderSide(color: AppColors.cardBorder),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              backgroundColor: Colors.white,
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  GradientButton(
-                    label: 'Tạo lại lịch trình',
-                    icon: Icons.refresh,
-                    onPressed: _generating ? null : _generateItinerary,
-                  ),
-                  const SizedBox(height: 8),
-                  GradientButton(
-                    label: 'Save to My Itinerary',
-                    gradient: AppColors.gradientSave,
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        children: [
-          const Spacer(),
-          _circleIcon(Icons.share_outlined),
-          const SizedBox(width: 8),
-          _circleIcon(Icons.favorite_border),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _circleIcon(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.cardBorder),
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      child: Icon(icon, size: 20),
-    );
-  }
+class _DayCard extends StatelessWidget {
+  const _DayCard({required this.day, required this.date, required this.selected, required this.onTap});
 
-  Widget _buildTitle(String title, String summary) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Align(
-        alignment: Alignment.centerLeft,
+  final int day;
+  final String date;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 96,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.cardBorder, width: selected ? 1.6 : 1),
+          boxShadow: selected ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.12), blurRadius: 12)] : null,
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('AI Itinerary', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            Row(
-              children: [
-                Flexible(
-                  child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                ),
-                const Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
-              ],
-            ),
+            Text('Day $day', style: TextStyle(fontWeight: FontWeight.w900, color: selected ? AppColors.primaryDark : AppColors.textPrimary)),
             const SizedBox(height: 4),
-            Text(summary, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(date, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildSummaryBar(AiRecommendResult result, dynamic session) {
-    final items = [
-      (Icons.schedule, '${result.dailyPlan.length} Days'),
-      (Icons.place, '${result.recommendedDestinations.length} Places'),
-      (Icons.thermostat, '${result.currentTemperature.toStringAsFixed(0)}°C'),
-      (Icons.wb_sunny, result.currentWeatherDescription.length > 12
-          ? '${result.currentWeatherDescription.substring(0, 12)}…'
-          : result.currentWeatherDescription),
-    ];
+class _ScenicBand extends StatelessWidget {
+  const _ScenicBand();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 112,
+      child: Image.network(
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900',
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+}
+
+class _Timeline extends StatelessWidget {
+  const _Timeline({required this.items});
+
+  final List<_PlanItem> items;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+      padding: const EdgeInsets.fromLTRB(0, 22, 0, 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: items.asMap().entries.map((e) {
-          final (icon, label) = e.value;
-          return Expanded(
-            child: Row(
-              children: [
-                if (e.key > 0)
-                  Container(width: 1, height: 36, color: AppColors.cardBorder),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(icon, size: 18, color: AppColors.primary),
-                      const SizedBox(height: 6),
-                      Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: AppColors.textPrimary,
-        unselectedLabelColor: AppColors.textSecondary,
-        indicatorColor: AppColors.primary,
-        indicatorWeight: 3,
-        onTap: (i) {
-          if (i == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MapViewScreen()),
-            );
-            _tabController.index = 0;
-          }
-        },
-        tabs: const [
-          Tab(text: 'Itinerary'),
-          Tab(text: 'Map View'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileLayout(AiRecommendResult result) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _itineraryContent(result),
-        const SizedBox(height: 16),
-        _aiSidebar(result),
-      ],
-    );
-  }
-
-  Widget _buildWideLayout(AiRecommendResult result) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 3, child: SingleChildScrollView(child: _itineraryContent(result))),
-        Expanded(flex: 2, child: SingleChildScrollView(child: _aiSidebar(result))),
-      ],
-    );
-  }
-
-  Widget _itineraryContent(AiRecommendResult result) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 8))],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final day in result.dailyPlan) ...[
-            Text(
-              'Day ${day.day}',
-              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            for (final item in day.items)
-              _activityTile(
-                item.time,
-                Icons.place,
-                item.activity,
-                item.note ?? '',
-                '',
-              ),
-            const SizedBox(height: 16),
-          ],
-          for (var i = 0; i < result.recommendedDestinations.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _destinationHeader(
-                '${i + 1}',
-                result.recommendedDestinations[i].name,
-                result.recommendedDestinations[i].weatherFit,
-                Icons.landscape,
-              ),
-            ),
+          for (var i = 0; i < items.length; i++)
+            _TimelineTile(item: items[i], isLast: i == items.length - 1),
         ],
       ),
     );
   }
+}
 
-  Widget _destinationHeader(String num, String name, String duration, IconData icon) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 14,
-          backgroundColor: AppColors.primary,
-          child: Text(num, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-        ),
-        const SizedBox(width: 10),
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 6),
-        Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-        const SizedBox(width: 8),
-        Text(duration, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        const Spacer(),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.edit_outlined, size: 20)),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.copy, size: 20)),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red)),
-      ],
-    );
-  }
+class _TimelineTile extends StatelessWidget {
+  const _TimelineTile({required this.item, required this.isLast});
 
-  Widget _activityTile(String time, IconData icon, String title, String desc, String price) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, left: 8),
-      child: IntrinsicHeight(
+  final _PlanItem item;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 20, right: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Column(
-              children: [
-                Text(time, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Icon(icon, size: 18, color: AppColors.primary),
-                Expanded(
-                  child: Container(width: 2, margin: const EdgeInsets.symmetric(vertical: 4), color: AppColors.cardBorder),
-                ),
-              ],
+            SizedBox(
+              width: 62,
+              child: Column(
+                children: [
+                  Text(item.time, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primary, width: 2),
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(child: Container(width: 1.5, color: AppColors.cardBorder)),
+                ],
+              ),
             ),
-            const SizedBox(width: 12),
             Expanded(
               child: Container(
+                margin: const EdgeInsets.only(bottom: 18),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFF0F0F0)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: Row(
                   children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(item.icon, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                          Text(desc, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                          const SizedBox(height: 4),
-                          Text(price, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                          Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 3),
+                          Text(item.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          Text(item.note, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: NetworkImageCard(imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=200', height: 56, borderRadius: BorderRadius.circular(10)),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 86,
+                      child: NetworkImageCard(
+                        imageUrl: item.image,
+                        height: 64,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.drag_indicator, color: AppColors.textHint),
                   ],
                 ),
               ),
@@ -412,135 +445,196 @@ class _AiItineraryScreenState extends State<AiItineraryScreen>
       ),
     );
   }
+}
 
-  Widget _aiSidebar(AiRecommendResult result) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+class _AddActivity extends StatelessWidget {
+  const _AddActivity({required this.onTap, required this.loading});
+
+  final VoidCallback onTap;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 34),
+      child: OutlinedButton.icon(
+        onPressed: loading ? null : onTap,
+        icon: loading
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.add),
+        label: Text(loading ? 'Generating...' : 'Add Activity'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primaryDark,
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.28)),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+}
+
+class _AiSuggestion extends StatelessWidget {
+  const _AiSuggestion({required this.onTap, required this.loading});
+
+  final VoidCallback onTap;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFFFF7),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
         children: [
-          const Row(
-            children: [
-              Text('AI Recommendations', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              SizedBox(width: 4),
-              Icon(Icons.auto_awesome, size: 16, color: AppColors.primary),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Gợi ý từ AI', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 8),
-          for (final r in result.recommendedDestinations)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  Text(r.reason, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  Text(r.weatherFit, style: const TextStyle(fontSize: 11, color: AppColors.primary)),
-                ],
-              ),
-            ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-              child: const Text('Choose'),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text('Must-Try Foods', style: TextStyle(fontWeight: FontWeight.w600)),
-          _foodRow('Bánh căn', '₫30K'),
-          _foodRow('Lẩu gà lá é', '₫120K'),
-          _foodRow('Kem bơ', '₫25K'),
-          const SizedBox(height: 16),
-          const Text('Budget Estimate', style: TextStyle(fontWeight: FontWeight.w600)),
-          _budgetRow('Accommodation', '₫900,000'),
-          _budgetRow('Food & Drinks', '₫350,000'),
-          _budgetRow('Activities', '₫250,000'),
-          const Divider(),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Total', style: TextStyle(fontWeight: FontWeight.w700)),
-              Text('₫1,500,000', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 16)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Row(
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.eco, color: AppColors.primary),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Visit Langbiang early morning for the best views and fewer crowds.',
-                    style: TextStyle(fontSize: 12),
-                  ),
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: AppColors.accentPurple, size: 18),
+                    SizedBox(width: 6),
+                    Text('AI Suggestion', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.primaryDark)),
+                  ],
                 ),
+                SizedBox(height: 8),
+                Text('Optimize your plan for better time and experience', style: TextStyle(color: AppColors.textSecondary)),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          const Text('Ask AI Anything', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            children: ['What to eat in Đà Lạt?', 'Best photo spots?'].map((q) {
-              return ActionChip(label: Text(q, style: const TextStyle(fontSize: 11)), onPressed: () {});
-            }).toList(),
+          const SizedBox(width: 12),
+          FilledButton(
+            onPressed: loading ? null : onTap,
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primaryDark),
+            child: const Text('Optimize'),
           ),
-          const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Ask me anything...',
-              hintStyle: const TextStyle(fontSize: 13),
-              suffixIcon: IconButton(onPressed: () {}, icon: const Icon(Icons.send, color: AppColors.primary)),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        ],
+      ),
+    );
+  }
+}
+
+class _DaySummary extends StatelessWidget {
+  const _DaySummary({
+    required this.itemCount,
+    required this.day,
+    required this.onEditBudget,
+    required this.onSave,
+  });
+
+  final int itemCount;
+  final int day;
+  final VoidCallback onEditBudget;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Day $day Summary', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              const Spacer(),
+              TextButton(onPressed: onEditBudget, child: const Text('Edit Budget')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _SummaryMetric(label: 'Est. Cost', value: '1,250,000'),
+              _SummaryMetric(label: 'Distance', value: '45 km'),
+              _SummaryMetric(label: 'Activities', value: '$itemCount'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: const LinearProgressIndicator(
+              minHeight: 8,
+              value: 0.72,
+              backgroundColor: Color(0xFFECECEC),
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onSave,
+              icon: const Icon(Icons.check_circle_outline),
+              label: Text('Save Day $day'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _foodRow(String name, String price) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          const CircleAvatar(radius: 16, backgroundColor: AppColors.primaryLight, child: Icon(Icons.restaurant, size: 16)),
-          const SizedBox(width: 10),
-          Expanded(child: Text(name, style: const TextStyle(fontSize: 13))),
-          Text(price, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-        ],
-      ),
-    );
-  }
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({required this.label, required this.value});
 
-  Widget _budgetRow(String label, String amount) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          Text(amount, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
         ],
       ),
     );
   }
+}
+
+class _RoundButton extends StatelessWidget {
+  const _RoundButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: SizedBox(width: 50, height: 50, child: Icon(icon)),
+      ),
+    );
+  }
+}
+
+class _PlanItem {
+  const _PlanItem(this.time, this.icon, this.title, this.subtitle, this.note, this.image);
+
+  final String time;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String note;
+  final String image;
 }
