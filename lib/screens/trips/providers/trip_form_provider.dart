@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/budget_tier.dart';
 import '../models/destination.dart';
+import '../services/trip_itinerary_service.dart';
 
 /// Quản lý toàn bộ state của màn hình "Tạo hành trình mới":
 /// điểm xuất phát, danh sách điểm đến đã chọn (theo thứ tự), ngày đi/về,
@@ -14,6 +15,9 @@ class TripFormProvider extends ChangeNotifier {
   DateTime? departureDate;
   DateTime? returnDate;
   int peopleCount = 2;
+  bool isAnalyzing = false;
+  String? analyzeError;
+  TripItineraryResult? itineraryResult;
 
   /// Index trong [BudgetTier.tiers] — mặc định nấc "1 triệu".
   int budgetTierIndex = 2;
@@ -106,5 +110,36 @@ class TripFormProvider extends ChangeNotifier {
   bool get canAnalyze =>
       _selectedDestinations.isNotEmpty &&
           departureDate != null &&
-          returnDate != null;
+          returnDate != null &&
+          !isAnalyzing;
+
+  Future<TripItineraryResult?> analyzeTrip() async {
+    if (!canAnalyze) return null;
+
+    isAnalyzing = true;
+    analyzeError = null;
+    itineraryResult = null;
+    notifyListeners();
+
+    final service = TripItineraryService();
+    try {
+      final result = await service.generate(
+        destinations: _selectedDestinations,
+        departureDate: departureDate!,
+        returnDate: returnDate!,
+        peopleCount: peopleCount,
+        budgetPerPerson: budgetPerPerson,
+        departurePoint: departurePoint,
+      );
+      itineraryResult = result;
+      return result;
+    } on TripItineraryException catch (e) {
+      analyzeError = e.message;
+      return null;
+    } finally {
+      service.dispose();
+      isAnalyzing = false;
+      notifyListeners();
+    }
+  }
 }

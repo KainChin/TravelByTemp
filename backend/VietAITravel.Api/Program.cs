@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Pgvector.EntityFrameworkCore;
 using VietAITravel.Api.Data;
+using VietAITravel.Api.Entities;
 using VietAITravel.Api.Middleware;
 using VietAITravel.Api.Services;
 
@@ -164,11 +167,33 @@ app.MapPost("/api/chat-ai", async (
 app.MapPost("/api/trip/generate-itinerary", async (
     GenerateItineraryRequest request,
     TravelChatService service,
+    AppDbContext db,
+    OllamaOptions ollamaOptions,
+    HttpContext httpContext,
     CancellationToken ct) =>
 {
     try
     {
-        return Results.Ok(await service.GenerateItineraryAsync(request, ct));
+        var result = await service.GenerateItineraryAsync(request, ct);
+        var itineraryId = Guid.NewGuid();
+        var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+
+        var itineraryJson = JsonSerializer.Serialize(result.Itinerary);
+        var title = TryReadTitle(itineraryJson);
+        db.AiItineraries.Add(new AiItinerary
+        {
+            Id = itineraryId,
+            UserId = userId,
+            Title = title,
+            RequestJson = JsonSerializer.Serialize(request),
+            ItineraryJson = itineraryJson,
+            AiModel = ollamaOptions.ChatModel,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(result with { ItineraryId = itineraryId });
     }
     catch (TravelAiException ex)
     {
@@ -179,5 +204,20 @@ app.MapPost("/api/trip/generate-itinerary", async (
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 
 app.Run();
+
+static string? TryReadTitle(string itineraryJson)
+{
+    try
+    {
+        using var doc = JsonDocument.Parse(itineraryJson);
+        return doc.RootElement.TryGetProperty("title", out var title)
+            ? title.GetString()
+            : null;
+    }
+    catch
+    {
+        return null;
+    }
+}
 
 public partial class Program;

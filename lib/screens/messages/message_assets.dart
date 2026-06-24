@@ -8,14 +8,14 @@ class MessageAssets {
   MessageAssets._();
 
   /// Avatar shown in the AI info card, chat bubbles and typing indicator.
-  static const String aiAvatar = 'YOUR_AI_AVATAR_PATH';
+  static const String aiAvatar = 'assets/images/travel_bag.jpg';
 
   /// Background image behind the "Messages" header (mountains / lake).
-  static const String headerBackground = 'YOUR_HEADER_BACKGROUND';
+  static const String headerBackground = 'assets/images/banner_bac.png';
 
   /// Thumbnail used for the "Đà Lạt" destination row in the itinerary card.
-  static const String dalatThumbnail = 'YOUR_DALAT_IMAGE';
+  static const String dalatThumbnail = 'assets/images/danang.png';
 
   /// Thumbnail used for the "Nha Trang" destination row in the itinerary card.
-  static const String nhatrangThumbnail = 'YOUR_NHATRANG_IMAGE';
+  static const String nhatrangThumbnail = 'assets/images/phuquoc.jpg';
 }

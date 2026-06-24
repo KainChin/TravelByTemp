@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:assignment/core/config/api_config.dart';
 
 /// Thrown by [ChatService] for any recoverable failure (timeout, no network,
 /// non-200 response, malformed body). The Flutter app should never talk to
@@ -22,12 +22,10 @@ class ChatService {
   /// LAN IP (e.g. http://192.168.1.10:5000/api/chat) when testing on a
   /// physical device, or http://10.0.2.2:5000/api/chat for the Android
   /// emulator — see the "Backend connection" notes for details.
-  static const String baseUrl = 'http://localhost:5000/api/chat';
-
   final http.Client _client;
   final Duration timeout;
 
-  ChatService({http.Client? client, this.timeout = const Duration(seconds: 30)})
+  ChatService({http.Client? client, this.timeout = const Duration(minutes: 5)})
       : _client = client ?? http.Client();
 
   /// Sends [message] to the backend and returns the AI's plain-text reply.
@@ -35,7 +33,7 @@ class ChatService {
     try {
       final response = await _client
           .post(
-            Uri.parse(baseUrl),
+            Uri.parse('${ApiConfig.baseUrl}/api/chat'),
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({'message': message}),
           )
@@ -54,7 +52,7 @@ class ChatService {
       );
     } on TimeoutException {
       throw ChatServiceException('Hết thời gian chờ phản hồi. Vui lòng thử lại.');
-    } on SocketException {
+    } on http.ClientException {
       throw ChatServiceException(
         'Không thể kết nối tới server. Kiểm tra kết nối mạng hoặc backend.',
       );

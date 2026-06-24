@@ -129,6 +129,17 @@ CREATE TABLE user_favorites (
     CONSTRAINT uq_user_favorites_user_destination UNIQUE (user_id, destination_id)
 );
 
+CREATE TABLE ai_itineraries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NULL,
+    title VARCHAR(255),
+    request_json JSONB NOT NULL,
+    itinerary_json JSONB NOT NULL,
+    ai_model VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_ai_itineraries_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
@@ -140,6 +151,8 @@ CREATE INDEX idx_schedule_destinations_schedule_id ON schedule_destinations(sche
 CREATE INDEX idx_comments_destination_id ON comments(destination_id);
 CREATE INDEX idx_user_favorites_user_id ON user_favorites(user_id);
 CREATE INDEX idx_user_favorites_destination_id ON user_favorites(destination_id);
+CREATE INDEX idx_ai_itineraries_user_id ON ai_itineraries(user_id);
+CREATE INDEX idx_ai_itineraries_created_at ON ai_itineraries(created_at);
 
 CREATE OR REPLACE VIEW vw_destination_ratings AS
 SELECT d.id AS destination_id, d.name AS destination_name, d.province, d.region, d.category,
