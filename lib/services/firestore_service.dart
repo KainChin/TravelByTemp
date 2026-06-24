@@ -5,7 +5,8 @@ class FirestoreService {
   static final _db = FirebaseFirestore.instance;
 
   // ── Lấy userId hiện tại ──
-  static String get _uid => FirebaseAuth.instance.currentUser?.uid ?? '';
+  static String get _uid =>
+      FirebaseAuth.instance.currentUser?.uid ?? 'backend-session-user';
 
   // ════════════════════════════════
   // TRIPS

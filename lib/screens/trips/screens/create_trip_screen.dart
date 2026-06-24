@@ -8,10 +8,8 @@ import '../widgets/date_field.dart';
 import '../widgets/destination_list_item.dart';
 import '../widgets/destination_picker_sheet.dart';
 import '../widgets/people_counter.dart';
+import 'trip_itinerary_result_screen.dart';
 
-/// Màn hình "Tạo hành trình mới" — tương ứng UI:
-/// điểm xuất phát cố định, danh sách điểm đến chọn theo thứ tự,
-/// ngày đi/về, số lượng người, ngân sách mỗi người, và nút phân tích.
 class CreateTripScreen extends StatelessWidget {
   const CreateTripScreen({super.key});
 
@@ -35,6 +33,30 @@ class _CreateTripView extends StatelessWidget {
     }
   }
 
+  Future<void> _onAnalyzeTrip(BuildContext context) async {
+    final form = context.read<TripFormProvider>();
+    final result = await form.analyzeTrip();
+    if (!context.mounted) return;
+
+    if (result == null) {
+      final message = form.analyzeError ?? 'Cannot generate itinerary.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TripItineraryResultScreen(
+          response: result.response,
+          itinerary: result.itinerary,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final form = context.watch<TripFormProvider>();
@@ -46,7 +68,7 @@ class _CreateTripView extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          'Tạo hành trình mới',
+          'Create trip',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
         leading: const BackButton(color: Colors.black),
@@ -56,14 +78,14 @@ class _CreateTripView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             const Text(
-              'Lên kế hoạch cho chuyến đi tuyệt vời của bạn',
+              'Plan your next trip with AI.',
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 20),
-
-            // --- Điểm xuất phát ---
-            const Text('Điểm xuất phát (mặc định)',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text(
+              'Departure point',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -80,16 +102,16 @@ class _CreateTripView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            // --- Danh sách điểm đến ---
-            const Text('Danh sách điểm đến',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text(
+              'Destinations',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             if (form.selectedDestinations.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'Chưa có điểm đến nào. Bấm "Thêm điểm đến" để bắt đầu.',
+                  'No destinations yet. Add at least one destination.',
                   style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                 ),
               )
@@ -98,16 +120,19 @@ class _CreateTripView extends StatelessWidget {
                 return DestinationListItem(
                   order: index + 1,
                   item: form.selectedDestinations[index],
-                  onRemove: () =>
-                      context.read<TripFormProvider>().removeDestinationAt(index),
+                  onRemove: () {
+                    context.read<TripFormProvider>().removeDestinationAt(index);
+                  },
                 );
               }),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: () => _onAddDestination(context),
               icon: const Icon(Icons.add, color: Color(0xFF0FA958)),
-              label: const Text('Thêm điểm đến',
-                  style: TextStyle(color: Color(0xFF0FA958))),
+              label: const Text(
+                'Add destination',
+                style: TextStyle(color: Color(0xFF0FA958)),
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 side: const BorderSide(color: Color(0xFF0FA958)),
@@ -117,51 +142,53 @@ class _CreateTripView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            // --- Ngày đi / Ngày về ---
             Row(
               children: [
                 Expanded(
                   child: DateField(
-                    label: 'Ngày đi',
+                    label: 'Start date',
                     value: form.departureDate,
-                    onPicked: (date) =>
-                        context.read<TripFormProvider>().setDepartureDate(date),
+                    onPicked: (date) {
+                      context.read<TripFormProvider>().setDepartureDate(date);
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DateField(
-                    label: 'Ngày về',
+                    label: 'End date',
                     value: form.returnDate,
                     firstSelectableDate: form.departureDate,
-                    onPicked: (date) =>
-                        context.read<TripFormProvider>().setReturnDate(date),
+                    onPicked: (date) {
+                      context.read<TripFormProvider>().setReturnDate(date);
+                    },
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-
-            // --- Số lượng người ---
-            const Text('Số lượng người',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text(
+              'People',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             PeopleCounter(
               count: form.peopleCount,
-              onIncrement: () =>
-                  context.read<TripFormProvider>().incrementPeople(),
-              onDecrement: () =>
-                  context.read<TripFormProvider>().decrementPeople(),
+              onIncrement: () {
+                context.read<TripFormProvider>().incrementPeople();
+              },
+              onDecrement: () {
+                context.read<TripFormProvider>().decrementPeople();
+              },
             ),
             const SizedBox(height: 24),
-
-            // --- Ngân sách ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Ngân sách (mỗi người)',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  'Budget per person',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 Text(
                   form.budgetLabel,
                   style: const TextStyle(
@@ -173,18 +200,13 @@ class _CreateTripView extends StatelessWidget {
             ),
             BudgetSlider(
               tierIndex: form.budgetTierIndex,
-              onChanged: (index) =>
-                  context.read<TripFormProvider>().setBudgetTierIndex(index),
+              onChanged: (index) {
+                context.read<TripFormProvider>().setBudgetTierIndex(index);
+              },
             ),
             const SizedBox(height: 24),
-
-            // --- Nút phân tích ---
             ElevatedButton(
-              onPressed: form.canAnalyze
-                  ? () {
-                // TODO: gọi service phân tích hành trình ở đây.
-              }
-                  : null,
+              onPressed: form.canAnalyze ? () => _onAnalyzeTrip(context) : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0FA958),
                 disabledBackgroundColor: Colors.grey.shade300,
@@ -193,14 +215,23 @@ class _CreateTripView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text(
-                'PHÂN TÍCH HÀNH TRÌNH',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              child: form.isAnalyzing
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'GENERATE ITINERARY',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
             ),
           ],
         ),

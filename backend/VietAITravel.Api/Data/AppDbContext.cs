@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ScheduleDestination> ScheduleDestinations => Set<ScheduleDestination>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
+    public DbSet<AiItinerary> AiItineraries => Set<AiItinerary>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -149,6 +150,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.UserId, x.DestinationId }).IsUnique();
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Destination).WithMany().HasForeignKey(x => x.DestinationId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiItinerary>(e =>
+        {
+            e.ToTable("ai_itineraries");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.RequestJson).HasColumnName("request_json").HasColumnType("jsonb");
+            e.Property(x => x.ItineraryJson).HasColumnName("itinerary_json").HasColumnType("jsonb");
+            e.Property(x => x.AiModel).HasColumnName("ai_model");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

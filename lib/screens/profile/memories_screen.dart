@@ -82,7 +82,8 @@ class _MemoryCard extends StatelessWidget {
   Future<void> _openMemory(BuildContext context) async {
     final tripId = data['tripId'] as String? ?? '';
     final tripName = data['tripName'] as String? ?? '';
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid =
+        FirebaseAuth.instance.currentUser?.uid ?? 'backend-session-user';
 
     if (uid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
