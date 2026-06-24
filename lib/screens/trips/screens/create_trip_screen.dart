@@ -9,6 +9,7 @@ import '../widgets/destination_list_item.dart';
 import '../widgets/destination_picker_sheet.dart';
 import '../widgets/people_counter.dart';
 import 'trip_itinerary_result_screen.dart';
+import 'trip_itinerary_history_screen.dart';
 
 class CreateTripScreen extends StatelessWidget {
   const CreateTripScreen({super.key});
@@ -72,6 +73,20 @@ class _CreateTripView extends StatelessWidget {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
         leading: const BackButton(color: Colors.black),
+        actions: [
+          IconButton(
+            tooltip: 'Itinerary history',
+            icon: const Icon(Icons.history, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const TripItineraryHistoryScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
