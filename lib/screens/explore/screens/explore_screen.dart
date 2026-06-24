@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/vietai_scope.dart';
+import '../models/destination_model.dart';
 import '../models/region_model.dart';
 import '../services/region_service.dart';
 import '../widgets/explore_header.dart';
@@ -20,16 +24,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final _scrollController = ScrollController();
 
   List<RegionModel> _regions = [];
-  RegionType _selectedRegion = RegionType.central;
+  RegionType _selectedRegion = RegionType.west;
   bool _isLoading = true;
 
-  RegionModel? get _currentRegion =>
-      _regions.isEmpty ? null : _regions.firstWhere((r) => r.type == _selectedRegion);
+  RegionModel? get _currentRegion {
+    for (final region in _regions) {
+      if (region.type == _selectedRegion) return region;
+    }
+    return _regions.isEmpty ? null : _regions.first;
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
   @override
@@ -39,23 +47,114 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadData() async {
-    final regions = await _regionService.getRegions();
-    if (mounted) setState(() { _regions = regions; _isLoading = false; });
+    try {
+      final api = VietaiScope.of(context).api;
+      final regions = await _regionService
+          .getRegions()
+          .timeout(const Duration(seconds: 18));
+      var favoriteIds = <String>{};
+      try {
+        final favorites = await api
+            .fetchFavorites()
+            .timeout(const Duration(seconds: 5));
+        favoriteIds = favorites.map((item) => item.destination.id).toSet();
+      } catch (_) {
+        // Favorites require login/backend; keep destination list usable.
+      }
+
+      final markedRegions = regions
+          .map(
+            (region) => RegionModel(
+              id: region.id,
+              name: region.name,
+              englishName: region.englishName,
+              description: region.description,
+              bannerImage: region.bannerImage,
+              type: region.type,
+              destinations: region.destinations
+                  .map((item) => item.copyWith(
+                        isFavorite: favoriteIds.contains(item.id),
+                      ))
+                  .toList(),
+              articles: region.articles,
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _regions = markedRegions;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _regions = [];
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _onTabChanged(RegionType type) {
     setState(() => _selectedRegion = type);
-    _scrollController.animateTo(0,
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
-  void _onFavoriteTap(String destinationId) {
+  Future<void> _onFavoriteTap(String destinationId) async {
+    DestinationModel? destination;
+    for (final item in _currentRegion?.destinations ?? const []) {
+      if (item.id == destinationId) {
+        destination = item;
+        break;
+      }
+    }
+    if (destination == null) return;
+
+    _setFavorite(destinationId, !destination.isFavorite);
+    if (!_isUuid(destinationId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Demo item only. Open API destinations to save.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final api = VietaiScope.of(context).api;
+      if (destination.isFavorite) {
+        await api.deleteFavorite(destinationId);
+      } else {
+        await api.addFavorite(destinationId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _setFavorite(destinationId, destination.isFavorite);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot update saved place: $e')),
+      );
+    }
+  }
+
+  bool _isUuid(String value) {
+    return RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(value);
+  }
+
+  void _setFavorite(String destinationId, bool isFavorite) {
     setState(() {
       _regions = _regions.map((region) {
         if (region.type != _selectedRegion) return region;
         final updated = region.destinations.map((d) {
           if (d.id != destinationId) return d;
-          return d.copyWith(isFavorite: !d.isFavorite);
+          return d.copyWith(isFavorite: isFavorite);
         }).toList();
         return RegionModel(
           id: region.id,

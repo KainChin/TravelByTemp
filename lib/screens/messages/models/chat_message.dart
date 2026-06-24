@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'itinerary.dart';
 
 /// Who sent a given [ChatMessage].
@@ -15,6 +17,8 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isSent;
   final ItineraryPlan? itinerary;
+  final Uint8List? imageBytes;
+  final String? imageName;
 
   const ChatMessage({
     required this.id,
@@ -23,6 +27,8 @@ class ChatMessage {
     required this.timestamp,
     this.isSent = false,
     this.itinerary,
+    this.imageBytes,
+    this.imageName,
   });
 
   bool get isAi => sender == MessageSender.ai;
@@ -32,6 +38,8 @@ class ChatMessage {
     String? message,
     bool? isSent,
     ItineraryPlan? itinerary,
+    Uint8List? imageBytes,
+    String? imageName,
   }) {
     return ChatMessage(
       id: id,
@@ -40,6 +48,8 @@ class ChatMessage {
       timestamp: timestamp,
       isSent: isSent ?? this.isSent,
       itinerary: itinerary ?? this.itinerary,
+      imageBytes: imageBytes ?? this.imageBytes,
+      imageName: imageName ?? this.imageName,
     );
   }
 }

@@ -6,7 +6,9 @@ import 'package:assignment/screens/destinations/destination_detail_screen.dart';
 import 'package:assignment/services/api_client.dart';
 
 class SavedScreen extends StatefulWidget {
-  const SavedScreen({super.key});
+  const SavedScreen({super.key, required this.refreshToken});
+
+  final int refreshToken;
 
   @override
   State<SavedScreen> createState() => _SavedScreenState();
@@ -21,6 +23,14 @@ class _SavedScreenState extends State<SavedScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void didUpdateWidget(covariant SavedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    }
   }
 
   Future<void> _load() async {

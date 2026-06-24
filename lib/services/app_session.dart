@@ -56,13 +56,7 @@ class AppSession extends ChangeNotifier {
     await prefs.setString(_tokenKey, session.accessToken);
     await prefs.setString(_refreshTokenKey, session.refreshToken);
     await prefs.setString(_expiresAtKey, session.expiresAt.toIso8601String());
-    await prefs.setString(_userKey, jsonEncode({
-      'id': session.user.id,
-      'username': session.user.username,
-      'email': session.user.email,
-      'fullName': session.user.fullName,
-      'role': session.user.role,
-    }));
+    await _saveUser(prefs, session.user);
     notifyListeners();
     await refreshLocationAndWeather();
     await loadSchedules();
@@ -92,14 +86,49 @@ class AppSession extends ChangeNotifier {
     await prefs.setString(_tokenKey, next.accessToken);
     await prefs.setString(_refreshTokenKey, next.refreshToken);
     await prefs.setString(_expiresAtKey, next.expiresAt.toIso8601String());
-    await prefs.setString(_userKey, jsonEncode({
-      'id': next.user.id,
-      'username': next.user.username,
-      'email': next.user.email,
-      'fullName': next.user.fullName,
-      'role': next.user.role,
-    }));
+    await _saveUser(prefs, next.user);
     notifyListeners();
+  }
+
+  Future<void> updateProfile({
+    required String username,
+    required String email,
+    required String fullName,
+    String? bio,
+    String? phone,
+  }) async {
+    final current = auth;
+    if (current == null) return;
+
+    final user = await api.updateProfile(
+      username: username,
+      email: email,
+      fullName: fullName,
+      bio: bio,
+      phone: phone,
+    );
+    auth = AuthSession(
+      accessToken: current.accessToken,
+      refreshToken: current.refreshToken,
+      expiresAt: current.expiresAt,
+      user: user,
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await _saveUser(prefs, user);
+    notifyListeners();
+  }
+
+  Future<void> _saveUser(SharedPreferences prefs, AuthUser user) {
+    return prefs.setString(_userKey, jsonEncode({
+      'id': user.id,
+      'username': user.username,
+      'email': user.email,
+      'fullName': user.fullName,
+      'role': user.role,
+      'bio': user.bio,
+      'phone': user.phone,
+    }));
   }
 
   Future<void> refreshLocationAndWeather() async {

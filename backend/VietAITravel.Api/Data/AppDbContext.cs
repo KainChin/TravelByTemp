@@ -38,6 +38,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Email).HasColumnName("email");
             e.Property(x => x.PasswordHash).HasColumnName("password_hash");
             e.Property(x => x.FullName).HasColumnName("full_name");
+            e.Property(x => x.Bio).HasColumnName("bio");
+            e.Property(x => x.Phone).HasColumnName("phone");
             e.Property(x => x.AvatarUrl).HasColumnName("avatar_url");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");

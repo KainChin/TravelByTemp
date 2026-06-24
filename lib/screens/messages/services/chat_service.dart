@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:assignment/core/config/api_config.dart';
@@ -63,6 +64,67 @@ class ChatService {
     } catch (e) {
       throw ChatServiceException('Đã xảy ra lỗi không xác định: $e');
     }
+  }
+
+  Future<String> sendImageMessage({
+    required String message,
+    required Uint8List imageBytes,
+    required String fileName,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/api/chat-ai'),
+      )
+        ..fields['message'] = message
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'image',
+            imageBytes,
+            filename: fileName,
+          ),
+        );
+
+      final streamed = await _client.send(request).timeout(timeout);
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic> && decoded['response'] is String) {
+          return decoded['response'] as String;
+        }
+        throw ChatServiceException('Phản hồi từ server không đúng định dạng.');
+      }
+
+      final detail = _readProblemDetail(response);
+      throw ChatServiceException(
+        detail ?? 'Server trả về lỗi (mã ${response.statusCode}). Vui lòng thử lại.',
+      );
+    } on TimeoutException {
+      throw ChatServiceException('Hết thời gian chờ phản hồi. Vui lòng thử lại.');
+    } on http.ClientException {
+      throw ChatServiceException(
+        'Không thể kết nối tới server. Kiểm tra kết nối mạng hoặc backend.',
+      );
+    } on FormatException {
+      throw ChatServiceException('Không thể đọc phản hồi từ server.');
+    } on ChatServiceException {
+      rethrow;
+    } catch (e) {
+      throw ChatServiceException('Đã xảy ra lỗi không xác định: $e');
+    }
+  }
+
+  String? _readProblemDetail(http.Response response) {
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map<String, dynamic>) {
+        return decoded['detail'] as String? ?? decoded['title'] as String?;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
   }
 
   void dispose() => _client.close();

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
@@ -60,6 +61,53 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       final reply = await _chatService.sendMessage(trimmed);
+      _messages.add(
+        ChatMessage(
+          id: _generateId(),
+          message: reply,
+          sender: MessageSender.ai,
+          timestamp: DateTime.now(),
+        ),
+      );
+    } on ChatServiceException catch (e) {
+      _errorMessage = e.message;
+    } finally {
+      _isLoading = false;
+      _isTyping = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> sendImageMessage({
+    required String text,
+    required XFile image,
+  }) async {
+    final trimmed = text.trim().isEmpty ? 'Hãy đọc ảnh này và gợi ý lịch trình du lịch.' : text.trim();
+    if (_isLoading) return;
+
+    final bytes = await image.readAsBytes();
+    _messages.add(
+      ChatMessage(
+        id: _generateId(),
+        message: trimmed,
+        sender: MessageSender.user,
+        timestamp: DateTime.now(),
+        isSent: true,
+        imageBytes: bytes,
+        imageName: image.name,
+      ),
+    );
+    _isLoading = true;
+    _isTyping = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final reply = await _chatService.sendImageMessage(
+        message: trimmed,
+        imageBytes: bytes,
+        fileName: image.name.isEmpty ? 'travel-image.jpg' : image.name,
+      );
       _messages.add(
         ChatMessage(
           id: _generateId(),
