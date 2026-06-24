@@ -124,36 +124,14 @@ public sealed class TravelChatService(
             throw new TravelAiException(StatusCodes.Status400BadRequest, "Budget per person must be greater than zero.");
 
         var prompt = """
-            Tao lich trinh du lich bang tieng Viet dua tren du lieu nguoi dung.
-            Chi tra ve JSON hop le, khong them markdown.
-            Schema bat buoc:
+            Tao lich trinh du lich bang tieng Viet tu form nguoi dung.
+            Chi tra ve JSON hop le, khong markdown. Toi da 2 hoat dong moi ngay.
+            Schema:
             {
               "title": "string",
               "summary": "string",
-              "days": [
-                {
-                  "day": 1,
-                  "date": "yyyy-MM-dd",
-                  "activities": [
-                    {
-                      "time": "08:00",
-                      "destination": "string",
-                      "activity": "string",
-                      "transport": "string",
-                      "estimatedCost": 0,
-                      "note": "string"
-                    }
-                  ]
-                }
-              ],
-              "costBreakdown": {
-                "transport": 0,
-                "food": 0,
-                "accommodation": 0,
-                "activities": 0,
-                "total": 0,
-                "perPerson": 0
-              },
+              "days": [{"day": 1, "date": "yyyy-MM-dd", "activities": [{"time": "08:00", "destination": "string", "activity": "string", "transport": "string", "estimatedCost": 0, "note": "string"}]}],
+              "costBreakdown": {"transport": 0, "food": 0, "accommodation": 0, "activities": 0, "total": 0, "perPerson": 0},
               "warnings": ["string"]
             }
             """;
@@ -183,7 +161,13 @@ public sealed class TravelChatService(
         {
             ["model"] = ollamaOptions.ChatModel,
             ["messages"] = messages,
-            ["stream"] = false
+            ["stream"] = false,
+            ["options"] = new
+            {
+                temperature = jsonFormat ? 0.1 : 0.3,
+                num_ctx = 2048,
+                num_predict = jsonFormat ? 650 : 250
+            }
         };
         if (jsonFormat)
             payload["format"] = "json";

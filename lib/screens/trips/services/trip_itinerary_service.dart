@@ -19,10 +19,12 @@ class TripItineraryResult {
   const TripItineraryResult({
     required this.response,
     required this.itinerary,
+    this.itineraryId,
   });
 
   final String response;
   final Map<String, dynamic> itinerary;
+  final String? itineraryId;
 
   factory TripItineraryResult.fromJson(Map<String, dynamic> json) {
     final itinerary = json['itinerary'];
@@ -33,6 +35,41 @@ class TripItineraryResult {
     return TripItineraryResult(
       response: json['response'] as String? ?? '',
       itinerary: itinerary,
+      itineraryId: json['itineraryId'] as String?,
+    );
+  }
+}
+
+class TripItineraryHistoryItem {
+  const TripItineraryHistoryItem({
+    required this.id,
+    required this.title,
+    required this.createdAt,
+    required this.itinerary,
+    this.aiModel,
+  });
+
+  final String id;
+  final String title;
+  final DateTime createdAt;
+  final Map<String, dynamic> itinerary;
+  final String? aiModel;
+
+  factory TripItineraryHistoryItem.fromJson(Map<String, dynamic> json) {
+    final itinerary = json['itinerary'];
+    if (itinerary is! Map<String, dynamic>) {
+      throw const TripItineraryException('History item has invalid itinerary.');
+    }
+
+    return TripItineraryHistoryItem(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ??
+          itinerary['title'] as String? ??
+          'AI itinerary',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+      itinerary: itinerary,
+      aiModel: json['aiModel'] as String?,
     );
   }
 }
@@ -89,6 +126,39 @@ class TripItineraryService {
       throw TripItineraryException(_serverMessage(body, response.statusCode));
     } on TimeoutException {
       throw const TripItineraryException('AI took too long to respond.');
+    } on http.ClientException {
+      throw const TripItineraryException('Cannot connect to backend.');
+    } on FormatException {
+      throw const TripItineraryException('Cannot parse backend response.');
+    } on TripItineraryException {
+      rethrow;
+    } catch (e) {
+      throw TripItineraryException('Unexpected error: $e');
+    }
+  }
+
+  Future<List<TripItineraryHistoryItem>> history() async {
+    try {
+      final response = await _client
+          .get(Uri.parse('${ApiConfig.baseUrl}/api/trip/itineraries'))
+          .timeout(timeout);
+
+      final body = utf8.decode(response.bodyBytes);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(body) as Map<String, dynamic>;
+        final items = decoded['items'];
+        if (items is! List) {
+          throw const TripItineraryException('Server did not return history.');
+        }
+        return items
+            .whereType<Map<String, dynamic>>()
+            .map(TripItineraryHistoryItem.fromJson)
+            .toList();
+      }
+
+      throw TripItineraryException(_serverMessage(body, response.statusCode));
+    } on TimeoutException {
+      throw const TripItineraryException('Backend took too long to respond.');
     } on http.ClientException {
       throw const TripItineraryException('Cannot connect to backend.');
     } on FormatException {

@@ -201,6 +201,36 @@ app.MapPost("/api/trip/generate-itinerary", async (
     }
 });
 
+app.MapGet("/api/trip/itineraries", async (
+    AppDbContext db,
+    HttpContext httpContext,
+    CancellationToken ct) =>
+{
+    var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+
+    var query = db.AiItineraries.AsNoTracking();
+    query = userId.HasValue
+        ? query.Where(x => x.UserId == userId)
+        : query.Where(x => x.UserId == null);
+
+    var rows = await query
+        .OrderByDescending(x => x.CreatedAt)
+        .Take(20)
+        .ToListAsync(ct);
+
+    var items = rows
+        .Select(x => new AiItineraryHistoryItem(
+            x.Id,
+            x.Title,
+            x.AiModel,
+            x.CreatedAt,
+            TryDeserializeJson(x.ItineraryJson)))
+        .ToList();
+
+    return Results.Ok(new AiItineraryHistoryResponse("Da lay lich su lich trinh.", items));
+});
+
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 
 app.Run();
@@ -213,6 +243,18 @@ static string? TryReadTitle(string itineraryJson)
         return doc.RootElement.TryGetProperty("title", out var title)
             ? title.GetString()
             : null;
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+static object? TryDeserializeJson(string json)
+{
+    try
+    {
+        return JsonSerializer.Deserialize<object>(json);
     }
     catch
     {
