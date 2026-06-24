@@ -8,11 +8,12 @@ class RegionService {
 
   // TODO: GET /api/regions
   Future<List<RegionModel>> getRegions() async {
-    final regions = <RegionModel>[];
-    for (final type in RegionType.values) {
-      final destinations = await _destinationService.getDestinationsByRegion(type);
-      final articles = await _articleService.getArticlesByRegion(type);
-      regions.add(RegionModel(
+    return Future.wait(RegionType.values.map((type) async {
+      final destinationsFuture = _destinationService.getDestinationsByRegion(type);
+      final articlesFuture = _articleService.getArticlesByRegion(type);
+      final destinations = await destinationsFuture;
+      final articles = await articlesFuture;
+      return RegionModel(
         id: type.name,
         name: _nameOf(type),
         englishName: _englishNameOf(type),
@@ -21,9 +22,8 @@ class RegionService {
         type: type,
         destinations: destinations,
         articles: articles,
-      ));
-    }
-    return regions;
+      );
+    }));
   }
 
   static String _nameOf(RegionType t) => switch (t) {

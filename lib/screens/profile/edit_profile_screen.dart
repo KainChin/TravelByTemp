@@ -1,5 +1,5 @@
+import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:flutter/material.dart';
-import 'widgets/form_section.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -9,226 +9,331 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _nameCtrl     = TextEditingController(text: 'Thu Duc');
-  final _usernameCtrl = TextEditingController(text: 'thuduc_98');
-  final _bioCtrl      = TextEditingController(text: 'Collect moments, not things.\nTravel • Explore • Memories');
-  final _emailCtrl    = TextEditingController(text: 'thuduc.nguyen@gmail.com');
-  final _phoneCtrl    = TextEditingController(text: '+84 912 345 678');
+  final _nameCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _bioCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  bool _initialized = false;
+  bool _isSaving = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+
+    final user = VietaiScope.of(context).auth?.user;
+    _nameCtrl.text = user?.fullName ?? '';
+    _usernameCtrl.text = user?.username ?? '';
+    _emailCtrl.text = user?.email ?? '';
+    _bioCtrl.text = user?.bio ?? '';
+    _phoneCtrl.text = user?.phone ?? '';
+    _initialized = true;
+  }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _usernameCtrl.dispose();
-    _bioCtrl.dispose();
     _emailCtrl.dispose();
+    _bioCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
   }
 
+  Future<void> _saveProfile() async {
+    final name = _nameCtrl.text.trim();
+    final username = _usernameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final bio = _bioCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    if (name.isEmpty || username.isEmpty || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await VietaiScope.of(context).updateProfile(
+        username: username,
+        email: email,
+        fullName: name,
+        bio: bio.isEmpty ? null : bio,
+        phone: phone.isEmpty ? null : phone,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated.')),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot update profile: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final location = VietaiScope.of(context).locationName;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
-      appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildAvatarHero(),
-            const SizedBox(height: 10),
-            FormSection(
-              icon: Icons.person_outline,
-              title: 'Personal Information',
-              fields: [
-                FormFieldData(label: 'Full Name',  controller: _nameCtrl),
-                FormFieldData(label: 'Username',   controller: _usernameCtrl),
-                FormFieldData(label: 'Bio',        controller: _bioCtrl, maxLines: 3, maxLength: 150),
-              ],
-              trailing: _buildLocationRow(),
-            ),
-            FormSection(
-              icon: Icons.email_outlined,
-              title: 'Contact Information',
-              fields: [
-                FormFieldData(label: 'Email',        controller: _emailCtrl, keyboardType: TextInputType.emailAddress),
-                FormFieldData(label: 'Phone Number', controller: _phoneCtrl, keyboardType: TextInputType.phone),
-              ],
-            ),
-            _buildPreferencesSection(),
-            _buildSaveButton(context),
-            const SizedBox(height: 20),
-          ],
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0.5,
+        centerTitle: true,
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0.5,
-      leading: GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFFF5F7F8), borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.arrow_back, color: Colors.black),
-        ),
-      ),
-      title: const Text('Edit Profile', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700)),
-      centerTitle: true,
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFF3A7D5A),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton(
+              onPressed: _isSaving ? null : _saveProfile,
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFF3A7D5A),
+                disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Save',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
-            child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
-        ),
-      ],
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+        children: [
+          _AvatarHero(name: _nameCtrl.text),
+          const SizedBox(height: 12),
+          _Section(
+            icon: Icons.person_outline,
+            title: 'Personal information',
+            children: [
+              _ProfileField(label: 'Full name', controller: _nameCtrl),
+              _ProfileField(label: 'Username', controller: _usernameCtrl),
+              _ProfileField(
+                label: 'Bio',
+                controller: _bioCtrl,
+                maxLines: 3,
+                maxLength: 300,
+              ),
+            ],
+          ),
+          _Section(
+            icon: Icons.email_outlined,
+            title: 'Contact information',
+            children: [
+              _ProfileField(
+                label: 'Email',
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              _ProfileField(
+                label: 'Phone number',
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                maxLength: 30,
+              ),
+            ],
+          ),
+          _Section(
+            icon: Icons.location_on_outlined,
+            title: 'Current location',
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(location),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: _isSaving ? null : _saveProfile,
+            icon: const Icon(Icons.save_outlined, color: Colors.white),
+            label: Text(
+              _isSaving ? 'Saving...' : 'Save Changes',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3A7D5A),
+              disabledBackgroundColor: Colors.grey.shade300,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildAvatarHero() {
+class _AvatarHero extends StatelessWidget {
+  const _AvatarHero({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.trim().isEmpty ? 'T' : name.trim()[0].toUpperCase();
+
     return Container(
       height: 140,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFFB8D8E8), Color(0xFFD4E8D4), Color(0xFFA8C8B8)],
         ),
       ),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              children: [
-                const CircleAvatar(
-                  radius: 40,
-                  backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
-                ),
-                Positioned(
-                  bottom: 0, right: 0,
-                  child: Container(
-                    width: 26, height: 26,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3A7D5A),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
-                  ),
-                ),
-              ],
+        child: CircleAvatar(
+          radius: 42,
+          backgroundColor: const Color(0xFF3A7D5A),
+          child: Text(
+            initial,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.image_outlined, size: 14, color: Color(0xFF3A7D5A)),
-              label: const Text('Change Photo', style: TextStyle(fontSize: 12, color: Color(0xFF3A7D5A))),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF3A7D5A)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildLocationRow() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Location', style: TextStyle(fontSize: 12, color: Color(0xFF888888))),
-        const SizedBox(height: 5),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE0E0E0)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF3A7D5A)),
-              SizedBox(width: 8),
-              Expanded(child: Text('Hanoi, Vietnam', style: TextStyle(fontSize: 14))),
-              Icon(Icons.keyboard_arrow_down, color: Color(0xFF888888)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
 
-  Widget _buildPreferencesSection() {
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.settings_outlined, color: Color(0xFF3A7D5A)),
-              SizedBox(width: 8),
-              Text('Preferences', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              Icon(icon, color: const Color(0xFF3A7D5A)),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          _buildPrefRow(Icons.language, 'Language', 'English'),
-          _buildPrefRow(Icons.notifications_outlined, 'Notification', ''),
+          const SizedBox(height: 12),
+          ...children,
         ],
       ),
     );
   }
+}
 
-  Widget _buildPrefRow(IconData icon, String label, String value) {
-    return InkWell(
-      onTap: () {},
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF3A7D5A)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
-            if (value.isNotEmpty) Text(value, style: const TextStyle(fontSize: 13, color: Color(0xFF888888))),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right, size: 18, color: Color(0xFF888888)),
-          ],
-        ),
-      ),
-    );
-  }
+class _ProfileField extends StatelessWidget {
+  const _ProfileField({
+    required this.label,
+    required this.controller,
+    this.keyboardType,
+    this.maxLines = 1,
+    this.maxLength,
+  });
 
-  Widget _buildSaveButton(BuildContext context) {
+  final String label;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final int maxLines;
+  final int? maxLength;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.save_outlined, color: Colors.white),
-          label: const Text('Save Changes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF3A7D5A),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 0,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: const Color(0xFFFAFAFA),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF3A7D5A)),
           ),
         ),
       ),

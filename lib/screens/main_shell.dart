@@ -2,14 +2,9 @@
 import 'package:assignment/screens/explore/screens/explore_screen.dart';
 import 'package:assignment/screens/messages/messages_screen.dart';
 import 'package:assignment/screens/profile/profile_screen.dart';
+import 'package:assignment/screens/saved/saved_screen.dart';
 import 'package:assignment/screens/trips/screens/trip_planning_screen.dart';
 
-
-class SavedScreen extends StatelessWidget {
-  const SavedScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const Scaffold(body: Center(child: Text("Saved Screen")));
-}
 
 class MainShell extends StatefulWidget {
   /// TÃªn ngÆ°á»i dÃ¹ng Ä‘Ã£ Ä‘Äƒng nháº­p â€” truyá»n tá»« mÃ n hÃ¬nh Login/Auth khi
@@ -26,17 +21,18 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 2; // Äáº·t lÃ  2 Ä‘á»ƒ máº·c Ä‘á»‹nh má»Ÿ tab Trips
+  int _currentIndex = 0; // Open Explore/Home first after login.
+  int _savedRefreshToken = 0;
 
   // KhÃ´ng cÃ²n lÃ  `static final` vÃ¬ danh sÃ¡ch mÃ n hÃ¬nh giá» phá»¥ thuá»™c vÃ o
   // currentUserName cá»§a widget (chá»‰ biáº¿t Ä‘Æ°á»£c á»Ÿ instance, khÃ´ng pháº£i static).
-  late final List<Widget> _screens = [
-    const ExploreScreen(),
-    const SavedScreen(),
-    const TripPlanningScreen(),
-    MessagesScreen(currentUserName: widget.currentUserName),
-    const ProfileScreen(),
-  ];
+  List<Widget> get _screens => [
+        const ExploreScreen(),
+        SavedScreen(refreshToken: _savedRefreshToken),
+        const TripPlanningScreen(),
+        MessagesScreen(currentUserName: widget.currentUserName),
+        const ProfileScreen(),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +72,12 @@ class _MainShellState extends State<MainShell> {
 
               return Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _currentIndex = index),
+                  onTap: () => setState(() {
+                    _currentIndex = index;
+                    if (index == 1) {
+                      _savedRefreshToken++;
+                    }
+                  }),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [

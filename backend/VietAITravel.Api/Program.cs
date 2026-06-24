@@ -87,6 +87,25 @@ var openAiOpts = new OpenAiOptions
 };
 builder.Services.AddSingleton(openAiOpts);
 builder.Services.AddHttpClient("openai", c => c.Timeout = TimeSpan.FromSeconds(90));
+
+var geminiOpts = new GeminiOptions
+{
+    ApiKey = builder.Configuration["Gemini:ApiKey"] ?? "",
+    BaseUrl = builder.Configuration["Gemini:BaseUrl"] ?? "https://generativelanguage.googleapis.com",
+    VisionModel = builder.Configuration["Gemini:VisionModel"] ?? "gemini-2.0-flash"
+};
+builder.Services.AddSingleton(geminiOpts);
+builder.Services.AddHttpClient("gemini", c => c.Timeout = TimeSpan.FromSeconds(90));
+
+var groqOpts = new GroqOptions
+{
+    ApiKey = builder.Configuration["Groq:ApiKey"] ?? "",
+    BaseUrl = builder.Configuration["Groq:BaseUrl"] ?? "https://api.groq.com/openai/v1",
+    VisionModel = builder.Configuration["Groq:VisionModel"] ?? "meta-llama/llama-4-scout-17b-16e-instruct"
+};
+builder.Services.AddSingleton(groqOpts);
+builder.Services.AddHttpClient("groq", c => c.Timeout = TimeSpan.FromSeconds(90));
+
 builder.Services.AddScoped<TravelChatService>();
 
 var mongoOpts = new MongoOptions

@@ -1,13 +1,57 @@
+import 'dart:async';
+
 import '../models/destination_model.dart';
 import '../models/region_model.dart';
+import 'package:assignment/services/api_client.dart';
 
 class DestinationService {
-  // TODO: Replace base URL when connecting to ASP.NET Core API
-  // static const String _baseUrl = 'https://your-api.com/api';
+  final ApiClient _api = ApiClient();
 
   Future<List<DestinationModel>> getDestinationsByRegion(RegionType region) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _fakeData[region] ?? [];
+    try {
+      final apiRegion = _apiRegion(region);
+      if (apiRegion == null) return [];
+
+      final destinations = await _api
+          .fetchDestinations(region: apiRegion)
+          .timeout(const Duration(seconds: 5));
+      final apiItems = destinations
+          .map(
+            (item) => DestinationModel(
+              id: item.id,
+              name: item.name,
+              province: item.location ?? item.tagline,
+              imageUrl: item.imageUrl,
+              rating: item.rating,
+              isFavorite: item.isFavorite,
+            ),
+          )
+          .toList();
+      return _mergeWithFallback(region, apiItems);
+    } catch (_) {
+      return _fakeData[region] ?? [];
+    }
+  }
+
+  static String? _apiRegion(RegionType region) => switch (region) {
+        RegionType.north => 'North',
+        RegionType.central => 'Central',
+        RegionType.south => 'South',
+        RegionType.west => 'West',
+      };
+
+  static List<DestinationModel> _mergeWithFallback(
+    RegionType region,
+    List<DestinationModel> apiItems,
+  ) {
+    final fallback = _fakeData[region] ?? const <DestinationModel>[];
+    if (apiItems.length >= fallback.length) return apiItems;
+
+    final names = apiItems.map((item) => item.name.toLowerCase()).toSet();
+    final extras = fallback
+        .where((item) => !names.contains(item.name.toLowerCase()))
+        .take(fallback.length - apiItems.length);
+    return [...apiItems, ...extras];
   }
 
   static final Map<RegionType, List<DestinationModel>> _fakeData = {

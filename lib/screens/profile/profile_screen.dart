@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/services/firestore_service.dart';
 import 'package:assignment/screens/profile/upload/upload_screen.dart';
 import 'package:assignment/screens/profile/video/select_photos_screen.dart';
@@ -14,6 +15,31 @@ import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final session = VietaiScope.of(context);
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log out'),
+        content: const Text('Do you want to log out of this account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await session.logout();
+    }
+  }
 
   // ── Hiện bottom sheet chọn trip để tạo video ──
   void _showSelectTripDialog(BuildContext context) {
@@ -199,6 +225,9 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = VietaiScope.of(context);
+    final user = session.auth?.user;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
       body: SingleChildScrollView(
@@ -206,6 +235,13 @@ class ProfileScreen extends StatelessWidget {
           children: [
             // ── Header ──
             ProfileHeader(
+              fullName: user?.fullName ?? 'Traveler',
+              username: user?.username ?? 'traveler',
+              email: user?.email ?? '',
+              bio: user?.bio,
+              role: user?.role ?? 'Traveler',
+              location: session.locationName,
+              onLogoutTap: () => _confirmLogout(context),
               onEditTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),

@@ -74,11 +74,17 @@ services:
       MongoDb__ConnectionString: mongodb://vietai_mongo_user:vietai_mongo_password@mongodb:27017/?authSource=admin
       MongoDb__DatabaseName: vietai_ai_logs
       Ollama__BaseUrl: http://ollama:11434
-      Ollama__ChatModel: qwen2.5:1.5b
+      Ollama__ChatModel: qwen2.5:3b
       Ollama__EmbeddingModel: nomic-embed-text
-      OpenAI__ApiKey: ""
+      OpenAI__ApiKey: ${OPENAI_API_KEY:-}
       OpenAI__BaseUrl: https://api.openai.com/v1
       OpenAI__VisionModel: gpt-4o-mini
+      Gemini__ApiKey: ${GEMINI_API_KEY:-}
+      Gemini__BaseUrl: https://generativelanguage.googleapis.com
+      Gemini__VisionModel: gemini-2.0-flash
+      Groq__ApiKey: ${GROQ_API_KEY:-}
+      Groq__BaseUrl: https://api.groq.com/openai/v1
+      Groq__VisionModel: meta-llama/llama-4-scout-17b-16e-instruct
       Weather__Provider: OpenMeteo
       Jwt__SecretKey: CHANGE_THIS_SECRET_KEY_IN_PRODUCTION_USE_AT_LEAST_32_CHARS
       Jwt__Issuer: VietAITravel

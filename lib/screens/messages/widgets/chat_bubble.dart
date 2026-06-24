@@ -59,6 +59,18 @@ class ChatBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (message.imageBytes != null) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(MessageRadius.card),
+                      child: Image.memory(
+                        message.imageBytes!,
+                        width: 220,
+                        height: 140,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: MessageSpacing.sm),
+                  ],
                   Text(message.message, style: MessageTextStyles.bubbleText),
                   const SizedBox(height: MessageSpacing.sm),
                   Text(_formatTime(message.timestamp), style: MessageTextStyles.timestamp),

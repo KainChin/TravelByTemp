@@ -20,6 +20,8 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(500) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
+    bio VARCHAR(300),
+    phone VARCHAR(30),
     avatar_url VARCHAR(500),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -60,7 +62,7 @@ CREATE TABLE destinations (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
-    CONSTRAINT ck_destinations_region CHECK (region IN ('North', 'Central', 'South')),
+    CONSTRAINT ck_destinations_region CHECK (region IN ('North', 'Central', 'South', 'West')),
     CONSTRAINT ck_destinations_cost CHECK (estimated_cost >= 0)
 );
 
@@ -238,6 +240,28 @@ BEGIN
     RETURN new_id;
 END;
 $$ LANGUAGE plpgsql;
+
+INSERT INTO destinations (name, slug, description, province, region, latitude, longitude, category,
+    estimated_cost, opening_hours, image_url, best_time_to_visit, suitable_weather, travel_style,
+    ai_recommendation_note, embedding_text) VALUES
+('Hue', 'hue', 'Co do voi di san cung dinh, lang tam va am thuc dac sac.', 'Thua Thien Hue', 'Central', 16.463700, 107.590900, 'Cultural', 600000, 'Ca ngay', 'https://images.unsplash.com/photo-1555921015-5532091f6026?w=600', 'Thang 1 den thang 8', 'Troi am, it mua', 'Van hoa, lich su', 'Phu hop kham pha di san va am thuc.', 'Hue Thua Thien Hue Central cultural history food'),
+('Da Nang', 'da-nang', 'Thanh pho bien nang dong voi My Khe, Son Tra va cau Rong.', 'Da Nang', 'Central', 16.054400, 108.202200, 'Nature', 900000, 'Ca ngay', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600', 'Thang 3 den thang 8', 'Nang dep, bien em', 'Bien, thanh pho', 'Phu hop nghi bien va kham pha thanh pho.', 'Da Nang Central beach city Son Tra My Khe'),
+('Quy Nhon', 'quy-nhon', 'Thanh pho bien yen binh voi Ky Co, Eo Gio va hai san tuoi.', 'Binh Dinh', 'Central', 13.782000, 109.219000, 'Nature', 700000, 'Ca ngay', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600', 'Thang 3 den thang 9', 'Nang, it mua', 'Bien, nghi duong', 'Phu hop du lich bien chi phi vua phai.', 'Quy Nhon Binh Dinh Central beach seafood'),
+('Phong Nha', 'phong-nha', 'Vung hang dong noi tieng voi Phong Nha Ke Bang va thien nhien hung vi.', 'Quang Binh', 'Central', 17.610300, 106.309700, 'Nature', 850000, '07:00 - 17:00', 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600', 'Thang 2 den thang 8', 'Kho rao', 'Thien nhien, phieu luu', 'Phu hop kham pha hang dong.', 'Phong Nha Quang Binh Central cave nature adventure'),
+('Ha Noi', 'ha-noi', 'Thu do ngan nam van hien voi pho co, ho Guom va am thuc duong pho.', 'Ha Noi', 'North', 21.027800, 105.834200, 'Cultural', 700000, 'Ca ngay', 'https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=600', 'Mua thu', 'Mat me', 'Van hoa, am thuc', 'Phu hop city tour va trai nghiem am thuc.', 'Ha Noi North capital culture street food'),
+('Sapa', 'sapa', 'Thi tran nui voi ruong bac thang, ban lang va khi hau mat lanh.', 'Lao Cai', 'North', 22.336400, 103.843800, 'Mountain', 1200000, 'Ca ngay', 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600', 'Thang 9 den thang 11', 'Mat lanh', 'Nui, van hoa ban dia', 'Phu hop trekking va nghi duong nui.', 'Sapa Lao Cai North mountain trekking'),
+('Ninh Binh', 'ninh-binh', 'Vung dat co Trang An, Tam Coc va canh quan nui da voi.', 'Ninh Binh', 'North', 20.250600, 105.974500, 'Nature', 650000, 'Ca ngay', 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?w=600', 'Thang 1 den thang 5', 'Mat, it mua', 'Thien nhien, van hoa', 'Phu hop di thuyen va tham quan chua.', 'Ninh Binh North Trang An Tam Coc nature'),
+('Mu Cang Chai', 'mu-cang-chai', 'Diem ngam ruong bac thang dep nhat Tay Bac vao mua lua chin.', 'Yen Bai', 'North', 21.850000, 104.100000, 'Mountain', 900000, 'Ca ngay', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600', 'Thang 9 den thang 10', 'Mat me', 'Nui, nhiep anh', 'Phu hop ngam canh va chup anh.', 'Mu Cang Chai Yen Bai North rice terrace'),
+('Phu Quoc', 'phu-quoc', 'Dao ngoc voi bai bien dep, lan bien va hai san phong phu.', 'Kien Giang', 'South', 10.289900, 103.984000, 'Nature', 1500000, 'Ca ngay', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600', 'Thang 11 den thang 4', 'Nang dep', 'Bien, nghi duong', 'Phu hop nghi duong bien va gia dinh.', 'Phu Quoc Kien Giang South island beach'),
+('Con Dao', 'con-dao', 'Quan dao yen tinh voi bien trong, di tich lich su va thien nhien hoang so.', 'Ba Ria - Vung Tau', 'South', 8.686400, 106.608200, 'Nature', 1700000, 'Ca ngay', 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600', 'Thang 3 den thang 9', 'Bien em', 'Bien, lich su', 'Phu hop nghi duong yen tinh.', 'Con Dao South island beach history'),
+('Vung Tau', 'vung-tau', 'Thanh pho bien gan Sai Gon, phu hop nghi cuoi tuan.', 'Ba Ria - Vung Tau', 'South', 10.411400, 107.136200, 'Nature', 600000, 'Ca ngay', 'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?w=600', 'Quanh nam', 'Nang am', 'Bien, cuoi tuan', 'Phu hop di gan va chi phi hop ly.', 'Vung Tau South beach weekend'),
+('Mui Ne', 'mui-ne', 'Diem den bien voi doi cat, lang chai va cac mon hai san.', 'Binh Thuan', 'South', 10.933300, 108.283300, 'Nature', 800000, 'Ca ngay', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600', 'Thang 11 den thang 4', 'Nang gio', 'Bien, doi cat', 'Phu hop nghi bien va chup anh doi cat.', 'Mui Ne Binh Thuan South beach sand dunes'),
+('Can Tho', 'can-tho', 'Thanh pho mien Tay noi tieng voi cho noi Cai Rang va vuon trai cay.', 'Can Tho', 'West', 10.045200, 105.746900, 'Cultural', 500000, 'Ca ngay', 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600', 'Thang 12 den thang 4', 'Kho rao', 'Song nuoc, am thuc', 'Phu hop trai nghiem cho noi va mien vuon.', 'Can Tho West floating market river culture'),
+('Chau Doc', 'chau-doc', 'Thi xa gan bien gioi voi nui Sam, chua Ba va van hoa song nuoc.', 'An Giang', 'West', 10.700000, 105.116700, 'Cultural', 450000, 'Ca ngay', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600', 'Thang 11 den thang 4', 'Kho rao', 'Van hoa, tam linh', 'Phu hop tham quan nui Sam va cho noi.', 'Chau Doc An Giang West culture river'),
+('My Tho', 'my-tho', 'Cua ngo mien Tay voi song Tien, cu lao va dac san hu tieu.', 'Tien Giang', 'West', 10.360000, 106.360000, 'Cultural', 400000, 'Ca ngay', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600', 'Quanh nam', 'Am, it mua', 'Song nuoc, am thuc', 'Phu hop di trong ngay tu TP HCM.', 'My Tho Tien Giang West river food'),
+('Ha Tien', 'ha-tien', 'Thanh pho bien Tay Nam voi nui, bien va nhieu thang canh.', 'Kien Giang', 'West', 10.383300, 104.483300, 'Nature', 700000, 'Ca ngay', 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600', 'Thang 11 den thang 4', 'Nang dep', 'Bien, thien nhien', 'Phu hop ket hop bien va van hoa dia phuong.', 'Ha Tien Kien Giang West beach nature'),
+('Ben Tre', 'ben-tre', 'Xu dua voi kenh rach, vuon trai cay va trai nghiem miet vuon.', 'Ben Tre', 'West', 10.233300, 106.383300, 'Nature', 450000, 'Ca ngay', 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600', 'Quanh nam', 'Am ap', 'Miet vuon, song nuoc', 'Phu hop trai nghiem nong thon mien Tay.', 'Ben Tre West coconut river garden')
+ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO destinations (name, slug, description, province, region, latitude, longitude, category,
     estimated_cost, opening_hours, image_url, best_time_to_visit, suitable_weather, travel_style,

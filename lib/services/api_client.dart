@@ -106,6 +106,27 @@ class ApiClient {
     return session;
   }
 
+  Future<AuthUser> updateProfile({
+    required String username,
+    required String email,
+    required String fullName,
+    String? bio,
+    String? phone,
+  }) async {
+    final res = await _client.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
+      headers: _headers,
+      body: jsonEncode({
+        'username': username,
+        'email': email,
+        'fullName': fullName,
+        'bio': bio,
+        'phone': phone,
+      }),
+    );
+    return AuthUser.fromJson(await _decode(res));
+  }
+
   Future<List<Destination>> fetchDestinations({
     String? region,
     String? category,

@@ -69,6 +69,54 @@ public class AuthService(AppDbContext db, JwtOptions jwt)
         return await IssueTokensAsync(stored.User, ct);
     }
 
+    public async Task<UserDto> GetProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await db.Users.Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive, ct)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        return ToDto(user);
+    }
+
+    public async Task<UserDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
+    {
+        var username = request.Username.Trim();
+        var email = request.Email.Trim();
+        var fullName = request.FullName.Trim();
+        var bio = string.IsNullOrWhiteSpace(request.Bio) ? null : request.Bio.Trim();
+        var phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+
+        if (string.IsNullOrWhiteSpace(username))
+            throw new ArgumentException("Username is required.");
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email is required.");
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new ArgumentException("Full name is required.");
+        if (bio is { Length: > 300 })
+            throw new ArgumentException("Bio must be 300 characters or less.");
+        if (phone is { Length: > 30 })
+            throw new ArgumentException("Phone must be 30 characters or less.");
+
+        var user = await db.Users.Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive, ct)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        if (await db.Users.AnyAsync(u => u.Id != userId && u.Username == username, ct))
+            throw new InvalidOperationException("Username already exists.");
+        if (await db.Users.AnyAsync(u => u.Id != userId && u.Email == email, ct))
+            throw new InvalidOperationException("Email already exists.");
+
+        user.Username = username;
+        user.Email = email;
+        user.FullName = fullName;
+        user.Bio = bio;
+        user.Phone = phone;
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return ToDto(user);
+    }
+
     private async Task<AuthResponse> IssueTokensAsync(User user, CancellationToken ct)
     {
         var expires = DateTime.UtcNow.AddMinutes(jwt.ExpiryMinutes);
@@ -111,5 +159,5 @@ public class AuthService(AppDbContext db, JwtOptions jwt)
     }
 
     public static UserDto ToDto(User user) =>
-        new(user.Id, user.Username, user.Email, user.FullName, user.Role.Name);
+        new(user.Id, user.Username, user.Email, user.FullName, user.Role.Name, user.Bio, user.Phone);
 }

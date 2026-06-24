@@ -134,6 +134,8 @@ class _MessagesViewState extends State<_MessagesView> {
               ),
               child: ChatInput(
                 onSend: (text) => context.read<ChatProvider>().sendMessage(text),
+                onImageSend: (text, image) =>
+                    context.read<ChatProvider>().sendImageMessage(text: text, image: image),
               ),
             ),
           ],
