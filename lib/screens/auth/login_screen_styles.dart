@@ -1,122 +1,110 @@
 import 'package:flutter/material.dart';
 
-/// Toàn bộ màu sắc, kích thước, style dùng cho LoginScreen.
-/// Tách riêng để dễ chỉnh sửa theme mà không phải đụng vào logic UI.
 class LoginScreenStyles {
   LoginScreenStyles._();
 
-  // ----- Colors -----
-  static const Color primaryGreen = Color(0xFF1B5E3C);
-  static const Color backgroundColor = Color(0xFFF7F8F6);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B6B6B);
-  static const Color inputBorder = Color(0xFFE0E0E0);
-  static const Color inputFill = Color(0xFFFFFFFF);
-  static const Color socialButtonBorder = Color(0xFFE0E0E0);
+  static const Color ink = Color(0xFF15221D);
+  static const Color muted = Color(0xFF6E7A74);
+  static const Color primary = Color(0xFF008F6A);
+  static const Color primaryDark = Color(0xFF006B52);
+  static const Color accent = Color(0xFFFF8A5B);
+  static const Color background = Color(0xFFF5F7F4);
+  static const Color surface = Colors.white;
+  static const Color line = Color(0xFFE2E8E4);
+  static const Color fieldFill = Color(0xFFF8FAF8);
 
-  // ----- Spacing -----
-  static const double horizontalPadding = 24;
-  static const double fieldSpacing = 16;
-  static const double sectionSpacing = 28;
+  static const double horizontalPadding = 20;
+  static const double radius = 18;
 
-  // ----- Border radius -----
-  static const double inputRadius = 12;
-  static const double buttonRadius = 14;
-  static const double socialButtonRadius = 50;
+  static const TextStyle heroEyebrow = TextStyle(
+    color: Color(0xFFE9FFF5),
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+  );
 
-  // ----- Text styles -----
+  static const TextStyle heroTitle = TextStyle(
+    color: Colors.white,
+    fontSize: 30,
+    height: 1.08,
+    fontWeight: FontWeight.w900,
+  );
+
   static const TextStyle title = TextStyle(
+    color: ink,
     fontSize: 24,
-    fontWeight: FontWeight.bold,
-    color: textPrimary,
+    height: 1.15,
+    fontWeight: FontWeight.w900,
   );
 
   static const TextStyle subtitle = TextStyle(
+    color: muted,
     fontSize: 14,
-    color: textSecondary,
+    height: 1.45,
+    fontWeight: FontWeight.w500,
   );
 
   static const TextStyle inputLabel = TextStyle(
+    color: ink,
     fontSize: 13,
-    fontWeight: FontWeight.w500,
-    color: textPrimary,
-  );
-
-  static const TextStyle inputHint = TextStyle(
-    fontSize: 14,
-    color: Color(0xFFB0B0B0),
+    fontWeight: FontWeight.w800,
   );
 
   static const TextStyle linkText = TextStyle(
+    color: primary,
     fontSize: 13,
-    color: primaryGreen,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w800,
   );
 
   static const TextStyle primaryButtonText = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
     color: Colors.white,
+    fontSize: 16,
+    fontWeight: FontWeight.w900,
   );
 
-  static const TextStyle dividerText = TextStyle(
-    fontSize: 13,
-    color: textSecondary,
-  );
-
-  static const TextStyle footerText = TextStyle(
-    fontSize: 14,
-    color: textSecondary,
-  );
-
-  static const TextStyle footerLink = TextStyle(
-    fontSize: 14,
-    color: primaryGreen,
-    fontWeight: FontWeight.w600,
-  );
-
-  // ----- Decorations -----
   static InputDecoration inputDecoration({
     required String hint,
+    IconData? prefixIcon,
     Widget? suffixIcon,
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: inputHint,
-      filled: true,
-      fillColor: inputFill,
+      hintStyle: const TextStyle(color: Color(0xFF9AA6A0), fontSize: 14),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Icon(prefixIcon, color: muted, size: 20),
       suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      filled: true,
+      fillColor: fieldFill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(inputRadius),
-        borderSide: const BorderSide(color: inputBorder),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: line),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(inputRadius),
-        borderSide: const BorderSide(color: inputBorder),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: line),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(inputRadius),
-        borderSide: const BorderSide(color: primaryGreen),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: primary, width: 1.4),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFE5484D)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFE5484D), width: 1.4),
       ),
     );
   }
 
-  static ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: primaryGreen,
-    minimumSize: const Size(double.infinity, 52),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(buttonRadius),
-    ),
+  static final ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
+    backgroundColor: primary,
+    foregroundColor: Colors.white,
+    disabledBackgroundColor: const Color(0xFFB8C7C0),
+    minimumSize: const Size(double.infinity, 54),
     elevation: 0,
-  );
-
-  static BoxDecoration socialButtonDecoration = BoxDecoration(
-    shape: BoxShape.circle,
-    color: Colors.white,
-    border: Border.all(color: socialButtonBorder),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
   );
 }

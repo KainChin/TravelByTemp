@@ -48,11 +48,13 @@ class RouteLeg {
 
 class TripRouteAnalysis {
   const TripRouteAnalysis({
+    this.routeId,
     required this.departure,
     required this.destinations,
     required this.legs,
   });
 
+  final String? routeId;
   final Destination departure;
   final List<SelectedDestination> destinations;
   final List<RouteLeg> legs;
@@ -119,6 +121,7 @@ class TripRouteAnalysis {
     }).toList();
 
     return TripRouteAnalysis(
+      routeId: null,
       departure: start,
       destinations: normalized,
       legs: legs,
@@ -147,6 +150,7 @@ class TripRouteAnalysis {
     }).toList();
 
     return TripRouteAnalysis(
+      routeId: json['routeId'] as String?,
       departure: departure,
       destinations: destinations.asMap().entries.map((entry) {
         final leg = legs.length > entry.key ? legs[entry.key] : null;

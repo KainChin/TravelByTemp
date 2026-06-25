@@ -237,6 +237,8 @@ class TripFormProvider extends ChangeNotifier {
         departurePoint: departureLabel,
         departure: departure,
         destinations: _selectedDestinations,
+        peopleCount: peopleCount,
+        budgetPerPerson: budgetPerPerson,
       );
     } on TripItineraryException catch (e) {
       analyzeError = e.message;

@@ -9,7 +9,9 @@ public sealed record RoutePlaceDto(
 
 public sealed record AnalyzeRouteRequest(
     RoutePlaceDto Departure,
-    List<RoutePlaceDto> Destinations);
+    List<RoutePlaceDto> Destinations,
+    int? PeopleCount = null,
+    decimal? BudgetPerPerson = null);
 
 public sealed record RouteLegResponse(
     int Order,
@@ -27,4 +29,5 @@ public sealed record AnalyzeRouteResponse(
     List<RouteLegResponse> Legs,
     double TotalDistanceKm,
     double OptimizedHours,
-    bool HasFlightLeg);
+    bool HasFlightLeg,
+    Guid? RouteId = null);

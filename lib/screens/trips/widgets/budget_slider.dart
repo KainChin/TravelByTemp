@@ -32,9 +32,7 @@ class _BudgetSliderState extends State<BudgetSlider> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.amount != widget.amount) {
       final formatted = BudgetTier.formatCurrency(widget.amount);
-      if (_controller.text != formatted) {
-        _controller.text = formatted;
-      }
+      if (_controller.text != formatted) _controller.text = formatted;
     }
   }
 
@@ -51,10 +49,10 @@ class _BudgetSliderState extends State<BudgetSlider> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8E4)),
       ),
       child: Column(
@@ -67,23 +65,24 @@ class _BudgetSliderState extends State<BudgetSlider> {
             onEditingComplete: _commitInput,
             decoration: InputDecoration(
               labelText: 'Ngân sách mỗi người',
-              prefixIcon: const Icon(Icons.payments_outlined),
+              prefixIcon: const Icon(Icons.payments_outlined, color: Color(0xFF008F6A)),
               suffixText: 'VND',
               filled: true,
-              fillColor: const Color(0xFFF7FAF8),
+              fillColor: const Color(0xFFF5F7F4),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xFF0FA958),
+              activeTrackColor: const Color(0xFF008F6A),
               inactiveTrackColor: const Color(0xFFE2E8E4),
-              thumbColor: const Color(0xFF0FA958),
-              overlayColor: const Color(0x220FA958),
+              thumbColor: const Color(0xFF008F6A),
+              overlayColor: const Color(0x22008F6A),
               trackHeight: 5,
             ),
             child: Slider(
@@ -105,13 +104,15 @@ class _BudgetSliderState extends State<BudgetSlider> {
               return ChoiceChip(
                 label: Text(choice.label),
                 selected: selected,
+                showCheckmark: false,
                 selectedColor: const Color(0xFFE0F4E9),
+                backgroundColor: Colors.white,
                 labelStyle: TextStyle(
-                  color: selected ? const Color(0xFF0B7D4B) : const Color(0xFF647067),
-                  fontWeight: FontWeight.w700,
+                  color: selected ? const Color(0xFF006B52) : const Color(0xFF6E7A74),
+                  fontWeight: FontWeight.w800,
                 ),
                 side: BorderSide(
-                  color: selected ? const Color(0xFF0FA958) : const Color(0xFFE2E8E4),
+                  color: selected ? const Color(0xFF008F6A) : const Color(0xFFE2E8E4),
                 ),
                 onSelected: (_) => widget.onChanged(choice.value),
               );

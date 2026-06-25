@@ -231,16 +231,111 @@ app.MapPost("/api/trip/generate-itinerary", async (
 app.MapPost("/api/trip/analyze-route", async (
     AnalyzeRouteRequest request,
     RouteAnalysisService service,
+    AppDbContext db,
+    HttpContext httpContext,
     CancellationToken ct) =>
 {
     try
     {
-        return Results.Ok(await service.AnalyzeAsync(request, ct));
+        var result = await service.AnalyzeAsync(request, ct);
+        var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+        var routeId = Guid.NewGuid();
+
+        var route = new TripRoute
+        {
+            Id = routeId,
+            UserId = userId,
+            DepartureName = result.Departure.Name,
+            DepartureLatitude = result.Departure.Latitude,
+            DepartureLongitude = result.Departure.Longitude,
+            TotalDistanceKm = result.TotalDistanceKm,
+            OptimizedHours = result.OptimizedHours,
+            PeopleCount = request.PeopleCount,
+            BudgetPerPerson = request.BudgetPerPerson,
+            HasFlightLeg = result.HasFlightLeg,
+            CreatedAt = DateTime.UtcNow,
+            Legs = result.Legs.Select(leg => new TripRouteLeg
+            {
+                Id = Guid.NewGuid(),
+                TripRouteId = routeId,
+                LegOrder = leg.Order,
+                FromName = leg.FromName,
+                ToName = leg.To.Name,
+                ToRegion = leg.To.Region,
+                ToLatitude = leg.To.Latitude,
+                ToLongitude = leg.To.Longitude,
+                DistanceKm = leg.DistanceKm,
+                DurationHours = leg.DurationHours,
+                RecommendedMode = leg.RecommendedMode,
+                Reason = leg.Reason,
+                IsGoogleEstimate = leg.IsGoogleEstimate
+            }).ToList()
+        };
+
+        db.TripRoutes.Add(route);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(result with { RouteId = routeId });
     }
     catch (TravelAiException ex)
     {
         return Results.Problem(ex.Message, statusCode: ex.StatusCode);
     }
+});
+
+app.MapGet("/api/trip/routes", async (
+    AppDbContext db,
+    HttpContext httpContext,
+    CancellationToken ct) =>
+{
+    var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+
+    var query = db.TripRoutes
+        .AsNoTracking()
+        .Include(x => x.Legs)
+        .AsQueryable();
+
+    query = userId.HasValue
+        ? query.Where(x => x.UserId == userId)
+        : query.Where(x => x.UserId == null);
+
+    var routes = await query
+        .OrderByDescending(x => x.CreatedAt)
+        .Take(20)
+        .Select(x => new
+        {
+            x.Id,
+            x.DepartureName,
+            x.DepartureLatitude,
+            x.DepartureLongitude,
+            x.TotalDistanceKm,
+            x.OptimizedHours,
+            x.PeopleCount,
+            x.BudgetPerPerson,
+            x.HasFlightLeg,
+            x.CreatedAt,
+            Legs = x.Legs
+                .OrderBy(leg => leg.LegOrder)
+                .Select(leg => new
+                {
+                    leg.LegOrder,
+                    leg.FromName,
+                    leg.ToName,
+                    leg.ToRegion,
+                    leg.ToLatitude,
+                    leg.ToLongitude,
+                    leg.DistanceKm,
+                    leg.DurationHours,
+                    leg.RecommendedMode,
+                    leg.Reason,
+                    leg.IsGoogleEstimate
+                })
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(routes);
 });
 
 app.MapGet("/api/trip/itineraries", async (

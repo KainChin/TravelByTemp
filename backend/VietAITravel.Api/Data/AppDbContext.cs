@@ -14,6 +14,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<AiItinerary> AiItineraries => Set<AiItinerary>();
+    public DbSet<TripRoute> TripRoutes => Set<TripRoute>();
+    public DbSet<TripRouteLeg> TripRouteLegs => Set<TripRouteLeg>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -165,6 +167,43 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.AiModel).HasColumnName("ai_model");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TripRoute>(e =>
+        {
+            e.ToTable("trip_routes");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.DepartureName).HasColumnName("departure_name");
+            e.Property(x => x.DepartureLatitude).HasColumnName("departure_latitude");
+            e.Property(x => x.DepartureLongitude).HasColumnName("departure_longitude");
+            e.Property(x => x.TotalDistanceKm).HasColumnName("total_distance_km");
+            e.Property(x => x.OptimizedHours).HasColumnName("optimized_hours");
+            e.Property(x => x.PeopleCount).HasColumnName("people_count");
+            e.Property(x => x.BudgetPerPerson).HasColumnName("budget_per_person");
+            e.Property(x => x.HasFlightLeg).HasColumnName("has_flight_leg");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(x => x.Legs).WithOne(x => x.Route).HasForeignKey(x => x.TripRouteId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripRouteLeg>(e =>
+        {
+            e.ToTable("trip_route_legs");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TripRouteId).HasColumnName("trip_route_id");
+            e.Property(x => x.LegOrder).HasColumnName("leg_order");
+            e.Property(x => x.FromName).HasColumnName("from_name");
+            e.Property(x => x.ToName).HasColumnName("to_name");
+            e.Property(x => x.ToRegion).HasColumnName("to_region");
+            e.Property(x => x.ToLatitude).HasColumnName("to_latitude");
+            e.Property(x => x.ToLongitude).HasColumnName("to_longitude");
+            e.Property(x => x.DistanceKm).HasColumnName("distance_km");
+            e.Property(x => x.DurationHours).HasColumnName("duration_hours");
+            e.Property(x => x.RecommendedMode).HasColumnName("recommended_mode");
+            e.Property(x => x.Reason).HasColumnName("reason");
+            e.Property(x => x.IsGoogleEstimate).HasColumnName("is_google_estimate");
+            e.HasIndex(x => new { x.TripRouteId, x.LegOrder }).IsUnique();
         });
     }
 }

@@ -88,6 +88,8 @@ class TripItineraryService {
     required String departurePoint,
     required Destination departure,
     required List<SelectedDestination> destinations,
+    int? peopleCount,
+    double? budgetPerPerson,
   }) async {
     final localFallback = TripRouteAnalysis.from(
       departurePoint: departurePoint,
@@ -105,6 +107,8 @@ class TripItineraryService {
               'destinations': destinations
                   .map((item) => _placeToJson(item.destination))
                   .toList(),
+              'peopleCount': peopleCount,
+              'budgetPerPerson': budgetPerPerson,
             }),
           )
           .timeout(const Duration(seconds: 30));
@@ -113,6 +117,7 @@ class TripItineraryService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final remote = TripRouteAnalysis.fromApi(jsonDecode(body) as Map<String, dynamic>);
         return TripRouteAnalysis(
+          routeId: remote.routeId,
           departure: remote.departure,
           legs: remote.legs,
           destinations: remote.destinations.asMap().entries.map((entry) {
