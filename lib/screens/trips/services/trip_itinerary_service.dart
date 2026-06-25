@@ -5,6 +5,7 @@ import 'package:assignment/core/config/api_config.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/destination.dart';
+import '../models/route_analysis.dart';
 
 class TripItineraryException implements Exception {
   const TripItineraryException(this.message);
@@ -83,6 +84,55 @@ class TripItineraryService {
   final http.Client _client;
   final Duration timeout;
 
+  Future<TripRouteAnalysis> analyzeRoute({
+    required String departurePoint,
+    required Destination departure,
+    required List<SelectedDestination> destinations,
+  }) async {
+    final localFallback = TripRouteAnalysis.from(
+      departurePoint: departurePoint,
+      departure: departure,
+      selectedDestinations: destinations,
+    );
+
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/api/trip/analyze-route'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'departure': _placeToJson(localFallback.departure),
+              'destinations': destinations
+                  .map((item) => _placeToJson(item.destination))
+                  .toList(),
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final body = utf8.decode(response.bodyBytes);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final remote = TripRouteAnalysis.fromApi(jsonDecode(body) as Map<String, dynamic>);
+        return TripRouteAnalysis(
+          departure: remote.departure,
+          legs: remote.legs,
+          destinations: remote.destinations.asMap().entries.map((entry) {
+            final original = destinations.length > entry.key ? destinations[entry.key] : null;
+            return entry.value.copyWith(
+              startDate: original?.startDate,
+              endDate: original?.endDate,
+              clearStartDate: original?.startDate == null,
+              clearEndDate: original?.endDate == null,
+            );
+          }).toList(),
+        );
+      }
+
+      return localFallback;
+    } catch (_) {
+      return localFallback;
+    }
+  }
+
   Future<TripItineraryResult> generate({
     required List<SelectedDestination> destinations,
     required DateTime departureDate,
@@ -104,6 +154,8 @@ class TripItineraryService {
                       'name': item.destination.name,
                       'region': item.destination.region,
                       'fromLabel': item.fromLabel,
+                      'startDate': item.startDate == null ? null : _dateOnly(item.startDate!),
+                      'endDate': item.endDate == null ? null : _dateOnly(item.endDate!),
                     },
                   )
                   .toList(),
@@ -171,6 +223,16 @@ class TripItineraryService {
   }
 
   void dispose() => _client.close();
+
+  static Map<String, dynamic> _placeToJson(Destination destination) {
+    return {
+      'id': destination.id,
+      'name': destination.name,
+      'region': destination.region,
+      'latitude': destination.latitude,
+      'longitude': destination.longitude,
+    };
+  }
 
   static String _dateOnly(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');

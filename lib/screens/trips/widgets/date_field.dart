@@ -6,6 +6,7 @@ class DateField extends StatelessWidget {
   final DateTime? value;
   final ValueChanged<DateTime> onPicked;
   final DateTime? firstSelectableDate;
+  final DateTime? lastSelectableDate;
 
   const DateField({
     super.key,
@@ -13,16 +14,21 @@ class DateField extends StatelessWidget {
     required this.value,
     required this.onPicked,
     this.firstSelectableDate,
+    this.lastSelectableDate,
   });
 
   Future<void> _openPicker(BuildContext context) async {
     final now = DateTime.now();
     final firstDate = firstSelectableDate ?? now;
+    final lastDate = lastSelectableDate ?? DateTime(now.year + 2);
+    var initialDate = value ?? firstDate;
+    if (initialDate.isBefore(firstDate)) initialDate = firstDate;
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: value ?? firstDate,
+      initialDate: initialDate,
       firstDate: firstDate,
-      lastDate: DateTime(now.year + 2),
+      lastDate: lastDate,
     );
     if (picked != null) onPicked(picked);
   }

@@ -56,3 +56,4 @@ frontend/dist/
 .env
 *.user
 local.properties
+web/google_maps_config.js

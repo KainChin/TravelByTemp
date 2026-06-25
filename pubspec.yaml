@@ -51,6 +51,9 @@ dependencies:
   cached_network_image: ^3.3.1
   webfeed_plus: ^1.1.2
   intl: ^0.19.0
+  url_launcher: ^6.3.1
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
