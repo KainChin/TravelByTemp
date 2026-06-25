@@ -142,6 +142,41 @@ CREATE TABLE ai_itineraries (
     CONSTRAINT fk_ai_itineraries_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+CREATE TABLE trip_routes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NULL,
+    departure_name VARCHAR(255) NOT NULL,
+    departure_latitude DOUBLE PRECISION NOT NULL,
+    departure_longitude DOUBLE PRECISION NOT NULL,
+    total_distance_km DOUBLE PRECISION NOT NULL,
+    optimized_hours DOUBLE PRECISION NOT NULL,
+    people_count INT NULL,
+    budget_per_person DECIMAL(12,2) NULL,
+    has_flight_leg BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_trip_routes_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT ck_trip_routes_people_count CHECK (people_count IS NULL OR people_count > 0),
+    CONSTRAINT ck_trip_routes_budget CHECK (budget_per_person IS NULL OR budget_per_person >= 0)
+);
+
+CREATE TABLE trip_route_legs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_route_id UUID NOT NULL,
+    leg_order INT NOT NULL,
+    from_name VARCHAR(255) NOT NULL,
+    to_name VARCHAR(255) NOT NULL,
+    to_region VARCHAR(100) NOT NULL,
+    to_latitude DOUBLE PRECISION NOT NULL,
+    to_longitude DOUBLE PRECISION NOT NULL,
+    distance_km DOUBLE PRECISION NOT NULL,
+    duration_hours DOUBLE PRECISION NOT NULL,
+    recommended_mode VARCHAR(50) NOT NULL,
+    reason TEXT NOT NULL,
+    is_google_estimate BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT fk_trip_route_legs_routes FOREIGN KEY (trip_route_id) REFERENCES trip_routes(id) ON DELETE CASCADE,
+    CONSTRAINT uq_trip_route_legs_route_order UNIQUE (trip_route_id, leg_order)
+);
+
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
@@ -155,6 +190,9 @@ CREATE INDEX idx_user_favorites_user_id ON user_favorites(user_id);
 CREATE INDEX idx_user_favorites_destination_id ON user_favorites(destination_id);
 CREATE INDEX idx_ai_itineraries_user_id ON ai_itineraries(user_id);
 CREATE INDEX idx_ai_itineraries_created_at ON ai_itineraries(created_at);
+CREATE INDEX idx_trip_routes_user_id ON trip_routes(user_id);
+CREATE INDEX idx_trip_routes_created_at ON trip_routes(created_at);
+CREATE INDEX idx_trip_route_legs_trip_route_id ON trip_route_legs(trip_route_id);
 
 CREATE OR REPLACE VIEW vw_destination_ratings AS
 SELECT d.id AS destination_id, d.name AS destination_name, d.province, d.region, d.category,

@@ -26,18 +26,17 @@ class DestinationListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFE2E8E4)),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x0F0B7D4B),
+              color: Color(0x0D005B44),
               blurRadius: 18,
               offset: Offset(0, 8),
             ),
@@ -54,28 +53,46 @@ class DestinationListItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Chặng $order: ${item.fromLabel} → ${item.destination.name}',
-                        style: theme.textTheme.bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        'Chặng $order',
+                        style: const TextStyle(
+                          color: Color(0xFF008F6A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${item.fromLabel} -> ${item.destination.name}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF15221D),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
                       Text(
                         item.subtitleLabel,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: Colors.grey.shade600),
+                        style: const TextStyle(
+                          color: Color(0xFF6E7A74),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 if (onRemove != null)
                   IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    color: Colors.grey.shade500,
+                    tooltip: 'Xóa điểm đến',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: const Color(0xFF8A9690),
                     onPressed: onRemove,
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
@@ -100,12 +117,16 @@ class DestinationListItem extends StatelessWidget {
               ],
             ),
             if (dateError != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   dateError!,
-                  style: const TextStyle(color: Color(0xFFB42318), fontSize: 12),
+                  style: const TextStyle(
+                    color: Color(0xFFB42318),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -157,35 +178,49 @@ class _SmallDateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasValue = value != null;
     return InkWell(
       onTap: () => _openPicker(context),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        height: 54,
+        height: 58,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF7FAF8),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFDCE8E1)),
+          color: const Color(0xFFF5F7F4),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasValue ? const Color(0xFFB7DED0) : const Color(0xFFE2E8E4),
+          ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 15, color: Color(0xFF0FA958)),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 16,
+              color: Color(0xFF008F6A),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF647067))),
-                  const SizedBox(height: 2),
                   Text(
-                    value == null ? 'Chọn ngày' : _format(value!),
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6E7A74),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    hasValue ? _format(value!) : 'Chọn ngày',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: value == null ? Colors.grey.shade500 : const Color(0xFF1B1F1C),
+                      fontWeight: FontWeight.w900,
+                      color: hasValue ? const Color(0xFF15221D) : const Color(0xFF9AA6A0),
                     ),
                   ),
                 ],
@@ -206,19 +241,19 @@ class _OrderBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 28,
-      height: 28,
+      width: 34,
+      height: 34,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFF0FA958),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFE0F4E9),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         '$order',
         style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
+          color: Color(0xFF006B52),
+          fontWeight: FontWeight.w900,
+          fontSize: 14,
         ),
       ),
     );

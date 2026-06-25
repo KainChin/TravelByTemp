@@ -144,11 +144,11 @@ public sealed class RouteAnalysisService(
 
     private static string Reason(double distanceKm, string fromRegion, string toRegion)
     {
-        if (distanceKm < 150) return "Chang ngan, linh hoat di xe may hoac o to.";
-        if (distanceKm <= 500) return "Chang trung binh, uu tien o to khach hoac tau hoa.";
+        if (distanceKm < 150) return "Chặng ngắn, linh hoạt đi xe máy hoặc ô tô.";
+        if (distanceKm <= 500) return "Chặng trung bình, ưu tiên ô tô khách hoặc tàu hỏa.";
         if (!string.Equals(fromRegion, toRegion, StringComparison.OrdinalIgnoreCase))
-            return "Di chuyen lien mien, may bay tiet kiem thoi gian.";
-        return "Khoang cach dai, nen uu tien may bay neu ngan sach phu hop.";
+            return "Di chuyển liên miền, máy bay tiết kiệm thời gian.";
+        return "Khoảng cách dài, nên ưu tiên máy bay nếu ngân sách phù hợp.";
     }
 
     private sealed record RouteDistance(double DistanceKm, bool IsGoogleEstimate);
