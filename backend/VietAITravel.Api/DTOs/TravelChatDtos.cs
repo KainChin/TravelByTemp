@@ -25,4 +25,6 @@ public record TripDestinationInput(
     string Id,
     string Name,
     string? Region,
-    string? FromLabel);
+    string? FromLabel,
+    DateTime? StartDate,
+    DateTime? EndDate);

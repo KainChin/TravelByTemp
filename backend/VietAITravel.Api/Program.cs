@@ -106,6 +106,14 @@ var groqOpts = new GroqOptions
 builder.Services.AddSingleton(groqOpts);
 builder.Services.AddHttpClient("groq", c => c.Timeout = TimeSpan.FromSeconds(90));
 
+var googleMapsOpts = new GoogleMapsOptions
+{
+    ApiKey = builder.Configuration["GoogleMaps:ApiKey"] ?? "",
+    BaseUrl = builder.Configuration["GoogleMaps:BaseUrl"] ?? "https://maps.googleapis.com"
+};
+builder.Services.AddSingleton(googleMapsOpts);
+builder.Services.AddScoped<RouteAnalysisService>();
+
 builder.Services.AddScoped<TravelChatService>();
 
 var mongoOpts = new MongoOptions
@@ -213,6 +221,21 @@ app.MapPost("/api/trip/generate-itinerary", async (
         await db.SaveChangesAsync(ct);
 
         return Results.Ok(result with { ItineraryId = itineraryId });
+    }
+    catch (TravelAiException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: ex.StatusCode);
+    }
+});
+
+app.MapPost("/api/trip/analyze-route", async (
+    AnalyzeRouteRequest request,
+    RouteAnalysisService service,
+    CancellationToken ct) =>
+{
+    try
+    {
+        return Results.Ok(await service.AnalyzeAsync(request, ct));
     }
     catch (TravelAiException ex)
     {

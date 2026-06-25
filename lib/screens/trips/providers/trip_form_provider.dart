@@ -1,41 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../models/budget_tier.dart';
 import '../models/destination.dart';
+import '../models/route_analysis.dart';
 import '../services/trip_itinerary_service.dart';
 
-/// Quản lý toàn bộ state của màn hình "Tạo hành trình mới":
-/// điểm xuất phát, danh sách điểm đến đã chọn (theo thứ tự), ngày đi/về,
-/// số lượng người và ngân sách mỗi người.
 class TripFormProvider extends ChangeNotifier {
   static const String defaultDeparturePoint = 'Hồ Chí Minh, Việt Nam';
 
+  TripFormProvider({this.departurePoint = defaultDeparturePoint});
+
   final String departurePoint;
   final List<SelectedDestination> _selectedDestinations = [];
-  DateTime? departureDate;
-  DateTime? returnDate;
+  Destination _departure = DestinationCatalog.hoChiMinh;
+
   int peopleCount = 2;
   bool isAnalyzing = false;
+  bool isLocating = false;
   String? analyzeError;
+  String? locationError;
   TripItineraryResult? itineraryResult;
 
-  /// Index trong [BudgetTier.tiers] — mặc định nấc "1 triệu".
-  int budgetTierIndex = 2;
-
-  TripFormProvider({this.departurePoint = defaultDeparturePoint});
+  double _budgetPerPerson = 3000000;
 
   List<SelectedDestination> get selectedDestinations =>
       List.unmodifiable(_selectedDestinations);
 
-  double get budgetPerPerson => BudgetTier.tiers[budgetTierIndex].value;
+  DateTime? get departureDate => _selectedDestinations.isEmpty
+      ? null
+      : _selectedDestinations.first.startDate;
+
+  DateTime? get returnDate =>
+      _selectedDestinations.isEmpty ? null : _selectedDestinations.last.endDate;
+
+  double get budgetPerPerson => _budgetPerPerson;
 
   String get budgetLabel => BudgetTier.formatCurrency(budgetPerPerson);
 
-  /// Nhãn điểm xuất phát cho điểm đến kế tiếp: là điểm xuất phát ban đầu
-  /// nếu danh sách đang trống, ngược lại là điểm đến cuối cùng đã chọn.
+  Destination get departure => _departure;
+
+  String get departureLabel => _departure.name;
+
   String get nextOriginLabel => _selectedDestinations.isEmpty
-      ? departurePoint
+      ? departureLabel
       : _selectedDestinations.last.destination.name;
+
+  Future<void> detectCurrentLocation() async {
+    if (isLocating) return;
+    isLocating = true;
+    locationError = null;
+    notifyListeners();
+
+    try {
+      var serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        locationError = 'Vui lòng bật định vị trên thiết bị.';
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        locationError = 'Bạn cần cấp quyền vị trí để lấy điểm xuất phát chính xác.';
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+      final name = await _locationName(position);
+      _departure = Destination(
+        id: 'current_location',
+        name: name,
+        region: 'Vị trí hiện tại',
+        latitude: position.latitude,
+        longitude: position.longitude,
+        highlight: 'Tọa độ GPS hiện tại',
+      );
+      _recomputeFromLabels();
+    } catch (_) {
+      locationError = 'Không lấy được vị trí hiện tại. Hãy thử lại.';
+    } finally {
+      isLocating = false;
+      notifyListeners();
+    }
+  }
 
   void addDestination(Destination destination, {double distanceKm = 0}) {
     _selectedDestinations.add(
@@ -52,6 +108,7 @@ class TripFormProvider extends ChangeNotifier {
     if (index < 0 || index >= _selectedDestinations.length) return;
     _selectedDestinations.removeAt(index);
     _recomputeFromLabels();
+    _clearInvalidDatesFrom(index);
     notifyListeners();
   }
 
@@ -60,33 +117,47 @@ class TripFormProvider extends ChangeNotifier {
     final item = _selectedDestinations.removeAt(oldIndex);
     _selectedDestinations.insert(newIndex, item);
     _recomputeFromLabels();
+    _clearInvalidDatesFrom(0);
     notifyListeners();
   }
 
-  /// Sau khi xoá/sắp xếp lại, nhãn "fromLabel" của từng điểm phải được
-  /// tính lại theo đúng thứ tự mới (điểm sau luôn xuất phát từ điểm trước).
   void _recomputeFromLabels() {
     for (int i = 0; i < _selectedDestinations.length; i++) {
       final origin =
-      i == 0 ? departurePoint : _selectedDestinations[i - 1].destination.name;
-      _selectedDestinations[i] = SelectedDestination(
-        destination: _selectedDestinations[i].destination,
+          i == 0 ? departureLabel : _selectedDestinations[i - 1].destination.name;
+      _selectedDestinations[i] = _selectedDestinations[i].copyWith(
         fromLabel: origin,
-        distanceKm: _selectedDestinations[i].distanceKm,
       );
     }
   }
 
-  void setDepartureDate(DateTime date) {
-    departureDate = date;
-    if (returnDate != null && returnDate!.isBefore(date)) {
-      returnDate = null;
-    }
+  void setDestinationStartDate(int index, DateTime date) {
+    if (index < 0 || index >= _selectedDestinations.length) return;
+    var normalized = _dateOnly(date);
+    final minDate = firstSelectableDateForDestination(index);
+    if (normalized.isBefore(minDate)) normalized = minDate;
+
+    final current = _selectedDestinations[index];
+    final endDate = current.endDate != null && !current.endDate!.isBefore(normalized)
+        ? current.endDate
+        : normalized;
+    _selectedDestinations[index] = current.copyWith(
+      startDate: normalized,
+      endDate: endDate,
+    );
+    _clearInvalidDatesFrom(index + 1);
     notifyListeners();
   }
 
-  void setReturnDate(DateTime date) {
-    returnDate = date;
+  void setDestinationEndDate(int index, DateTime date) {
+    if (index < 0 || index >= _selectedDestinations.length) return;
+    var normalized = _dateOnly(date);
+    final current = _selectedDestinations[index];
+    if (current.startDate != null && normalized.isBefore(current.startDate!)) {
+      normalized = current.startDate!;
+    }
+    _selectedDestinations[index] = current.copyWith(endDate: normalized);
+    _clearInvalidDatesFrom(index + 1);
     notifyListeners();
   }
 
@@ -101,20 +172,84 @@ class TripFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setBudgetTierIndex(int index) {
-    if (index < 0 || index >= BudgetTier.tiers.length) return;
-    budgetTierIndex = index;
+  void setBudgetPerPerson(double value) {
+    _budgetPerPerson =
+        value.clamp(BudgetTier.minBudget, BudgetTier.maxBudget).toDouble();
     notifyListeners();
+  }
+
+  DateTime firstSelectableDateForDestination(int index) {
+    final today = _dateOnly(DateTime.now());
+    if (index <= 0 || index >= _selectedDestinations.length) return today;
+    return _selectedDestinations[index - 1].endDate ?? today;
+  }
+
+  String? destinationDateError(int index) {
+    if (index < 0 || index >= _selectedDestinations.length) return null;
+    final item = _selectedDestinations[index];
+    if (item.startDate == null || item.endDate == null) {
+      return 'Chọn ngày bắt đầu và kết thúc cho chặng này.';
+    }
+    if (item.endDate!.isBefore(item.startDate!)) {
+      return 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.';
+    }
+    if (index > 0) {
+      final previousEnd = _selectedDestinations[index - 1].endDate;
+      if (previousEnd != null && item.startDate!.isBefore(previousEnd)) {
+        return 'Chặng sau phải bắt đầu từ ngày kết thúc chặng trước trở đi.';
+      }
+    }
+    return null;
+  }
+
+  bool get _hasValidDestinationDates {
+    for (var i = 0; i < _selectedDestinations.length; i++) {
+      if (destinationDateError(i) != null) return false;
+    }
+    return true;
   }
 
   bool get canAnalyze =>
       _selectedDestinations.isNotEmpty &&
-          departureDate != null &&
-          returnDate != null &&
-          !isAnalyzing;
+      departureDate != null &&
+      returnDate != null &&
+      _hasValidDestinationDates &&
+      !isAnalyzing;
+
+  TripRouteAnalysis buildRouteAnalysis() {
+    return TripRouteAnalysis.from(
+      departurePoint: departureLabel,
+      departure: departure,
+      selectedDestinations: _selectedDestinations,
+    );
+  }
+
+  Future<TripRouteAnalysis?> analyzeRoute() async {
+    if (!canAnalyze) return null;
+
+    isAnalyzing = true;
+    analyzeError = null;
+    notifyListeners();
+
+    final service = TripItineraryService();
+    try {
+      return await service.analyzeRoute(
+        departurePoint: departureLabel,
+        departure: departure,
+        destinations: _selectedDestinations,
+      );
+    } on TripItineraryException catch (e) {
+      analyzeError = e.message;
+      return null;
+    } finally {
+      service.dispose();
+      isAnalyzing = false;
+      notifyListeners();
+    }
+  }
 
   Future<TripItineraryResult?> analyzeTrip() async {
-    if (!canAnalyze) return null;
+    if (!canAnalyze || departureDate == null || returnDate == null) return null;
 
     isAnalyzing = true;
     analyzeError = null;
@@ -129,7 +264,7 @@ class TripFormProvider extends ChangeNotifier {
         returnDate: returnDate!,
         peopleCount: peopleCount,
         budgetPerPerson: budgetPerPerson,
-        departurePoint: departurePoint,
+        departurePoint: departureLabel,
       );
       itineraryResult = result;
       return result;
@@ -140,6 +275,47 @@ class TripFormProvider extends ChangeNotifier {
       service.dispose();
       isAnalyzing = false;
       notifyListeners();
+    }
+  }
+
+  void _clearInvalidDatesFrom(int startIndex) {
+    for (var i = startIndex; i < _selectedDestinations.length; i++) {
+      final item = _selectedDestinations[i];
+      final minDate = firstSelectableDateForDestination(i);
+      var start = item.startDate;
+      var end = item.endDate;
+
+      if (start != null && start.isBefore(minDate)) start = minDate;
+      if (end != null && start != null && end.isBefore(start)) end = start;
+
+      _selectedDestinations[i] = item.copyWith(
+        startDate: start,
+        endDate: end,
+        clearStartDate: start == null,
+        clearEndDate: end == null,
+      );
+    }
+  }
+
+  DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+  Future<String> _locationName(Position position) async {
+    try {
+      final places = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (places.isEmpty) return 'Vị trí hiện tại';
+      final place = places.first;
+      final parts = [
+        place.subLocality,
+        place.locality,
+        place.administrativeArea,
+      ].where((part) => part != null && part.trim().isNotEmpty).cast<String>();
+      final label = parts.join(', ');
+      return label.isEmpty ? 'Vị trí hiện tại' : label;
+    } catch (_) {
+      return 'Vị trí hiện tại';
     }
   }
 }

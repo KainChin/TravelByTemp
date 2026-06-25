@@ -1,20 +1,19 @@
-/// Một nấc giá trị cố định trên thanh trượt ngân sách (mỗi người).
 class BudgetTier {
+  const BudgetTier(this.value, this.label);
+
   final double value;
   final String label;
 
-  const BudgetTier(this.value, this.label);
+  static const double minBudget = 500000;
+  static const double maxBudget = 20000000;
 
-  static const List<BudgetTier> tiers = [
-    BudgetTier(500000, '500k'),
-    BudgetTier(700000, '700k'),
+  static const List<BudgetTier> quickChoices = [
     BudgetTier(1000000, '1 triệu'),
-    BudgetTier(2000000, '2 triệu'),
+    BudgetTier(3000000, '3 triệu'),
     BudgetTier(5000000, '5 triệu'),
-    BudgetTier(10000000, '10 triệu+'),
+    BudgetTier(10000000, '10 triệu'),
   ];
 
-  /// Định dạng số tiền kiểu "3.000.000đ".
   static String formatCurrency(double value) {
     final intValue = value.round();
     final str = intValue.toString();
@@ -27,5 +26,11 @@ class BudgetTier {
       }
     }
     return '${buffer.toString()}đ';
+  }
+
+  static double parseCurrency(String value) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return minBudget;
+    return double.parse(digits).clamp(minBudget, maxBudget).toDouble();
   }
 }
