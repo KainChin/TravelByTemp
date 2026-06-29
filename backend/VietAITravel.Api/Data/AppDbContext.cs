@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AiItinerary> AiItineraries => Set<AiItinerary>();
     public DbSet<TripRoute> TripRoutes => Set<TripRoute>();
     public DbSet<TripRouteLeg> TripRouteLegs => Set<TripRouteLeg>();
+    public DbSet<UserTravelMemory> UserTravelMemories => Set<UserTravelMemory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -204,6 +205,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Reason).HasColumnName("reason");
             e.Property(x => x.IsGoogleEstimate).HasColumnName("is_google_estimate");
             e.HasIndex(x => new { x.TripRouteId, x.LegOrder }).IsUnique();
+        });
+
+        modelBuilder.Entity<UserTravelMemory>(e =>
+        {
+            e.ToTable("user_travel_memories");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.PreferredStylesJson).HasColumnName("preferred_styles_json").HasColumnType("jsonb");
+            e.Property(x => x.PreferredTransport).HasColumnName("preferred_transport");
+            e.Property(x => x.AverageBudget).HasColumnName("average_budget");
+            e.Property(x => x.TripCount).HasColumnName("trip_count");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasIndex(x => x.UserId).IsUnique();
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

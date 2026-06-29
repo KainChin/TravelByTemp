@@ -1,12 +1,11 @@
 import '../models/region_model.dart';
-import 'destination_service.dart';
 import 'article_service.dart';
+import 'destination_service.dart';
 
 class RegionService {
   final DestinationService _destinationService = DestinationService();
   final ArticleService _articleService = ArticleService();
 
-  // TODO: GET /api/regions
   Future<List<RegionModel>> getRegions() async {
     return Future.wait(RegionType.values.map((type) async {
       final destinationsFuture = _destinationService.getDestinationsByRegion(type);
@@ -48,9 +47,9 @@ class RegionService {
       };
 
   static String _bannerImageOf(RegionType t) => switch (t) {
-        RegionType.west => 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=800',
-        RegionType.north => 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=800',
-        RegionType.central => 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800',
-        RegionType.south => 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800',
+        RegionType.west => 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=1200',
+        RegionType.north => 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=1200',
+        RegionType.central => 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=1200',
+        RegionType.south => 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200',
       };
 }

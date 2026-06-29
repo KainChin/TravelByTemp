@@ -3,6 +3,8 @@ import 'package:assignment/core/theme/app_colors.dart';
 import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/screens/destinations/destination_detail_screen.dart';
+import 'package:assignment/screens/trips/screens/trip_itinerary_result_screen.dart';
+import 'package:assignment/screens/trips/services/saved_itinerary_store.dart';
 import 'package:assignment/services/api_client.dart';
 
 class SavedScreen extends StatefulWidget {
@@ -18,6 +20,7 @@ class _SavedScreenState extends State<SavedScreen> {
   var _loading = true;
   String? _error;
   List<FavoriteDestination> _favorites = [];
+  List<SavedItineraryItem> _itineraries = [];
 
   @override
   void initState() {
@@ -40,15 +43,30 @@ class _SavedScreenState extends State<SavedScreen> {
     });
 
     try {
-      final items = await VietaiScope.of(context).api.fetchFavorites();
+      final results = await Future.wait([
+        VietaiScope.of(context).api.fetchFavorites(),
+        SavedItineraryStore.load(),
+      ]);
       if (!mounted) return;
-      setState(() => _favorites = items);
+      setState(() {
+        _favorites = results[0] as List<FavoriteDestination>;
+        _itineraries = results[1] as List<SavedItineraryItem>;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _removeItinerary(SavedItineraryItem item) async {
+    await SavedItineraryStore.remove(item.id);
+    if (!mounted) return;
+    setState(() => _itineraries.removeWhere((saved) => saved.id == item.id));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${item.title} removed')),
+    );
   }
 
   Future<void> _remove(FavoriteDestination item) async {
@@ -98,15 +116,50 @@ class _SavedScreenState extends State<SavedScreen> {
                 actionLabel: 'Try again',
                 onPressed: _load,
               )
-            else if (_favorites.isEmpty)
+            else if (_favorites.isEmpty && _itineraries.isEmpty)
               _MessageCard(
                 icon: Icons.favorite_border,
-                title: 'No saved places yet',
-                subtitle: 'Tap the heart icon on a destination to save it.',
+                title: 'No saved items yet',
+                subtitle: 'Save a destination or itinerary to see it here.',
                 actionLabel: 'Refresh',
                 onPressed: _load,
               )
             else
+              ...[
+                if (_itineraries.isNotEmpty) ...[
+                  const Text(
+                    'Saved Trips',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 10),
+                  ..._itineraries.map(
+                    (item) => _ItineraryCard(
+                      item: item,
+                      onOpen: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TripItineraryResultScreen(
+                              response: '${item.itinerary['summary'] ?? ''}',
+                              itinerary: item.itinerary,
+                              itineraryId: item.id,
+                            ),
+                          ),
+                        );
+                      },
+                      onRemove: () => _removeItinerary(item),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (_favorites.isNotEmpty)
+                  const Text(
+                    'Saved Places',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                if (_favorites.isNotEmpty) const SizedBox(height: 10),
+              ],
+            if (!_loading && _error == null)
               ..._favorites.map(
                 (item) => _FavoriteCard(
                   favorite: item,
@@ -202,6 +255,75 @@ class _FavoriteCard extends StatelessWidget {
             icon: const Icon(Icons.favorite, color: Colors.redAccent),
           ),
         ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ItineraryCard extends StatelessWidget {
+  const _ItineraryCard({
+    required this.item,
+    required this.onOpen,
+    required this.onRemove,
+  });
+
+  final SavedItineraryItem item;
+  final VoidCallback onOpen;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = item.itinerary['days'] is List ? (item.itinerary['days'] as List).length : 0;
+    final summary = '${item.itinerary['summary'] ?? 'Tap to review and edit this itinerary.'}';
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.route_outlined, color: AppColors.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    days == 0 ? summary : '$days days • $summary',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            ),
+          ],
         ),
       ),
     );

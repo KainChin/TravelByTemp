@@ -91,7 +91,7 @@ class _BudgetSliderState extends State<BudgetSlider> {
                   .toDouble(),
               min: BudgetTier.minBudget,
               max: BudgetTier.maxBudget,
-              divisions: 39,
+              divisions: 199,
               label: BudgetTier.formatCurrency(widget.amount),
               onChanged: widget.onChanged,
             ),

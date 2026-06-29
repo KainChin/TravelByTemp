@@ -12,6 +12,7 @@ using VietAITravel.Api.Data;
 using VietAITravel.Api.Entities;
 using VietAITravel.Api.Middleware;
 using VietAITravel.Api.Services;
+using VietAITravel.Api.Services.TravelCompanion;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,10 +75,30 @@ var ollamaOpts = new OllamaOptions
 };
 builder.Services.AddSingleton(ollamaOpts);
 builder.Services.AddHttpClient<OllamaService>(c => c.BaseAddress = new Uri(ollamaOpts.BaseUrl));
-builder.Services.AddHttpClient("ollama-chat", c => c.Timeout = TimeSpan.FromMinutes(5));
+builder.Services.AddHttpClient("ollama-chat", c => c.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddScoped<VectorSearchService>();
 builder.Services.AddScoped<AiRecommendationService>();
+
+var lmStudioOpts = new LmStudioOptions
+{
+    BaseUrl = builder.Configuration["LMStudio:BaseUrl"] ?? "http://localhost:1234/v1",
+    ChatModel = builder.Configuration["LMStudio:ChatModel"] ?? "local-model",
+    ApiKey = builder.Configuration["LMStudio:ApiKey"] ?? "lm-studio"
+};
+builder.Services.AddSingleton(lmStudioOpts);
+builder.Services.AddHttpClient("lm-studio", c => c.Timeout = TimeSpan.FromMinutes(3));
+
+var openTripMapOpts = new OpenTripMapOptions
+{
+    ApiKey = builder.Configuration["OpenTripMap:ApiKey"] ?? "",
+    BaseUrl = builder.Configuration["OpenTripMap:BaseUrl"] ?? "https://api.opentripmap.com"
+};
+builder.Services.AddSingleton(openTripMapOpts);
+builder.Services.AddHttpClient<DestinationDiscoveryService>();
+builder.Services.AddScoped<SemanticKernelTravelOrchestrator>();
+builder.Services.AddScoped<TravelMemoryService>();
+builder.Services.AddScoped<TravelPlannerService>();
 
 var openAiOpts = new OpenAiOptions
 {
@@ -196,29 +217,40 @@ app.MapPost("/api/trip/generate-itinerary", async (
     TravelChatService service,
     AppDbContext db,
     OllamaOptions ollamaOptions,
+    ILoggerFactory loggerFactory,
     HttpContext httpContext,
     CancellationToken ct) =>
 {
     try
     {
         var result = await service.GenerateItineraryAsync(request, ct);
-        var itineraryId = Guid.NewGuid();
-        var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
-
-        var itineraryJson = JsonSerializer.Serialize(result.Itinerary);
-        var title = TryReadTitle(itineraryJson);
-        db.AiItineraries.Add(new AiItinerary
+        Guid? itineraryId = null;
+        try
         {
-            Id = itineraryId,
-            UserId = userId,
-            Title = title,
-            RequestJson = JsonSerializer.Serialize(request),
-            ItineraryJson = itineraryJson,
-            AiModel = ollamaOptions.ChatModel,
-            CreatedAt = DateTime.UtcNow
-        });
-        await db.SaveChangesAsync(ct);
+            itineraryId = Guid.NewGuid();
+            var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+
+            var itineraryJson = JsonSerializer.Serialize(result.Itinerary);
+            var title = TryReadTitle(itineraryJson);
+            db.AiItineraries.Add(new AiItinerary
+            {
+                Id = itineraryId.Value,
+                UserId = userId,
+                Title = title,
+                RequestJson = JsonSerializer.Serialize(request),
+                ItineraryJson = itineraryJson,
+                AiModel = ollamaOptions.ChatModel,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            var logger = loggerFactory.CreateLogger("TripItineraryEndpoint");
+            logger.LogWarning(ex, "Generated itinerary but failed to save itinerary history.");
+            itineraryId = null;
+        }
 
         return Results.Ok(result with { ItineraryId = itineraryId });
     }

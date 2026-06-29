@@ -27,4 +27,6 @@ public record TripDestinationInput(
     string? Region,
     string? FromLabel,
     DateTime? StartDate,
-    DateTime? EndDate);
+    DateTime? EndDate,
+    double? Latitude,
+    double? Longitude);

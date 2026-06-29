@@ -371,12 +371,13 @@ public sealed class TravelChatService(
 
         var prompt = """
             Tao lich trinh du lich bang tieng Viet tu form nguoi dung.
-            Chi tra ve JSON hop le, khong markdown. Toi da 2 hoat dong moi ngay.
+            Chi tra ve JSON hop le, khong markdown. Moi ngay phai co 6-8 hoat dong trai dai tu sang den toi.
+            Chi phi tung hoat dong phai la so le thuc te theo Viet Nam, khong dung toan so tron nhu 100000/200000.
             Schema:
             {
               "title": "string",
               "summary": "string",
-              "days": [{"day": 1, "date": "yyyy-MM-dd", "activities": [{"time": "08:00", "destination": "string", "activity": "string", "transport": "string", "estimatedCost": 0, "note": "string"}]}],
+              "days": [{"day": 1, "date": "yyyy-MM-dd", "activities": [{"time": "08:00", "destination": "string", "activity": "string", "estimatedCost": 0, "latitude": 0, "longitude": 0, "note": "string"}]}],
               "costBreakdown": {"transport": 0, "food": 0, "accommodation": 0, "activities": 0, "total": 0, "perPerson": 0},
               "warnings": ["string"]
             }
@@ -393,9 +394,134 @@ public sealed class TravelChatService(
             new { role = "user", content = $"{prompt}\nDu lieu form:\n{userData}" }
         };
 
-        var json = await CallOllamaAsync(messages, jsonFormat: true, ct);
-        var itinerary = JsonSerializer.Deserialize<object>(json, JsonOptions);
+        object? itinerary;
+        try
+        {
+            using var aiTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            aiTimeout.CancelAfter(TimeSpan.FromSeconds(18));
+            var json = await CallOllamaAsync(messages, jsonFormat: true, aiTimeout.Token);
+            itinerary = JsonSerializer.Deserialize<object>(json, JsonOptions);
+            if (itinerary is null)
+                itinerary = BuildFallbackItinerary(request);
+        }
+        catch (Exception ex) when (ex is TravelAiException or JsonException or OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Falling back to deterministic itinerary because local AI is unavailable, slow, or returned invalid JSON.");
+            itinerary = BuildFallbackItinerary(request);
+        }
+
         return new ChatEnvelopeResponse("Da tao lich trinh.", itinerary);
+    }
+
+    private static object BuildFallbackItinerary(GenerateItineraryRequest request)
+    {
+        var destinations = request.Destinations.Count == 0
+            ? [new TripDestinationInput("fallback", "Diem den", null, null, request.DepartureDate, request.ReturnDate, null, null)]
+            : request.Destinations;
+
+        var totalDays = Math.Max(1, (request.ReturnDate.Date - request.DepartureDate.Date).Days + 1);
+        var perDayBudget = request.BudgetPerPerson / totalDays;
+        var days = Enumerable.Range(1, totalDays).Select(day =>
+        {
+            var destination = destinations[(day - 1) % destinations.Count];
+            var date = request.DepartureDate.Date.AddDays(day - 1);
+            var latitude = destination.Latitude ?? 16.0544;
+            var longitude = destination.Longitude ?? 108.2022;
+            var daySeed = day * 13791 + destination.Name.Sum(c => c);
+            decimal Cost(decimal ratio, int offset) =>
+                Math.Round((perDayBudget * ratio) + ((daySeed + offset) % 37000) + 9000, 0);
+
+            return new
+            {
+                day,
+                date = date.ToString("yyyy-MM-dd"),
+                activities = new object[]
+                {
+                    new
+                    {
+                        time = "07:30",
+                        destination = destination.Name,
+                        activity = "An sang dia phuong va cafe",
+                        estimatedCost = Cost(0.08m, 1100),
+                        latitude,
+                        longitude,
+                        note = "Bat dau nhe de giu suc cho ca ngay."
+                    },
+                    new
+                    {
+                        time = "09:00",
+                        destination = destination.Name,
+                        activity = $"Tham quan diem noi bat o {destination.Name}",
+                        estimatedCost = Cost(0.16m, 5200),
+                        latitude = latitude + 0.006,
+                        longitude = longitude + 0.007,
+                        note = "Uu tien khung gio sang de tranh dong."
+                    },
+                    new
+                    {
+                        time = "11:30",
+                        destination = destination.Name,
+                        activity = "An trua gan tuyen tham quan",
+                        estimatedCost = Cost(0.13m, 9300),
+                        latitude = latitude + 0.011,
+                        longitude = longitude + 0.004,
+                        note = "Chon quan co danh gia tot, khong quay nguoc tuyen."
+                    },
+                    new
+                    {
+                        time = "14:00",
+                        destination = destination.Name,
+                        activity = "Kham pha diem phu hoac bao tang/khu trai nghiem",
+                        estimatedCost = Cost(0.15m, 15100),
+                        latitude = latitude + 0.016,
+                        longitude = longitude + 0.012,
+                        note = "Them hoat dong trong nha neu thoi tiet xau."
+                    },
+                    new
+                    {
+                        time = "16:30",
+                        destination = destination.Name,
+                        activity = "Cafe, check-in va nghi nhe",
+                        estimatedCost = Cost(0.09m, 21100),
+                        latitude = latitude + 0.021,
+                        longitude = longitude + 0.018,
+                        note = "Khoang nghi de tranh lich qua day."
+                    },
+                    new
+                    {
+                        time = "19:00",
+                        destination = destination.Name,
+                        activity = "An toi va di dao khu trung tam",
+                        estimatedCost = Cost(0.17m, 28700),
+                        latitude = latitude + 0.025,
+                        longitude = longitude + 0.023,
+                        note = "Ket thuc ngay bang khu am thuc/cho dem neu co."
+                    }
+                }
+            };
+        }).ToList();
+
+        return new
+        {
+            title = destinations.Count == 1
+                ? $"Hanh trinh {destinations[0].Name}"
+                : $"Hanh trinh {string.Join(" - ", destinations.Take(3).Select(x => x.Name))}",
+            summary = "Lich trinh duoc tao nhanh bang rule-based fallback de tranh cho AI local qua lau.",
+            days,
+            costBreakdown = new
+            {
+                transport = Math.Round(request.BudgetPerPerson * 0.25m, 0),
+                food = Math.Round(request.BudgetPerPerson * 0.25m, 0),
+                accommodation = Math.Round(request.BudgetPerPerson * 0.35m, 0),
+                activities = Math.Round(request.BudgetPerPerson * 0.15m, 0),
+                total = Math.Round(request.BudgetPerPerson * request.PeopleCount, 0),
+                perPerson = Math.Round(request.BudgetPerPerson, 0)
+            },
+            warnings = new[]
+            {
+                "Day la lich trinh du phong. Bat LM Studio/Ollama hoac dung model nho hon de nhan lich trinh AI chi tiet hon."
+            }
+        };
     }
 
     private async Task<string> CallOllamaAsync(object[] messages, bool jsonFormat, CancellationToken ct)

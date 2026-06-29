@@ -5,16 +5,18 @@ class BudgetTier {
   final String label;
 
   static const double minBudget = 500000;
-  static const double maxBudget = 20000000;
+  static const double maxBudget = 100000000;
 
   static const List<BudgetTier> quickChoices = [
-    BudgetTier(1000000, '1 triệu'),
-    BudgetTier(3000000, '3 triệu'),
-    BudgetTier(5000000, '5 triệu'),
-    BudgetTier(10000000, '10 triệu'),
+    BudgetTier(1000000, '1 trieu'),
+    BudgetTier(3000000, '3 trieu'),
+    BudgetTier(5000000, '5 trieu'),
+    BudgetTier(10000000, '10 trieu'),
+    BudgetTier(20000000, '20 trieu'),
+    BudgetTier(50000000, '50 trieu'),
   ];
 
-  static String formatCurrency(double value) {
+  static String formatCurrency(num value) {
     final intValue = value.round();
     final str = intValue.toString();
     final buffer = StringBuffer();
@@ -25,7 +27,7 @@ class BudgetTier {
         buffer.write('.');
       }
     }
-    return '${buffer.toString()}đ';
+    return '${buffer}d';
   }
 
   static double parseCurrency(String value) {
