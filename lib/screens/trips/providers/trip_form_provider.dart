@@ -24,16 +24,15 @@ class TripFormProvider extends ChangeNotifier {
   TripItineraryResult? itineraryResult;
 
   double _budgetPerPerson = 3000000;
+  DateTime? _departureDate;
+  DateTime? _returnDate;
 
   List<SelectedDestination> get selectedDestinations =>
       List.unmodifiable(_selectedDestinations);
 
-  DateTime? get departureDate => _selectedDestinations.isEmpty
-      ? null
-      : _selectedDestinations.first.startDate;
+  DateTime? get departureDate => _departureDate;
 
-  DateTime? get returnDate =>
-      _selectedDestinations.isEmpty ? null : _selectedDestinations.last.endDate;
+  DateTime? get returnDate => _returnDate;
 
   double get budgetPerPerson => _budgetPerPerson;
 
@@ -99,6 +98,8 @@ class TripFormProvider extends ChangeNotifier {
         destination: destination,
         fromLabel: nextOriginLabel,
         distanceKm: distanceKm,
+        startDate: _departureDate,
+        endDate: _returnDate,
       ),
     );
     notifyListeners();
@@ -108,7 +109,6 @@ class TripFormProvider extends ChangeNotifier {
     if (index < 0 || index >= _selectedDestinations.length) return;
     _selectedDestinations.removeAt(index);
     _recomputeFromLabels();
-    _clearInvalidDatesFrom(index);
     notifyListeners();
   }
 
@@ -117,7 +117,6 @@ class TripFormProvider extends ChangeNotifier {
     final item = _selectedDestinations.removeAt(oldIndex);
     _selectedDestinations.insert(newIndex, item);
     _recomputeFromLabels();
-    _clearInvalidDatesFrom(0);
     notifyListeners();
   }
 
@@ -131,33 +130,18 @@ class TripFormProvider extends ChangeNotifier {
     }
   }
 
-  void setDestinationStartDate(int index, DateTime date) {
-    if (index < 0 || index >= _selectedDestinations.length) return;
-    var normalized = _dateOnly(date);
-    final minDate = firstSelectableDateForDestination(index);
-    if (normalized.isBefore(minDate)) normalized = minDate;
-
-    final current = _selectedDestinations[index];
-    final endDate = current.endDate != null && !current.endDate!.isBefore(normalized)
-        ? current.endDate
-        : normalized;
-    _selectedDestinations[index] = current.copyWith(
-      startDate: normalized,
-      endDate: endDate,
-    );
-    _clearInvalidDatesFrom(index + 1);
-    notifyListeners();
-  }
-
-  void setDestinationEndDate(int index, DateTime date) {
-    if (index < 0 || index >= _selectedDestinations.length) return;
-    var normalized = _dateOnly(date);
-    final current = _selectedDestinations[index];
-    if (current.startDate != null && normalized.isBefore(current.startDate!)) {
-      normalized = current.startDate!;
+  void setTripDates(DateTime start, DateTime end) {
+    var normalizedStart = _dateOnly(start);
+    var normalizedEnd = _dateOnly(end);
+    if (normalizedEnd.isBefore(normalizedStart)) normalizedEnd = normalizedStart;
+    _departureDate = normalizedStart;
+    _returnDate = normalizedEnd;
+    for (var i = 0; i < _selectedDestinations.length; i++) {
+      _selectedDestinations[i] = _selectedDestinations[i].copyWith(
+        startDate: normalizedStart,
+        endDate: normalizedEnd,
+      );
     }
-    _selectedDestinations[index] = current.copyWith(endDate: normalized);
-    _clearInvalidDatesFrom(index + 1);
     notifyListeners();
   }
 
@@ -178,11 +162,7 @@ class TripFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  DateTime firstSelectableDateForDestination(int index) {
-    final today = _dateOnly(DateTime.now());
-    if (index <= 0 || index >= _selectedDestinations.length) return today;
-    return _selectedDestinations[index - 1].endDate ?? today;
-  }
+  DateTime firstSelectableDateForDestination(int index) => _dateOnly(DateTime.now());
 
   String? destinationDateError(int index) {
     if (index < 0 || index >= _selectedDestinations.length) return null;
@@ -202,18 +182,21 @@ class TripFormProvider extends ChangeNotifier {
     return null;
   }
 
-  bool get _hasValidDestinationDates {
-    for (var i = 0; i < _selectedDestinations.length; i++) {
-      if (destinationDateError(i) != null) return false;
+  String? get tripDateError {
+    if (_departureDate == null || _returnDate == null) {
+      return 'Chon ngay di va ngay ket thuc chuyen di.';
     }
-    return true;
+    if (_returnDate!.isBefore(_departureDate!)) {
+      return 'Ngay ket thuc phai sau ngay di.';
+    }
+    return null;
   }
 
   bool get canAnalyze =>
       _selectedDestinations.isNotEmpty &&
       departureDate != null &&
       returnDate != null &&
-      _hasValidDestinationDates &&
+      tripDateError == null &&
       !isAnalyzing;
 
   TripRouteAnalysis buildRouteAnalysis() {
@@ -277,25 +260,6 @@ class TripFormProvider extends ChangeNotifier {
       service.dispose();
       isAnalyzing = false;
       notifyListeners();
-    }
-  }
-
-  void _clearInvalidDatesFrom(int startIndex) {
-    for (var i = startIndex; i < _selectedDestinations.length; i++) {
-      final item = _selectedDestinations[i];
-      final minDate = firstSelectableDateForDestination(i);
-      var start = item.startDate;
-      var end = item.endDate;
-
-      if (start != null && start.isBefore(minDate)) start = minDate;
-      if (end != null && start != null && end.isBefore(start)) end = start;
-
-      _selectedDestinations[i] = item.copyWith(
-        startDate: start,
-        endDate: end,
-        clearStartDate: start == null,
-        clearEndDate: end == null,
-      );
     }
   }
 

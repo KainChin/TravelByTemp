@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -63,15 +64,31 @@ class ApiClient {
   }
 
   Future<AuthSession> login(String username, String password) async {
-    final res = await _client.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
-      headers: _headers,
-      body: jsonEncode({'username': username, 'password': password}),
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/login');
+    final res = await _postJson(
+      uri,
+      {'username': username, 'password': password},
     );
     final data = await _decode(res);
     final session = AuthSession.fromJson(data);
     setToken(session.accessToken);
     return session;
+  }
+
+  Future<http.Response> _postJson(Uri uri, Map<String, dynamic> body) async {
+    try {
+      return await _client
+          .post(uri, headers: _headers, body: jsonEncode(body))
+          .timeout(ApiConfig.requestTimeout);
+    } on TimeoutException {
+      throw ApiException(
+        'Không kết nối được backend tại $uri sau ${ApiConfig.requestTimeout.inSeconds}s. '
+        'Nếu chạy trên điện thoại thật, hãy chắc chắn điện thoại và laptop cùng Wi-Fi, '
+        'backend đang chạy bằng 0.0.0.0:5000, và IP trong ApiConfig đúng.',
+      );
+    } on http.ClientException catch (e) {
+      throw ApiException('Không gọi được backend tại $uri.\n$e');
+    }
   }
 
   Future<AuthSession> register({

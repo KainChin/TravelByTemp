@@ -29,42 +29,7 @@ class TripRouteAnalysisScreen extends StatefulWidget {
 }
 
 class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
-  TransportMode _selectedMode = TransportMode.motorbike;
   bool _isGenerating = false;
-  static final List<_AirlineLink> _airlineLinks = [
-    _AirlineLink('Vietnam Airlines', 'https://www.vietnamairlines.com/vi-vn'),
-    _AirlineLink('Vietjet Air', 'https://www.vietjetair.com/'),
-    _AirlineLink('Bamboo Airways', 'https://www.bambooairways.com/'),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedMode = widget.analysis.hasFlightLeg ? TransportMode.flight : _bestGroundMode();
-  }
-
-  TransportMode _bestGroundMode() {
-    final maxDistance = widget.analysis.legs.fold<double>(
-      0,
-      (max, leg) => leg.distanceKm > max ? leg.distanceKm : max,
-    );
-    if (maxDistance < 150) return TransportMode.motorbike;
-    return TransportMode.car;
-  }
-
-  String get _flightUnavailableReason {
-    final longestLeg = widget.analysis.legs.fold<double>(
-      0,
-      (max, leg) => leg.distanceKm > max ? leg.distanceKm : max,
-    );
-    if (longestLeg < 150) {
-      return 'Tuyến rất gần, máy bay không phù hợp';
-    }
-    if (longestLeg <= 500) {
-      return 'Tuyến này nên đi ô tô/tàu';
-    }
-    return 'Không có chặng nào cần bay';
-  }
 
   Future<void> _generateItinerary() async {
     if (_isGenerating) return;
@@ -86,6 +51,7 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
           builder: (_) => TripItineraryResultScreen(
             response: result.response,
             itinerary: result.itinerary,
+            itineraryId: result.itineraryId,
           ),
         ),
       );
@@ -95,16 +61,6 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
     } finally {
       service.dispose();
       if (mounted) setState(() => _isGenerating = false);
-    }
-  }
-
-  Future<void> _openAirline(String url) async {
-    final uri = Uri.parse(url);
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot open booking website.')),
-      );
     }
   }
 
@@ -174,100 +130,8 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
       const SizedBox(height: 14),
       _SummaryCard(
         analysis: analysis,
-        selectedMode: _selectedMode,
         budgetPerPerson: widget.budgetPerPerson,
       ),
-      const SizedBox(height: 14),
-      const Text(
-        'Chọn phương tiện di chuyển',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-      ),
-      const SizedBox(height: 10),
-      Row(
-              children: [
-                Expanded(
-                  child: _TransportOption(
-                    icon: Icons.two_wheeler,
-                    label: 'Xe máy',
-                    duration: formatHours(analysis.motorbikeHours),
-                    selected: _selectedMode == TransportMode.motorbike,
-                    onTap: () => setState(() => _selectedMode = TransportMode.motorbike),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TransportOption(
-                    icon: Icons.directions_car_filled_outlined,
-                    label: 'Ô tô',
-                    duration: formatHours(analysis.carHours),
-                    selected: _selectedMode == TransportMode.car,
-                    onTap: () => setState(() => _selectedMode = TransportMode.car),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TransportOption(
-                    icon: Icons.flight_takeoff,
-                    label: 'Máy bay',
-                    duration: analysis.hasFlightLeg
-                        ? formatHours(analysis.flightHours)
-                        : _flightUnavailableReason,
-                    selected: _selectedMode == TransportMode.flight,
-                    enabled: analysis.hasFlightLeg,
-                    onTap: () => setState(() => _selectedMode = TransportMode.flight),
-                  ),
-                ),
-              ],
-            ),
-      if (!analysis.hasFlightLeg) ...[
-        const SizedBox(height: 10),
-        _NoticeBox(
-          icon: Icons.info_outline,
-          text:
-              'Máy bay chỉ được gợi ý cho chặng dài trên 500 km hoặc di chuyển liên miền. Tuyến gần sẽ ưu tiên xe máy, ô tô hoặc tàu/xe khách.',
-        ),
-      ],
-      if (analysis.hasFlightLeg && _selectedMode == TransportMode.flight) ...[
-        const SizedBox(height: 10),
-        const Text(
-          'Với chặng dài, bạn có thể đặt vé máy bay để tiết kiệm thời gian.',
-          style: TextStyle(color: Color(0xFF647067), fontSize: 13),
-        ),
-        const SizedBox(height: 10),
-        _Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Đặt vé máy bay', style: TextStyle(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 10),
-              ..._airlineLinks.map(
-                (airline) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openAirline(airline.url),
-                    icon: const Icon(Icons.open_in_new, color: Color(0xFF0FA958), size: 18),
-                    label: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        airline.name,
-                        style: const TextStyle(
-                          color: Color(0xFF0FA958),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(44),
-                      side: const BorderSide(color: Color(0xFFDCE8E1)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
       const SizedBox(height: 12),
       ElevatedButton.icon(
         onPressed: _isGenerating ? null : _generateItinerary,
@@ -279,7 +143,7 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
               )
             : const Icon(Icons.auto_awesome, color: Colors.white),
         label: Text(
-          _isGenerating ? 'ĐANG TẠO LỊCH TRÌNH...' : 'AI TẠO LỊCH TRÌNH',
+          _isGenerating ? 'ĐANG TẠO LỊCH TRÌNH...' : 'TẠO LỊCH TRÌNH',
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
         ),
         style: ElevatedButton.styleFrom(
@@ -398,7 +262,7 @@ class _RouteMapCardState extends State<_RouteMapCard> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
-        height: widget.fillHeight ? double.infinity : 260,
+        height: widget.fillHeight ? double.infinity : 430,
         child: FlutterMap(
           options: MapOptions(
             initialCenter: _initialCenter,
@@ -535,7 +399,7 @@ class _DetailsRail extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Khoảng cách từng chặng, phương tiện phù hợp và tổng quan chuyến đi.',
+            'Khoảng cách từng chặng, các mốc cần đi qua và tổng quan chuyến đi.',
             style: TextStyle(color: Color(0xFF647067), fontSize: 12, height: 1.35),
           ),
           const SizedBox(height: 14),
@@ -544,13 +408,6 @@ class _DetailsRail extends StatelessWidget {
       ),
     );
   }
-}
-
-class _AirlineLink {
-  const _AirlineLink(this.name, this.url);
-
-  final String name;
-  final String url;
 }
 
 class DestinationPoint {
@@ -660,12 +517,10 @@ class _LegTransportChip extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.analysis,
-    required this.selectedMode,
     required this.budgetPerPerson,
   });
 
   final TripRouteAnalysis analysis;
-  final TransportMode selectedMode;
   final double budgetPerPerson;
 
   @override
@@ -674,28 +529,15 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Tong quan hanh trinh', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Tổng quan hành trình', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          _InfoRow(label: 'Tong khoang cach', value: '${analysis.totalDistanceKm.toStringAsFixed(0)} km'),
-          _InfoRow(label: 'Phuong tien toi uu', value: transportLabel(selectedMode)),
-          _InfoRow(label: 'Thoi gian uoc tinh', value: formatHours(_durationForMode(analysis, selectedMode))),
-          _InfoRow(label: 'Ngan sach moi nguoi', value: BudgetTier.formatCurrency(budgetPerPerson)),
+          _InfoRow(label: 'Tổng khoảng cách', value: '${analysis.totalDistanceKm.toStringAsFixed(0)} km'),
+          _InfoRow(label: 'Số chặng di chuyển', value: '${analysis.legs.length} chặng'),
+          _InfoRow(label: 'Thời gian ước tính', value: formatHours(analysis.optimizedHours)),
+          _InfoRow(label: 'Ngân sách mỗi người', value: BudgetTier.formatCurrency(budgetPerPerson)),
         ],
       ),
     );
-  }
-
-  double _durationForMode(TripRouteAnalysis analysis, TransportMode mode) {
-    switch (mode) {
-      case TransportMode.motorbike:
-        return analysis.motorbikeHours;
-      case TransportMode.car:
-        return analysis.carHours;
-      case TransportMode.train:
-        return analysis.legs.fold(0, (sum, leg) => sum + leg.trainHours);
-      case TransportMode.flight:
-        return analysis.flightHours;
-    }
   }
 }
 
@@ -714,117 +556,6 @@ class _InfoRow extends StatelessWidget {
           Expanded(child: Text(label, style: const TextStyle(color: Color(0xFF647067)))),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
-      ),
-    );
-  }
-}
-
-class _NoticeBox extends StatelessWidget {
-  const _NoticeBox({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFE1A6)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: const Color(0xFFB7791F), size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Color(0xFF7A4E12),
-                fontSize: 12,
-                height: 1.35,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TransportOption extends StatelessWidget {
-  const _TransportOption({
-    required this.icon,
-    required this.label,
-    required this.duration,
-    required this.selected,
-    required this.onTap,
-    this.enabled = true,
-  });
-
-  final IconData icon;
-  final String label;
-  final String duration;
-  final bool selected;
-  final VoidCallback onTap;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 104,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: enabled ? Colors.white : const Color(0xFFF1F4F2),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? const Color(0xFF0FA958)
-                : enabled
-                    ? const Color(0xFFE2E8E4)
-                    : const Color(0xFFD3DBD6),
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: !enabled
-                  ? const Color(0xFF9AA7A0)
-                  : selected
-                      ? const Color(0xFF0FA958)
-                      : const Color(0xFF647067),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: enabled ? const Color(0xFF1B1F1C) : const Color(0xFF7C8982),
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              duration,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: enabled ? const Color(0xFF647067) : const Color(0xFF8A958F),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

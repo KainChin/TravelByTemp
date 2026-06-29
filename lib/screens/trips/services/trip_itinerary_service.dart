@@ -78,7 +78,7 @@ class TripItineraryHistoryItem {
 class TripItineraryService {
   TripItineraryService({
     http.Client? client,
-    this.timeout = const Duration(minutes: 5),
+    this.timeout = const Duration(seconds: 75),
   }) : _client = client ?? http.Client();
 
   final http.Client _client;
@@ -101,17 +101,17 @@ class TripItineraryService {
       final response = await _client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/api/trip/analyze-route'),
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode({
+            headers: const {'Content-Type': 'application/json; charset=utf-8'},
+            body: utf8.encode(jsonEncode({
               'departure': _placeToJson(localFallback.departure),
               'destinations': destinations
                   .map((item) => _placeToJson(item.destination))
                   .toList(),
               'peopleCount': peopleCount,
               'budgetPerPerson': budgetPerPerson,
-            }),
+            })),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 12));
 
       final body = utf8.decode(response.bodyBytes);
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -150,14 +150,16 @@ class TripItineraryService {
       final response = await _client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/api/trip/generate-itinerary'),
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode({
+            headers: const {'Content-Type': 'application/json; charset=utf-8'},
+            body: utf8.encode(jsonEncode({
               'destinations': destinations
                   .map(
                     (item) => {
                       'id': item.destination.id,
                       'name': item.destination.name,
                       'region': item.destination.region,
+                      'latitude': item.destination.latitude,
+                      'longitude': item.destination.longitude,
                       'fromLabel': item.fromLabel,
                       'startDate': item.startDate == null ? null : _dateOnly(item.startDate!),
                       'endDate': item.endDate == null ? null : _dateOnly(item.endDate!),
@@ -169,7 +171,7 @@ class TripItineraryService {
               'peopleCount': peopleCount,
               'budgetPerPerson': budgetPerPerson,
               'departurePoint': departurePoint,
-            }),
+            })),
           )
           .timeout(timeout);
 
