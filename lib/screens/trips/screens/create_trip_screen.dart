@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/destination.dart';
@@ -61,28 +61,104 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
     if (picked != null) form.addDestination(picked);
   }
 
-  Future<void> _pickTripDates() async {
+  Future<void> _pickDatesForDestination(int index) async {
     final form = context.read<TripFormProvider>();
-    final firstDate = DateTime.now();
-    final start = await showDatePicker(
+    final item = form.selectedDestinations[index];
+    final firstDate = form.firstSelectableDateForDestination(index);
+    final initialStart = item.startDate != null && !item.startDate!.isBefore(firstDate)
+        ? item.startDate!
+        : firstDate;
+    final initialEnd = item.endDate != null && !item.endDate!.isBefore(initialStart)
+        ? item.endDate!
+        : initialStart;
+
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: form.departureDate ?? firstDate,
       firstDate: firstDate,
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: DateTimeRange(start: initialStart, end: initialEnd),
+      saveText: 'Áp dụng',
+      helpText: item.destination.name,
+      fieldStartLabelText: 'Ngày đến',
+      fieldEndLabelText: 'Ngày rời',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: _primary,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: _ink,
+                ),
+            datePickerTheme: DatePickerThemeData(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              headerBackgroundColor: _primary,
+              headerForegroundColor: Colors.white,
+              rangeSelectionBackgroundColor: _primarySoft,
+              rangePickerShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (start == null || !mounted) return;
+    if (picked == null || !mounted) return;
 
-    final end = await showDatePicker(
+    context.read<TripFormProvider>().setDestinationDates(
+          index,
+          picked.start,
+          picked.end,
+        );
+  }
+
+  Future<void> _pickDestinationDatePart(int index, {required bool pickingStart}) async {
+    final form = context.read<TripFormProvider>();
+    final item = form.selectedDestinations[index];
+    final firstDate = form.firstSelectableDateForDestination(index);
+    final currentStart = item.startDate != null && !item.startDate!.isBefore(firstDate)
+        ? item.startDate!
+        : firstDate;
+    final currentEnd = item.endDate != null && !item.endDate!.isBefore(currentStart)
+        ? item.endDate!
+        : currentStart;
+    final initialDate = pickingStart ? currentStart : currentEnd;
+
+    final picked = await showDatePicker(
       context: context,
-      initialDate: form.returnDate != null && !form.returnDate!.isBefore(start)
-          ? form.returnDate!
-          : start,
-      firstDate: start,
+      initialDate: initialDate,
+      firstDate: pickingStart ? firstDate : currentStart,
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      helpText: pickingStart ? 'Chọn ngày đến' : 'Chọn ngày rời',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: _primary,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: _ink,
+                ),
+            datePickerTheme: DatePickerThemeData(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              headerBackgroundColor: _primary,
+              headerForegroundColor: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (end == null || !mounted) return;
+    if (picked == null || !mounted) return;
 
-    context.read<TripFormProvider>().setTripDates(start, end);
+    final nextStart = pickingStart ? picked : currentStart;
+    final nextEnd = pickingStart
+        ? (currentEnd.isBefore(picked) ? picked : currentEnd)
+        : picked;
+    context.read<TripFormProvider>().setDestinationDates(index, nextStart, nextEnd);
   }
 
   Future<void> _onAnalyzeTrip() async {
@@ -180,6 +256,10 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                             (index) => _DestinationAnswerCard(
                               index: index,
                               item: form.selectedDestinations[index],
+                              error: form.destinationDateError(index),
+                              onPickDate: () => _pickDatesForDestination(index),
+                              onPickStartDate: () => _pickDestinationDatePart(index, pickingStart: true),
+                              onPickEndDate: () => _pickDestinationDatePart(index, pickingStart: false),
                               onRemove: () {
                                 context.read<TripFormProvider>().removeDestinationAt(index);
                               },
@@ -207,24 +287,8 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
                   _QuestionBlock(
                     step: '02',
-                    title: 'Ngày đi và ngày kết thúc',
-                    subtitle: 'Chọn khoảng ngày chung cho toàn bộ chuyến đi.',
-                    trailing: form.tripDateError == null
-                        ? '${_formatDate(form.departureDate!)} - ${_formatDate(form.returnDate!)}'
-                        : null,
-                    child: _DateRangeAnswer(
-                      start: form.departureDate,
-                      end: form.returnDate,
-                      error: form.tripDateError,
-                      onPick: _pickTripDates,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _QuestionBlock(
-                    step: '03',
                     title: 'Bạn đi với ai?',
                     subtitle: 'Lịch trình sẽ được điều chỉnh theo nhịp đi của nhóm.',
                     child: _ChoiceWrap(
@@ -235,7 +299,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                   ),
                   const SizedBox(height: 14),
                   _QuestionBlock(
-                    step: '04',
+                    step: '03',
                     title: 'Bạn thích kiểu du lịch nào?',
                     subtitle: 'Có thể chọn nhiều sở thích.',
                     child: _ChoiceWrap(
@@ -264,7 +328,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                   ),
                   const SizedBox(height: 14),
                   _QuestionBlock(
-                    step: '05',
+                    step: '04',
                     title: 'Ngân sách mỗi người',
                     subtitle: 'Kéo nhanh hoặc nhập số tiền cụ thể.',
                     trailing: form.budgetLabel,
@@ -277,7 +341,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                   ),
                   const SizedBox(height: 14),
                   _QuestionBlock(
-                    step: '06',
+                    step: '05',
                     title: 'Nhóm đi có bao nhiêu người?',
                     subtitle: 'Chi phí sẽ được tính theo số người.',
                     child: _Surface(
@@ -294,7 +358,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                   ),
                   const SizedBox(height: 14),
                   _QuestionBlock(
-                    step: '07',
+                    step: '06',
                     title: 'Yêu cầu đặc biệt',
                     subtitle: 'Ví dụ: tránh đi bộ nhiều, có trẻ em, ăn chay, tránh mưa.',
                     child: TextField(
@@ -690,75 +754,23 @@ class _EmptyDestinationAnswer extends StatelessWidget {
   }
 }
 
-class _DateRangeAnswer extends StatelessWidget {
-  const _DateRangeAnswer({
-    required this.start,
-    required this.end,
-    required this.error,
-    required this.onPick,
-  });
-
-  final DateTime? start;
-  final DateTime? end;
-  final String? error;
-  final VoidCallback onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasDates = start != null && end != null;
-    final label = hasDates
-        ? '${_formatDate(start!)} - ${_formatDate(end!)}'
-        : 'Chọn ngày đi / ngày kết thúc';
-
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7FAF8),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: error == null
-                ? _AiInterviewViewState._line
-                : _AiInterviewViewState._accent,
-          ),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.date_range_outlined,
-              color: _AiInterviewViewState._primary,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: _AiInterviewViewState._ink,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            const Icon(Icons.edit_calendar_outlined, color: _AiInterviewViewState._muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _DestinationAnswerCard extends StatelessWidget {
   const _DestinationAnswerCard({
     required this.index,
     required this.item,
+    required this.error,
+    required this.onPickDate,
+    required this.onPickStartDate,
+    required this.onPickEndDate,
     required this.onRemove,
   });
 
   final int index;
   final SelectedDestination item;
+  final String? error;
+  final VoidCallback onPickDate;
+  final VoidCallback onPickStartDate;
+  final VoidCallback onPickEndDate;
   final VoidCallback onRemove;
 
   @override
@@ -770,10 +782,11 @@ class _DestinationAnswerCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _AiInterviewViewState._line,
+          color: error == null ? _AiInterviewViewState._line : const Color(0xFFFFC9B8),
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -826,7 +839,167 @@ class _DestinationAnswerCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _DestinationDateStrip(
+            start: item.startDate,
+            end: item.endDate,
+            onPickRange: onPickDate,
+            onPickStart: onPickStartDate,
+            onPickEnd: onPickEndDate,
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline, size: 16, color: _AiInterviewViewState._accent),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    error!,
+                    style: const TextStyle(
+                      color: _AiInterviewViewState._accent,
+                      fontSize: 12,
+                      height: 1.35,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _DestinationDateStrip extends StatelessWidget {
+  const _DestinationDateStrip({
+    required this.start,
+    required this.end,
+    required this.onPickRange,
+    required this.onPickStart,
+    required this.onPickEnd,
+  });
+
+  final DateTime? start;
+  final DateTime? end;
+  final VoidCallback onPickRange;
+  final VoidCallback onPickStart;
+  final VoidCallback onPickEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAF8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _AiInterviewViewState._line),
+      ),
+      child: Row(
+        children: [
+          _DateMiniCard(
+            icon: Icons.login_rounded,
+            label: 'Ngày đến',
+            value: start == null ? 'Chọn ngày' : _formatDate(start!),
+            onTap: onPickStart,
+          ),
+          Container(
+            width: 24,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.arrow_forward_rounded,
+              size: 18,
+              color: _AiInterviewViewState._muted,
+            ),
+          ),
+          _DateMiniCard(
+            icon: Icons.logout_rounded,
+            label: 'Ngày rời',
+            value: end == null ? 'Chọn ngày' : _formatDate(end!),
+            onTap: onPickEnd,
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onPickRange,
+            tooltip: 'Chọn khoảng ngày',
+            icon: const Icon(Icons.edit_calendar_outlined),
+            color: _AiInterviewViewState._primary,
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _DateMiniCard extends StatelessWidget {
+  const _DateMiniCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _AiInterviewViewState._line),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: _AiInterviewViewState._primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _AiInterviewViewState._muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _AiInterviewViewState._ink,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

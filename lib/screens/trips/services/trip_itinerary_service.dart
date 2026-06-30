@@ -95,6 +95,7 @@ class TripItineraryService {
       departurePoint: departurePoint,
       departure: departure,
       selectedDestinations: destinations,
+      budgetPerPerson: budgetPerPerson,
     );
 
     try {
@@ -115,7 +116,10 @@ class TripItineraryService {
 
       final body = utf8.decode(response.bodyBytes);
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final remote = TripRouteAnalysis.fromApi(jsonDecode(body) as Map<String, dynamic>);
+        final remote = TripRouteAnalysis.fromApi(
+          jsonDecode(body) as Map<String, dynamic>,
+          budgetPerPerson: budgetPerPerson,
+        );
         return TripRouteAnalysis(
           routeId: remote.routeId,
           departure: remote.departure,

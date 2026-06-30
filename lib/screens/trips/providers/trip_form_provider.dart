@@ -24,15 +24,15 @@ class TripFormProvider extends ChangeNotifier {
   TripItineraryResult? itineraryResult;
 
   double _budgetPerPerson = 3000000;
-  DateTime? _departureDate;
-  DateTime? _returnDate;
 
   List<SelectedDestination> get selectedDestinations =>
       List.unmodifiable(_selectedDestinations);
 
-  DateTime? get departureDate => _departureDate;
+  DateTime? get departureDate =>
+      _selectedDestinations.isEmpty ? null : _selectedDestinations.first.startDate;
 
-  DateTime? get returnDate => _returnDate;
+  DateTime? get returnDate =>
+      _selectedDestinations.isEmpty ? null : _selectedDestinations.last.endDate;
 
   double get budgetPerPerson => _budgetPerPerson;
 
@@ -98,8 +98,6 @@ class TripFormProvider extends ChangeNotifier {
         destination: destination,
         fromLabel: nextOriginLabel,
         distanceKm: distanceKm,
-        startDate: _departureDate,
-        endDate: _returnDate,
       ),
     );
     notifyListeners();
@@ -134,14 +132,28 @@ class TripFormProvider extends ChangeNotifier {
     var normalizedStart = _dateOnly(start);
     var normalizedEnd = _dateOnly(end);
     if (normalizedEnd.isBefore(normalizedStart)) normalizedEnd = normalizedStart;
-    _departureDate = normalizedStart;
-    _returnDate = normalizedEnd;
     for (var i = 0; i < _selectedDestinations.length; i++) {
       _selectedDestinations[i] = _selectedDestinations[i].copyWith(
         startDate: normalizedStart,
         endDate: normalizedEnd,
       );
     }
+    notifyListeners();
+  }
+
+  void setDestinationDates(int index, DateTime start, DateTime end) {
+    if (index < 0 || index >= _selectedDestinations.length) return;
+    var normalizedStart = _dateOnly(start);
+    var normalizedEnd = _dateOnly(end);
+    final minDate = firstSelectableDateForDestination(index);
+    if (normalizedStart.isBefore(minDate)) normalizedStart = minDate;
+    if (normalizedEnd.isBefore(normalizedStart)) normalizedEnd = normalizedStart;
+
+    _selectedDestinations[index] = _selectedDestinations[index].copyWith(
+      startDate: normalizedStart,
+      endDate: normalizedEnd,
+    );
+    _clearInvalidDatesFrom(index + 1);
     notifyListeners();
   }
 
@@ -162,34 +174,45 @@ class TripFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  DateTime firstSelectableDateForDestination(int index) => _dateOnly(DateTime.now());
+  DateTime firstSelectableDateForDestination(int index) {
+    final today = _dateOnly(DateTime.now());
+    if (index <= 0 || index >= _selectedDestinations.length) return today;
+    return _selectedDestinations[index - 1].endDate ?? today;
+  }
 
   String? destinationDateError(int index) {
     if (index < 0 || index >= _selectedDestinations.length) return null;
     final item = _selectedDestinations[index];
     if (item.startDate == null || item.endDate == null) {
-      return 'Chọn ngày bắt đầu và kết thúc cho chặng này.';
+      return 'Chọn ngày đến và ngày rời cho điểm này.';
     }
     if (item.endDate!.isBefore(item.startDate!)) {
-      return 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.';
+      return 'Ngày rời phải sau hoặc bằng ngày đến.';
     }
     if (index > 0) {
       final previousEnd = _selectedDestinations[index - 1].endDate;
       if (previousEnd != null && item.startDate!.isBefore(previousEnd)) {
-        return 'Chặng sau phải bắt đầu từ ngày kết thúc chặng trước trở đi.';
+        return 'Điểm sau phải bắt đầu từ ngày rời điểm trước trở đi.';
       }
     }
     return null;
   }
 
   String? get tripDateError {
-    if (_departureDate == null || _returnDate == null) {
-      return 'Chon ngay di va ngay ket thuc chuyen di.';
+    if (departureDate == null || returnDate == null) {
+      return 'Chọn ngày cho từng điểm đến.';
     }
-    if (_returnDate!.isBefore(_departureDate!)) {
-      return 'Ngay ket thuc phai sau ngay di.';
+    if (returnDate!.isBefore(departureDate!)) {
+      return 'Ngày kết thúc phải sau ngày đi.';
     }
     return null;
+  }
+
+  bool get _hasValidDestinationDates {
+    for (var i = 0; i < _selectedDestinations.length; i++) {
+      if (destinationDateError(i) != null) return false;
+    }
+    return true;
   }
 
   bool get canAnalyze =>
@@ -197,6 +220,7 @@ class TripFormProvider extends ChangeNotifier {
       departureDate != null &&
       returnDate != null &&
       tripDateError == null &&
+      _hasValidDestinationDates &&
       !isAnalyzing;
 
   TripRouteAnalysis buildRouteAnalysis() {
@@ -204,6 +228,7 @@ class TripFormProvider extends ChangeNotifier {
       departurePoint: departureLabel,
       departure: departure,
       selectedDestinations: _selectedDestinations,
+      budgetPerPerson: budgetPerPerson,
     );
   }
 
@@ -260,6 +285,25 @@ class TripFormProvider extends ChangeNotifier {
       service.dispose();
       isAnalyzing = false;
       notifyListeners();
+    }
+  }
+
+  void _clearInvalidDatesFrom(int startIndex) {
+    for (var i = startIndex; i < _selectedDestinations.length; i++) {
+      final item = _selectedDestinations[i];
+      final minDate = firstSelectableDateForDestination(i);
+      var start = item.startDate;
+      var end = item.endDate;
+
+      if (start != null && start.isBefore(minDate)) start = minDate;
+      if (end != null && start != null && end.isBefore(start)) end = start;
+
+      _selectedDestinations[i] = item.copyWith(
+        startDate: start,
+        endDate: end,
+        clearStartDate: start == null,
+        clearEndDate: end == null,
+      );
     }
   }
 
