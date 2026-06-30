@@ -42,8 +42,8 @@ class ProfileHeader extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.0),
-                  Colors.black.withOpacity(0.8),
+                  Colors.black.withValues(alpha: 0.0),
+                  Colors.black.withValues(alpha: 0.8),
                 ],
               ),
             ),
@@ -86,10 +86,10 @@ class ProfileHeader extends StatelessWidget {
           child: Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 width: 1.5,
               ),
             ),
@@ -118,7 +118,7 @@ class ProfileHeader extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 15,
             offset: const Offset(0, 8),
           )
@@ -147,7 +147,7 @@ class ProfileHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2.5),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))
                 ]
               ),
               child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
@@ -189,7 +189,7 @@ class ProfileHeader extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
+                  color: Colors.white.withValues(alpha: 0.25),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
@@ -215,7 +215,7 @@ class ProfileHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: const Color(0xFF3A7D5A).withOpacity(0.8),
+                color: const Color(0xFF3A7D5A).withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(Icons.location_on, size: 12, color: Colors.white),
@@ -239,3 +239,4 @@ class ProfileHeader extends StatelessWidget {
     );
   }
 }
+

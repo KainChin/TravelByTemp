@@ -66,3 +66,4 @@ class TemperatureDestinationService {
     return 'Nhiệt độ ${userTempC.toStringAsFixed(0)}°C tại $location — điểm đến phù hợp';
   }
 }
+

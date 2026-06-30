@@ -5,7 +5,7 @@ class AuthService {
   static final _auth        = FirebaseAuth.instance;
   static final _googleSignIn = GoogleSignIn();
 
-  /// Stream lắng nghe trạng thái đăng nhập (null = chưa đăng nhập)
+  /// Stream lắng nghe trạng thái đăng nhập (null = chưa đăng nh?p)
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// User hiện tại
@@ -15,7 +15,7 @@ class AuthService {
   static Future<User?> signInWithGoogle() async {
     try {
       final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // user huỷ
+      if (googleUser == null) return null; // user hu?
 
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -30,9 +30,10 @@ class AuthService {
     }
   }
 
-  /// Đăng xuất
+  /// Đăng xu?t
   static Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
 }
+

@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:assignment/core/widgets/safe_memory_image.dart';
 import 'package:assignment/services/firestore_service.dart';
 import 'video_preview_screen.dart';
 
@@ -36,7 +36,7 @@ class _SelectPhotosScreenState extends State<SelectPhotosScreen> {
       return;
     }
 
-    // Lấy base64 của các ảnh đã chọn theo thứ tự
+    // Lấy base64 của các ảnh đã chọn theo th? t?
     final selectedPhotos = _selectedIds
         .where((id) => _photoData.containsKey(id))
         .map((id) => {
@@ -115,7 +115,7 @@ class _SelectPhotosScreenState extends State<SelectPhotosScreen> {
 
           return Column(
             children: [
-              // Header chọn tất cả
+              // Header chọn t?t c?
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -148,7 +148,6 @@ class _SelectPhotosScreenState extends State<SelectPhotosScreen> {
                     final doc = docs[i];
                     final data = doc.data() as Map<String, dynamic>;
                     final isSelected = _selectedIds.contains(doc.id);
-                    final bytes = base64Decode(data['base64'] as String);
 
                     return GestureDetector(
                       onTap: () => _toggleSelect(doc.id),
@@ -157,20 +156,24 @@ class _SelectPhotosScreenState extends State<SelectPhotosScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.memory(bytes, fit: BoxFit.cover),
+                            child: SafeBase64Image(
+                              base64: data['base64'] as String?,
+                              source: 'SelectPhotosScreen photo ${doc.id}',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                           // Overlay khi chọn
                           if (isSelected)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                color: const Color(0xFF3A7D5A).withOpacity(0.4),
+                                color: const Color(0xFF3A7D5A).withValues(alpha: 0.4),
                                 child: const Center(
                                   child: Icon(Icons.check_circle, color: Colors.white, size: 32),
                                 ),
                               ),
                             ),
-                          // Số thứ tự
+                          // S? th? t?
                           if (isSelected)
                             Positioned(
                               top: 6, right: 6,
@@ -201,3 +204,4 @@ class _SelectPhotosScreenState extends State<SelectPhotosScreen> {
     );
   }
 }
+

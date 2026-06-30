@@ -1,3 +1,4 @@
+import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:flutter/material.dart';
 
 import '../services/trip_itinerary_service.dart';
@@ -18,13 +19,16 @@ class _TripItineraryHistoryScreenState
   @override
   void initState() {
     super.initState();
-    _future = TripItineraryService().history();
+    _future = _load();
+  }
+
+  Future<List<TripItineraryHistoryItem>> _load() {
+    final token = VietaiScope.of(context).auth?.accessToken;
+    return TripItineraryService(authToken: token).history();
   }
 
   Future<void> _refresh() async {
-    setState(() {
-      _future = TripItineraryService().history();
-    });
+    setState(() => _future = _load());
     await _future;
   }
 
@@ -36,7 +40,7 @@ class _TripItineraryHistoryScreenState
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
-        title: const Text('Itinerary history'),
+        title: const Text('Lịch sử hành trình'),
       ),
       body: FutureBuilder<List<TripItineraryHistoryItem>>(
         future: _future,
@@ -50,7 +54,7 @@ class _TripItineraryHistoryScreenState
           if (snapshot.hasError) {
             return _StateMessage(
               icon: Icons.cloud_off_outlined,
-              title: 'Cannot load history',
+              title: 'Chưa tải được lịch sử',
               message: '${snapshot.error}',
               action: _refresh,
             );
@@ -60,8 +64,8 @@ class _TripItineraryHistoryScreenState
           if (items.isEmpty) {
             return _StateMessage(
               icon: Icons.route_outlined,
-              title: 'No itineraries yet',
-              message: 'Generated trips will appear here.',
+              title: 'Chưa có hành trình',
+              message: 'Các chuyến đi đã tạo sẽ xuất hiện tại đây.',
               action: _refresh,
             );
           }
@@ -72,7 +76,7 @@ class _TripItineraryHistoryScreenState
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: items.length,
-              separatorBuilder: (_, index) => const SizedBox(height: 10),
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return _HistoryTile(
@@ -82,8 +86,9 @@ class _TripItineraryHistoryScreenState
                       context,
                       MaterialPageRoute(
                         builder: (_) => TripItineraryResultScreen(
-                          response: 'Saved itinerary',
+                          response: 'Hành trình đã lưu',
                           itinerary: item.itinerary,
+                          itineraryId: item.id,
                         ),
                       ),
                     );
@@ -106,8 +111,7 @@ class _HistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date =
-        '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}';
+    final date = '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}';
     final days = item.itinerary['days'] is List
         ? (item.itinerary['days'] as List).length
         : 0;
@@ -133,10 +137,7 @@ class _HistoryTile extends StatelessWidget {
                   color: const Color(0xFFEAF8F0),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.auto_awesome,
-                  color: Color(0xFF0FA958),
-                ),
+                child: const Icon(Icons.auto_awesome, color: Color(0xFF0FA958)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -147,18 +148,12 @@ class _HistoryTile extends StatelessWidget {
                       item.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$date • $days days • ${item.aiModel ?? 'AI'}',
-                      style: const TextStyle(
-                        color: Color(0xFF647067),
-                        fontSize: 12,
-                      ),
+                      '$date • $days ngày • ${item.aiModel ?? 'AI'}',
+                      style: const TextStyle(color: Color(0xFF647067), fontSize: 12),
                     ),
                   ],
                 ),
@@ -195,10 +190,7 @@ class _StateMessage extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: const Color(0xFF8A948D)),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
             Text(
               message,
@@ -209,10 +201,7 @@ class _StateMessage extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: action,
               icon: const Icon(Icons.refresh, color: Color(0xFF0FA958)),
-              label: const Text(
-                'Refresh',
-                style: TextStyle(color: Color(0xFF0FA958)),
-              ),
+              label: const Text('Tải lại', style: TextStyle(color: Color(0xFF0FA958))),
             ),
           ],
         ),

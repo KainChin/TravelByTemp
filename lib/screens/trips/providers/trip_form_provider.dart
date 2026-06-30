@@ -36,6 +36,8 @@ class TripFormProvider extends ChangeNotifier {
 
   double get budgetPerPerson => _budgetPerPerson;
 
+  double get budgetPerTraveler => peopleCount <= 0 ? _budgetPerPerson : _budgetPerPerson / peopleCount;
+
   String get budgetLabel => BudgetTier.formatCurrency(budgetPerPerson);
 
   Destination get departure => _departure;
@@ -168,6 +170,11 @@ class TripFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setPeopleCount(int value) {
+    peopleCount = value.clamp(1, 99);
+    notifyListeners();
+  }
+
   void setBudgetPerPerson(double value) {
     _budgetPerPerson =
         value.clamp(BudgetTier.minBudget, BudgetTier.maxBudget).toDouble();
@@ -228,7 +235,7 @@ class TripFormProvider extends ChangeNotifier {
       departurePoint: departureLabel,
       departure: departure,
       selectedDestinations: _selectedDestinations,
-      budgetPerPerson: budgetPerPerson,
+      budgetPerPerson: budgetPerTraveler,
     );
   }
 
@@ -246,7 +253,7 @@ class TripFormProvider extends ChangeNotifier {
         departure: departure,
         destinations: _selectedDestinations,
         peopleCount: peopleCount,
-        budgetPerPerson: budgetPerPerson,
+        budgetPerPerson: budgetPerTraveler,
       );
     } on TripItineraryException catch (e) {
       analyzeError = e.message;

@@ -129,3 +129,4 @@ class ChatService {
 
   void dispose() => _client.close();
 }
+

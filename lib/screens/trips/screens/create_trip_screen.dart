@@ -1,5 +1,10 @@
+// ignore_for_file: unnecessary_library_name
+
+library create_trip_screen;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 
 import '../models/destination.dart';
 import '../providers/trip_form_provider.dart';
@@ -8,6 +13,10 @@ import '../widgets/destination_picker_sheet.dart';
 import '../widgets/people_counter.dart';
 import 'trip_itinerary_history_screen.dart';
 import 'trip_route_analysis_screen.dart';
+
+part 'create_trip/create_trip_hero.dart';
+part 'create_trip/create_trip_question_widgets.dart';
+part 'create_trip/create_trip_destination_widgets.dart';
 
 class CreateTripScreen extends StatelessWidget {
   const CreateTripScreen({super.key});
@@ -37,7 +46,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
   static const _line = Color(0xFFE2E8E4);
   static const _accent = Color(0xFFFF8A5B);
 
-  String _travelGroup = 'Bạn bè';
+  String _travelGroup = 'friends';
   final Set<String> _interests = {'Thiên nhiên', 'Ẩm thực'};
   final TextEditingController _specialRequestController = TextEditingController();
 
@@ -161,6 +170,34 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
     context.read<TripFormProvider>().setDestinationDates(index, nextStart, nextEnd);
   }
 
+  void _setTravelGroup(String value) {
+    setState(() => _travelGroup = value);
+    final form = context.read<TripFormProvider>();
+    if (value == 'solo') {
+      form.setPeopleCount(1);
+    } else if (value == 'couple') {
+      form.setPeopleCount(2);
+    } else if (form.peopleCount < 3) {
+      form.setPeopleCount(3);
+    }
+  }
+
+  bool get _showsPeoplePicker =>
+      _travelGroup == 'family' || _travelGroup == 'friends';
+
+  String get _travelGroupLabel {
+    switch (_travelGroup) {
+      case 'solo':
+        return 'Một mình';
+      case 'couple':
+        return 'Người yêu';
+      case 'family':
+        return 'Gia đình';
+      default:
+        return 'Bạn bè';
+    }
+  }
+
   Future<void> _onAnalyzeTrip() async {
     final form = context.read<TripFormProvider>();
     if (!form.canAnalyze || form.departureDate == null || form.returnDate == null) {
@@ -188,6 +225,9 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
           returnDate: form.returnDate!,
           peopleCount: form.peopleCount,
           budgetPerPerson: form.budgetPerPerson,
+          travelGroup: _travelGroupLabel,
+          interests: _interests.toList(),
+          specialRequest: _specialRequestController.text.trim(),
         ),
       ),
     );
@@ -292,9 +332,21 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                     title: 'Bạn đi với ai?',
                     subtitle: 'Lịch trình sẽ được điều chỉnh theo nhịp đi của nhóm.',
                     child: _ChoiceWrap(
-                      values: const ['Một mình', 'Người yêu', 'Gia đình', 'Bạn bè'],
+                      values: const ['solo', 'couple', 'family', 'friends'],
                       selected: {_travelGroup},
-                      onSelected: (value) => setState(() => _travelGroup = value),
+                      labelFor: (value) {
+                        switch (value) {
+                          case 'solo':
+                            return 'Một mình';
+                          case 'couple':
+                            return 'Người yêu';
+                          case 'family':
+                            return 'Gia đình';
+                          default:
+                            return 'Bạn bè';
+                        }
+                      },
+                      onSelected: _setTravelGroup,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -329,8 +381,8 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                   const SizedBox(height: 14),
                   _QuestionBlock(
                     step: '04',
-                    title: 'Ngân sách mỗi người',
-                    subtitle: 'Kéo nhanh hoặc nhập số tiền cụ thể.',
+                    title: 'Tổng ngân sách chuyến đi',
+                    subtitle: 'Đây là ngân sách tổng cho cả nhóm, không phải mỗi người.',
                     trailing: form.budgetLabel,
                     child: BudgetSlider(
                       amount: form.budgetPerPerson,
@@ -340,25 +392,27 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _QuestionBlock(
-                    step: '05',
-                    title: 'Nhóm đi có bao nhiêu người?',
-                    subtitle: 'Chi phí sẽ được tính theo số người.',
-                    child: _Surface(
-                      child: PeopleCounter(
-                        count: form.peopleCount,
-                        onIncrement: () {
-                          context.read<TripFormProvider>().incrementPeople();
-                        },
-                        onDecrement: () {
-                          context.read<TripFormProvider>().decrementPeople();
-                        },
+                  if (_showsPeoplePicker) ...[
+                    _QuestionBlock(
+                      step: '05',
+                      title: 'Nhóm đi có bao nhiêu người?',
+                      subtitle: 'Chỉ cần chọn khi đi gia đình hoặc bạn bè.',
+                      child: _Surface(
+                        child: PeopleCounter(
+                          count: form.peopleCount,
+                          onIncrement: () {
+                            context.read<TripFormProvider>().incrementPeople();
+                          },
+                          onDecrement: () {
+                            context.read<TripFormProvider>().decrementPeople();
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 14),
+                  ],
                   _QuestionBlock(
-                    step: '06',
+                    step: _showsPeoplePicker ? '06' : '05',
                     title: 'Yêu cầu đặc biệt',
                     subtitle: 'Ví dụ: tránh đi bộ nhiều, có trẻ em, ăn chay, tránh mưa.',
                     child: TextField(
@@ -435,598 +489,4 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
   }
 }
 
-class _HeroInterviewCard extends StatelessWidget {
-  const _HeroInterviewCard({required this.progress});
 
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: _AiInterviewViewState._primary,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.network(
-              'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-            ),
-          ),
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xE80A241E), Color(0x66152F28)],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.auto_awesome, size: 15, color: Colors.white),
-                      SizedBox(width: 6),
-                      Text(
-                        'Lập hành trình',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 84),
-                const Text(
-                  'Kể mình nghe\nchuyến đi bạn muốn',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    height: 1.06,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Chọn điểm đến, thời gian, ngân sách và nhóm đi để app gợi ý tuyến đường phù hợp.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.86),
-                    height: 1.38,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress.clamp(0, 1),
-                    minHeight: 7,
-                    backgroundColor: Colors.white.withValues(alpha: 0.22),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AiBubble extends StatelessWidget {
-  const _AiBubble({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: _AiInterviewViewState._primarySoft,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(
-            Icons.auto_awesome,
-            size: 18,
-            color: _AiInterviewViewState._primary,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
-              ),
-              border: Border.all(color: _AiInterviewViewState._line),
-            ),
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: _AiInterviewViewState._ink,
-                height: 1.4,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _QuestionBlock extends StatelessWidget {
-  const _QuestionBlock({
-    required this.step,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-    this.trailing,
-  });
-
-  final String step;
-  final String title;
-  final String subtitle;
-  final Widget child;
-  final String? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Surface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _AiInterviewViewState._primarySoft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  step,
-                  style: const TextStyle(
-                    color: _AiInterviewViewState._primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._ink,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._muted,
-                        fontSize: 12,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (trailing != null)
-                Text(
-                  trailing!,
-                  style: const TextStyle(
-                    color: _AiInterviewViewState._primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _ChoiceWrap extends StatelessWidget {
-  const _ChoiceWrap({
-    required this.values,
-    required this.selected,
-    required this.onSelected,
-    this.multi = false,
-  });
-
-  final List<String> values;
-  final Set<String> selected;
-  final ValueChanged<String> onSelected;
-  final bool multi;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: values.map((value) {
-        final isSelected = selected.contains(value);
-        return ChoiceChip(
-          label: Text(value),
-          selected: isSelected,
-          showCheckmark: multi,
-          selectedColor: _AiInterviewViewState._primarySoft,
-          backgroundColor: Colors.white,
-          side: BorderSide(
-            color: isSelected
-                ? _AiInterviewViewState._primary
-                : _AiInterviewViewState._line,
-          ),
-          labelStyle: TextStyle(
-            color: isSelected
-                ? _AiInterviewViewState._primary
-                : _AiInterviewViewState._ink,
-            fontWeight: FontWeight.w900,
-          ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-          onSelected: (_) => onSelected(value),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _EmptyDestinationAnswer extends StatelessWidget {
-  const _EmptyDestinationAnswer({required this.onPick});
-
-  final VoidCallback onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7FAF8),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _AiInterviewViewState._line),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.travel_explore, color: _AiInterviewViewState._primary, size: 30),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Chọn điểm đến hoặc thêm nhiều chặng để tối ưu tuyến đường.',
-                style: TextStyle(
-                  color: _AiInterviewViewState._ink,
-                  height: 1.35,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DestinationAnswerCard extends StatelessWidget {
-  const _DestinationAnswerCard({
-    required this.index,
-    required this.item,
-    required this.error,
-    required this.onPickDate,
-    required this.onPickStartDate,
-    required this.onPickEndDate,
-    required this.onRemove,
-  });
-
-  final int index;
-  final SelectedDestination item;
-  final String? error;
-  final VoidCallback onPickDate;
-  final VoidCallback onPickStartDate;
-  final VoidCallback onPickEndDate;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: error == null ? _AiInterviewViewState._line : const Color(0xFFFFC9B8),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _AiInterviewViewState._primarySoft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    color: _AiInterviewViewState._primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.destination.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._ink,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      item.destination.region,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _DestinationDateStrip(
-            start: item.startDate,
-            end: item.endDate,
-            onPickRange: onPickDate,
-            onPickStart: onPickStartDate,
-            onPickEnd: onPickEndDate,
-          ),
-          if (error != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.info_outline, size: 16, color: _AiInterviewViewState._accent),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    error!,
-                    style: const TextStyle(
-                      color: _AiInterviewViewState._accent,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DestinationDateStrip extends StatelessWidget {
-  const _DestinationDateStrip({
-    required this.start,
-    required this.end,
-    required this.onPickRange,
-    required this.onPickStart,
-    required this.onPickEnd,
-  });
-
-  final DateTime? start;
-  final DateTime? end;
-  final VoidCallback onPickRange;
-  final VoidCallback onPickStart;
-  final VoidCallback onPickEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FAF8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _AiInterviewViewState._line),
-      ),
-      child: Row(
-        children: [
-          _DateMiniCard(
-            icon: Icons.login_rounded,
-            label: 'Ngày đến',
-            value: start == null ? 'Chọn ngày' : _formatDate(start!),
-            onTap: onPickStart,
-          ),
-          Container(
-            width: 24,
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.arrow_forward_rounded,
-              size: 18,
-              color: _AiInterviewViewState._muted,
-            ),
-          ),
-          _DateMiniCard(
-            icon: Icons.logout_rounded,
-            label: 'Ngày rời',
-            value: end == null ? 'Chọn ngày' : _formatDate(end!),
-            onTap: onPickEnd,
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: onPickRange,
-            tooltip: 'Chọn khoảng ngày',
-            icon: const Icon(Icons.edit_calendar_outlined),
-            color: _AiInterviewViewState._primary,
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-class _DateMiniCard extends StatelessWidget {
-  const _DateMiniCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _AiInterviewViewState._line),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 17, color: _AiInterviewViewState._primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._muted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Surface extends StatelessWidget {
-  const _Surface({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _AiInterviewViewState._line),
-      ),
-      child: child,
-    );
-  }
-}
-
-String _formatDate(DateTime date) {
-  final day = date.day.toString().padLeft(2, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  return '$day/$month';
-}

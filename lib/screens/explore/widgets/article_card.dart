@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import '../models/article_model.dart';
 
 class ArticleCard extends StatelessWidget {
@@ -103,10 +104,10 @@ class _Thumbnail extends StatelessWidget {
       child: SizedBox(
         width: 90,
         height: 90,
-        child: Image.network(
-          url,
+        child: SafeNetworkImage(
+          url: url,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
+          source: 'article card thumbnail',
         ),
       ),
     );

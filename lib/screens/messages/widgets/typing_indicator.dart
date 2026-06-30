@@ -45,7 +45,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
                 width: 36,
                 height: 36,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.smart_toy_outlined,
                   size: 18,
                   color: MessageColors.primaryGreen,

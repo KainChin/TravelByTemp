@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 
 class CtaCard extends StatelessWidget {
   final IconData icon;
@@ -31,8 +32,8 @@ class CtaCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 5)),
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5, offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -67,7 +68,7 @@ class CtaCard extends StatelessWidget {
   Widget _buildButton() {
     if (isOutlined) {
       return OutlinedButton.icon(
-        onPressed: onPressed, // ← sửa
+        onPressed: onPressed, // đã sửa
         icon: const Icon(Icons.upload_outlined, size: 14, color: Color(0xFF3A7D5A)),
         label: Text(buttonLabel, style: const TextStyle(color: Color(0xFF3A7D5A), fontSize: 13)),
         style: OutlinedButton.styleFrom(
@@ -78,7 +79,7 @@ class CtaCard extends StatelessWidget {
       );
     }
     return ElevatedButton(
-      onPressed: onPressed, // ← sửa
+      onPressed: onPressed, // đã sửa
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF3A7D5A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -100,9 +101,12 @@ class CtaCard extends StatelessWidget {
               top: i == 1 ? 0 : (i == 0 ? 6 : 8),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  imageUrls[i], width: 68, height: 68, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 68, height: 68, color: Colors.grey[300]),
+                child: SafeNetworkImage(
+                  url: imageUrls[i],
+                  width: 68,
+                  height: 68,
+                  fit: BoxFit.cover,
+                  source: 'profile CTA image',
                 ),
               ),
             ),
@@ -110,7 +114,7 @@ class CtaCard extends StatelessWidget {
             Center(
               child: Container(
                 width: 28, height: 28,
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
                 child: const Icon(Icons.play_arrow, size: 16, color: Color(0xFF3A7D5A)),
               ),
             ),
@@ -119,3 +123,4 @@ class CtaCard extends StatelessWidget {
     );
   }
 }
+

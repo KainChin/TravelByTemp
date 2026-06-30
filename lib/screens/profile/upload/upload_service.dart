@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:assignment/core/utils/safe_image_data.dart';
 import 'package:assignment/services/firestore_service.dart';
 
 class UploadService {
@@ -13,16 +13,41 @@ class UploadService {
     return images;
   }
 
-  /// Chuyển XFile → base64 (có nén)
+  /// Chuy?n XFile → base64 (có nén)
   static Future<String> toBase64(XFile file) async {
     final bytes = await file.readAsBytes();
+    final mimeType = file.mimeType;
+    if (mimeType != null && !isSupportedImageContentType(mimeType)) {
+      logInvalidImageBytes(
+        source: 'UploadService.toBase64(${file.name})',
+        bytes: bytes,
+        contentType: mimeType,
+      );
+      throw FormatException('File "${file.name}" khong phai anh hop le. Content-Type: $mimeType');
+    }
+    if (!isSupportedImageBytes(bytes)) {
+      logInvalidImageBytes(
+        source: 'UploadService.toBase64(${file.name})',
+        bytes: bytes,
+        contentType: mimeType,
+      );
+      throw FormatException('File "${file.name}" khong co header anh hop le.');
+    }
     final compressed = await _compressBytes(bytes);
+    if (!isSupportedImageBytes(compressed)) {
+      logInvalidImageBytes(
+        source: 'UploadService._compressBytes(${file.name})',
+        bytes: compressed,
+        contentType: mimeType,
+      );
+      throw const FormatException('Du lieu sau khi xu ly khong con la anh hop le.');
+    }
     return base64Encode(compressed);
   }
 
   /// Nén ảnh xuống max 800px và quality 60%
   static Future<Uint8List> _compressBytes(Uint8List bytes) async {
-    // Trên web dùng thẳng bytes (flutter_image_compress không hỗ trợ web)
+    // Trên web dùng thẳng bytes (flutter_image_compress không hỗ tr? web)
     if (kIsWeb) return bytes;
 
     try {
@@ -36,7 +61,7 @@ class UploadService {
     }
   }
 
-  /// Upload ảnh lên Firestore theo tripId
+  /// Upload ?nh lên Firestore theo tripId
   static Future<void> uploadPhoto({
     required XFile file,
     required String tripId,
@@ -61,3 +86,4 @@ class UploadService {
     }
   }
 }
+

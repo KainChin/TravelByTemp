@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:assignment/core/widgets/safe_memory_image.dart';
 import 'package:assignment/services/firestore_service.dart';
 import 'package:assignment/screens/profile/video/video_preview_screen.dart';
 
@@ -157,28 +157,34 @@ class _MemoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 8,
                 offset: const Offset(0, 2))
           ],
         ),
         child: Row(
           children: [
-            // ── Thumbnail ──
+            // -- Thumbnail --
             ClipRRect(
               borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(16)),
               child: thumbnail.isNotEmpty
-                  ? Image.memory(base64Decode(thumbnail),
-                  width: 100, height: 90, fit: BoxFit.cover)
+                  ? SafeBase64Image(
+                      base64: thumbnail,
+                      source: 'MemoriesScreen video thumbnail',
+                      width: 100,
+                      height: 90,
+                      fit: BoxFit.cover,
+                    )
                   : Container(
-                  width: 100, height: 90,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image_outlined,
-                      color: Colors.grey)),
+                      width: 100,
+                      height: 90,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_outlined, color: Colors.grey),
+                    ),
             ),
             const SizedBox(width: 12),
-            // ── Info ──
+            // -- Info --
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -207,13 +213,13 @@ class _MemoryCard extends StatelessWidget {
                 ),
               ),
             ),
-            // ── Play ──
+            // -- Play --
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3A7D5A).withOpacity(0.1),
+                  color: const Color(0xFF3A7D5A).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.play_arrow,
@@ -226,3 +232,4 @@ class _MemoryCard extends StatelessWidget {
     );
   }
 }
+

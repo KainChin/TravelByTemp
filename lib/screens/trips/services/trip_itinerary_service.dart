@@ -78,11 +78,18 @@ class TripItineraryHistoryItem {
 class TripItineraryService {
   TripItineraryService({
     http.Client? client,
+    this.authToken,
     this.timeout = const Duration(seconds: 75),
   }) : _client = client ?? http.Client();
 
   final http.Client _client;
+  final String? authToken;
   final Duration timeout;
+
+  Map<String, String> get _headers => {
+        'Content-Type': 'application/json; charset=utf-8',
+        if (authToken != null && authToken!.isNotEmpty) 'Authorization': 'Bearer $authToken',
+      };
 
   Future<TripRouteAnalysis> analyzeRoute({
     required String departurePoint,
@@ -102,7 +109,7 @@ class TripItineraryService {
       final response = await _client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/api/trip/analyze-route'),
-            headers: const {'Content-Type': 'application/json; charset=utf-8'},
+            headers: _headers,
             body: utf8.encode(jsonEncode({
               'departure': _placeToJson(localFallback.departure),
               'destinations': destinations
@@ -149,12 +156,16 @@ class TripItineraryService {
     required int peopleCount,
     required double budgetPerPerson,
     required String departurePoint,
+    String? travelGroup,
+    List<String> interests = const [],
+    String? specialRequest,
+    List<RouteLeg> routeLegs = const [],
   }) async {
     try {
       final response = await _client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/api/trip/generate-itinerary'),
-            headers: const {'Content-Type': 'application/json; charset=utf-8'},
+            headers: _headers,
             body: utf8.encode(jsonEncode({
               'destinations': destinations
                   .map(
@@ -174,7 +185,12 @@ class TripItineraryService {
               'returnDate': _dateOnly(returnDate),
               'peopleCount': peopleCount,
               'budgetPerPerson': budgetPerPerson,
+              'budgetTotal': budgetPerPerson,
               'departurePoint': departurePoint,
+              'travelGroup': travelGroup,
+              'interests': interests,
+              'specialRequest': specialRequest,
+              'routeLegs': routeLegs.map(_routeLegToJson).toList(),
             })),
           )
           .timeout(timeout);
@@ -203,7 +219,7 @@ class TripItineraryService {
   Future<List<TripItineraryHistoryItem>> history() async {
     try {
       final response = await _client
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/trip/itineraries'))
+          .get(Uri.parse('${ApiConfig.baseUrl}/api/trip/itineraries'), headers: _headers)
           .timeout(timeout);
 
       final body = utf8.decode(response.bodyBytes);
@@ -233,6 +249,66 @@ class TripItineraryService {
     }
   }
 
+  Future<TripItineraryHistoryItem> saveItinerary({
+    String? itineraryId,
+    required Map<String, dynamic> itinerary,
+  }) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/api/trip/itineraries'),
+            headers: _headers,
+            body: utf8.encode(jsonEncode({
+              'itineraryId': itineraryId,
+              'title': itinerary['title'],
+              'itinerary': itinerary,
+            })),
+          )
+          .timeout(timeout);
+
+      final body = utf8.decode(response.bodyBytes);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return TripItineraryHistoryItem.fromJson(
+          jsonDecode(body) as Map<String, dynamic>,
+        );
+      }
+
+      throw TripItineraryException(_serverMessage(body, response.statusCode));
+    } on TimeoutException {
+      throw const TripItineraryException('Backend took too long to save itinerary.');
+    } on http.ClientException {
+      throw const TripItineraryException('Cannot connect to backend.');
+    } on FormatException {
+      throw const TripItineraryException('Cannot parse backend response.');
+    } on TripItineraryException {
+      rethrow;
+    } catch (e) {
+      throw TripItineraryException('Unexpected error: $e');
+    }
+  }
+
+  Future<void> deleteItinerary(String itineraryId) async {
+    try {
+      final response = await _client
+          .delete(Uri.parse('${ApiConfig.baseUrl}/api/trip/itineraries/$itineraryId'), headers: _headers)
+          .timeout(timeout);
+
+      final body = utf8.decode(response.bodyBytes);
+      if (response.statusCode >= 200 && response.statusCode < 300) return;
+      if (response.statusCode == 404) return;
+
+      throw TripItineraryException(_serverMessage(body, response.statusCode));
+    } on TimeoutException {
+      throw const TripItineraryException('Backend took too long to delete itinerary.');
+    } on http.ClientException {
+      throw const TripItineraryException('Cannot connect to backend.');
+    } on TripItineraryException {
+      rethrow;
+    } catch (e) {
+      throw TripItineraryException('Unexpected error: $e');
+    }
+  }
+
   void dispose() => _client.close();
 
   static Map<String, dynamic> _placeToJson(Destination destination) {
@@ -242,6 +318,19 @@ class TripItineraryService {
       'region': destination.region,
       'latitude': destination.latitude,
       'longitude': destination.longitude,
+    };
+  }
+
+  static Map<String, dynamic> _routeLegToJson(RouteLeg leg) {
+    return {
+      'order': leg.order,
+      'fromName': leg.fromName,
+      'toName': leg.to.name,
+      'mode': leg.recommendedMode.name,
+      'distanceKm': leg.distanceKm,
+      'durationHours': leg.recommendedHours,
+      'estimatedCostVnd': leg.estimatedCostVnd,
+      'reason': leg.reason,
     };
   }
 

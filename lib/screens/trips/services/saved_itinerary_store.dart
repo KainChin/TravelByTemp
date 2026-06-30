@@ -19,7 +19,7 @@ class SavedItineraryItem {
     final rawItinerary = json['itinerary'];
     return SavedItineraryItem(
       id: '${json['id'] ?? ''}',
-      title: '${json['title'] ?? 'Hanh trinh da luu'}',
+      title: '${json['title'] ?? 'Hành trình đã lưu'}',
       savedAt: DateTime.tryParse('${json['savedAt'] ?? ''}') ?? DateTime.now(),
       itinerary: rawItinerary is Map<String, dynamic>
           ? rawItinerary
@@ -53,12 +53,12 @@ class SavedItineraryStore {
   static Future<void> save(Map<String, dynamic> itinerary) async {
     final prefs = await SharedPreferences.getInstance();
     final items = await load();
-    final title = '${itinerary['title'] ?? 'Hanh trinh da luu'}'.trim();
+    final title = '${itinerary['title'] ?? 'Hành trình đã lưu'}'.trim();
     final id = '${itinerary['id'] ?? itinerary['itineraryId'] ?? title}-${DateTime.now().millisecondsSinceEpoch}';
     final next = [
       SavedItineraryItem(
         id: id,
-        title: title.isEmpty ? 'Hanh trinh da luu' : title,
+        title: title.isEmpty ? 'Hành trình đã lưu' : title,
         savedAt: DateTime.now(),
         itinerary: Map<String, dynamic>.from(itinerary),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:assignment/core/widgets/safe_memory_image.dart';
 
 import '../message_assets.dart';
 import '../messages_styles.dart';
@@ -33,7 +34,7 @@ class ChatBubble extends StatelessWidget {
                 width: 36,
                 height: 36,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.smart_toy_outlined,
                   size: 18,
                   color: MessageColors.primaryGreen,
@@ -62,8 +63,9 @@ class ChatBubble extends StatelessWidget {
                   if (message.imageBytes != null) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(MessageRadius.card),
-                      child: Image.memory(
-                        message.imageBytes!,
+                      child: SafeMemoryImage(
+                        bytes: message.imageBytes,
+                        source: 'ChatBubble ${message.imageName ?? 'attachment'}',
                         width: 220,
                         height: 140,
                         fit: BoxFit.cover,
