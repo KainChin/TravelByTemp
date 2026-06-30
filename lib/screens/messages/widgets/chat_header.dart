@@ -29,7 +29,7 @@ class ChatHeader extends StatelessWidget {
             child: Image.asset(
               MessageAssets.headerBackground,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
             ),
           ),
           Row(

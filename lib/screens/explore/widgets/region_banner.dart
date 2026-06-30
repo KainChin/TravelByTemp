@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import '../models/region_model.dart';
 
 class RegionBanner extends StatelessWidget {
@@ -18,10 +19,11 @@ class RegionBanner extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             // Background image
-            Image.network(
-              region.bannerImage,
+            SafeNetworkImage(
+              url: region.bannerImage,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF16A34A)),
+              fallback: Container(color: const Color(0xFF16A34A)),
+              source: 'region banner image',
             ),
             // Gradient overlay
             Container(

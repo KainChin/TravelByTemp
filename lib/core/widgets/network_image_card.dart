@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:assignment/core/theme/app_colors.dart';
+import 'safe_network_image.dart';
 
 class NetworkImageCard extends StatelessWidget {
   const NetworkImageCard({
@@ -17,37 +18,46 @@ class NetworkImageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: borderRadius,
-      child: Image.network(
-        imageUrl,
+      child: SafeNetworkImage(
+        url: imageUrl,
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,
-        loadingBuilder: (_, child, progress) {
-          if (progress == null) return child;
-          return Container(
-            height: height,
-            color: AppColors.surface,
-            child: const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.primary,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) => Container(
+        source: 'NetworkImageCard',
+        loading: Container(
           height: height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primary.withValues(alpha: 0.3),
-                AppColors.primaryDark.withValues(alpha: 0.5),
-              ],
+          color: AppColors.surface,
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary,
             ),
           ),
-          child: const Icon(Icons.image, color: Colors.white54, size: 48),
+        ),
+        fallback: _NetworkImageFallback(height: height),
+      ),
+    );
+  }
+}
+
+class _NetworkImageFallback extends StatelessWidget {
+  const _NetworkImageFallback({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.3),
+            AppColors.primaryDark.withValues(alpha: 0.5),
+          ],
         ),
       ),
+      child: const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
     );
   }
 }

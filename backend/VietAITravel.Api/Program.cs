@@ -400,6 +400,73 @@ app.MapGet("/api/trip/itineraries", async (
     return Results.Ok(new AiItineraryHistoryResponse("Da lay lich su lich trinh.", items));
 });
 
+app.MapPost("/api/trip/itineraries", async (
+    SaveItineraryRequest request,
+    AppDbContext db,
+    OllamaOptions ollamaOptions,
+    HttpContext httpContext,
+    CancellationToken ct) =>
+{
+    var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+    var itineraryJson = JsonSerializer.Serialize(request.Itinerary);
+    var title = string.IsNullOrWhiteSpace(request.Title)
+        ? TryReadTitle(itineraryJson)
+        : request.Title.Trim();
+
+    AiItinerary? row = null;
+    if (request.ItineraryId.HasValue)
+    {
+        row = await db.AiItineraries.FirstOrDefaultAsync(x => x.Id == request.ItineraryId.Value, ct);
+    }
+
+    if (row is null)
+    {
+        row = new AiItinerary
+        {
+            Id = request.ItineraryId ?? Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow,
+            RequestJson = "{}",
+            AiModel = ollamaOptions.ChatModel
+        };
+        db.AiItineraries.Add(row);
+    }
+
+    row.UserId = userId;
+    row.Title = title;
+    row.ItineraryJson = itineraryJson;
+    row.AiModel ??= ollamaOptions.ChatModel;
+
+    await db.SaveChangesAsync(ct);
+
+    return Results.Ok(new AiItineraryHistoryItem(
+        row.Id,
+        row.Title,
+        row.AiModel,
+        row.CreatedAt,
+        TryDeserializeJson(row.ItineraryJson)));
+});
+
+app.MapDelete("/api/trip/itineraries/{id:guid}", async (
+    Guid id,
+    AppDbContext db,
+    HttpContext httpContext,
+    CancellationToken ct) =>
+{
+    var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
+
+    var row = await db.AiItineraries.FirstOrDefaultAsync(x => x.Id == id, ct);
+    if (row is null) return Results.NotFound();
+
+    if (row.UserId != userId) return Results.Forbid();
+
+    db.AiItineraries.Remove(row);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 
 app.Run();

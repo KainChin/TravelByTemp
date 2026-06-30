@@ -4,15 +4,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 class FirestoreService {
   static final _db = FirebaseFirestore.instance;
 
-  // ── Lấy userId hiện tại ──
+  // -- Lấy userId hiện tại --
   static String get _uid =>
       FirebaseAuth.instance.currentUser?.uid ?? 'backend-session-user';
 
-  // ════════════════════════════════
+  // --------------------------------
   // TRIPS
-  // ════════════════════════════════
+  // --------------------------------
 
-  /// Tạo trip mới, trả về tripId
+  /// T?o trip mới, trả về tripId
   static Future<String> createTrip(String name) async {
     final ref = await _db
         .collection('users')
@@ -26,7 +26,7 @@ class FirestoreService {
     return ref.id;
   }
 
-  /// Lấy danh sách trips
+  /// L?y danh sách trips
   static Stream<QuerySnapshot> getTrips() {
     return _db
         .collection('users')
@@ -36,11 +36,11 @@ class FirestoreService {
         .snapshots();
   }
 
-  // ════════════════════════════════
+  // --------------------------------
   // PHOTOS
-  // ════════════════════════════════
+  // --------------------------------
 
-  /// Lưu ảnh (base64) vào trip
+  /// Luu ?nh (base64) vào trip
   static Future<String> savePhoto({
     required String tripId,
     required String base64Data,
@@ -58,7 +58,7 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Tăng photoCount
+    // Tang photoCount
     await _db
         .collection('users')
         .doc(_uid)
@@ -69,7 +69,7 @@ class FirestoreService {
     return ref.id;
   }
 
-  /// Lấy danh sách ảnh của trip
+  /// L?y danh sách ảnh của trip
   static Stream<QuerySnapshot> getPhotos(String tripId) {
     return _db
         .collection('users')
@@ -81,11 +81,11 @@ class FirestoreService {
         .snapshots();
   }
 
-  // ════════════════════════════════
+  // --------------------------------
   // VIDEOS
-  // ════════════════════════════════
+  // --------------------------------
 
-  /// Lưu metadata video sau khi tạo xong
+  /// Luu metadata video sau khi t?o xong
   static Future<void> saveVideoMetadata({
     required String tripId,
     required String tripName,
@@ -105,7 +105,7 @@ class FirestoreService {
     });
   }
 
-  /// Lấy danh sách videos
+  /// L?y danh sách videos
   static Stream<QuerySnapshot> getVideos() {
     return _db
         .collection('users')
@@ -115,3 +115,4 @@ class FirestoreService {
         .snapshots();
   }
 }
+

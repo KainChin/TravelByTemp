@@ -1,3 +1,4 @@
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'create_trip_screen.dart';
@@ -138,10 +139,11 @@ class _HeroCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1100&q=80',
+          const SafeNetworkImage(
+            url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1100&q=80',
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+            source: 'trip planning hero image',
+            fallback: SizedBox.shrink(),
           ),
           const DecoratedBox(
             decoration: BoxDecoration(

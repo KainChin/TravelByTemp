@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import '../models/article_model.dart';
 
 class ArticleDetailScreen extends StatelessWidget {
@@ -75,10 +76,10 @@ class _CoverAppBar extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              article.thumbnailUrl,
+            SafeNetworkImage(
+              url: article.thumbnailUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
+              source: 'article detail thumbnail',
             ),
             const DecoratedBox(
               decoration: BoxDecoration(

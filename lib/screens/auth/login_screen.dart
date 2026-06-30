@@ -1,4 +1,5 @@
 import 'package:assignment/core/widgets/vietai_scope.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'login_screen_styles.dart';
@@ -108,10 +109,11 @@ class _HeroHeader extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1100&q=80',
+            const SafeNetworkImage(
+              url: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1100&q=80',
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const DecoratedBox(
+              source: 'login hero image',
+              fallback: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0xFF006B52), Color(0xFF25B08B)],

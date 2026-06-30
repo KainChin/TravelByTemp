@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:assignment/core/widgets/safe_memory_image.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/services/firestore_service.dart';
 import 'package:assignment/screens/profile/upload/upload_screen.dart';
@@ -41,7 +40,7 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  // ── Hiện bottom sheet chọn trip để tạo video ──
+  // -- Hiện bottom sheet chọn trip để tạo video --
   void _showSelectTripDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -106,7 +105,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ── Section My Memories (dạng story tròn) ──
+  // -- Section My Memories (dạng story tròn) --
   Widget _buildMemoriesSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -115,14 +114,14 @@ class ProfileScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 5)),
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──
+          // -- Header --
           Row(
             children: [
               const Icon(Icons.auto_stories_outlined,
@@ -146,7 +145,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // ── Story circles ──
+          // -- Story circles --
           StreamBuilder<QuerySnapshot>(
             stream: FirestoreService.getVideos(),
             builder: (context, snapshot) {
@@ -173,7 +172,7 @@ class ProfileScreen extends StatelessWidget {
                         margin: const EdgeInsets.only(right: 12),
                         child: Column(
                           children: [
-                            // ── Story ring ──
+                            // -- Story ring --
                             Container(
                               padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
@@ -188,11 +187,13 @@ class ProfileScreen extends StatelessWidget {
                                     color: Colors.white, shape: BoxShape.circle),
                                 child: ClipOval(
                                   child: thumbnail.isNotEmpty
-                                      ? Image.memory(
-                                    base64Decode(thumbnail),
-                                    width: 54, height: 54,
-                                    fit: BoxFit.cover,
-                                  )
+                                      ? SafeBase64Image(
+                                          base64: thumbnail,
+                                          source: 'ProfileScreen video thumbnail',
+                                          width: 54,
+                                          height: 54,
+                                          fit: BoxFit.cover,
+                                        )
                                       : Container(
                                     width: 54, height: 54,
                                     color: Colors.grey[200],
@@ -203,7 +204,7 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            // ── Tên ──
+                            // ── Tên --
                             Text(name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -233,7 +234,7 @@ class ProfileScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ── Header ──
+            // -- Header --
             ProfileHeader(
               fullName: user?.fullName ?? 'Traveler',
               username: user?.username ?? 'traveler',
@@ -247,13 +248,13 @@ class ProfileScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
               ),
             ),
-            // ── Stats ──
+            // -- Stats --
             const StatsCard(),
-            // ── My Trips ──
+            // -- My Trips --
             const MyTripsSection(),
-            // ── My Memories ──
+            // -- My Memories --
             _buildMemoriesSection(context),
-            // ── Create Travel Video ──
+            // -- Create Travel Video --
             CtaCard(
               icon: Icons.video_library_outlined,
               title: 'Create Travel Video',
@@ -267,7 +268,7 @@ class ProfileScreen extends StatelessWidget {
               showPlayButton: true,
               onPressed: () => _showSelectTripDialog(context),
             ),
-            // ── Upload Photos ──
+            // -- Upload Photos --
             CtaCard(
               icon: Icons.cloud_upload_outlined,
               title: 'Upload Photos',
@@ -291,3 +292,4 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+

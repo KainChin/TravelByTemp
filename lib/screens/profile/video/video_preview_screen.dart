@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_memory_image.dart';
 import 'package:assignment/services/firestore_service.dart';
 
 class VideoPreviewScreen extends StatefulWidget {
@@ -133,13 +133,15 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
               itemCount: widget.photos.length,
               onPageChanged: (i) => setState(() => _currentIndex = i),
               itemBuilder: (_, i) {
-                final bytes =
-                base64Decode(widget.photos[i]['base64'] as String);
                 return Padding(
                   padding: const EdgeInsets.all(12),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.memory(bytes, fit: BoxFit.contain),
+                    child: SafeBase64Image(
+                      base64: widget.photos[i]['base64'] as String?,
+                      source: 'VideoPreviewScreen page $i',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 );
               },
@@ -155,8 +157,6 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: widget.photos.length,
               itemBuilder: (_, i) {
-                final bytes =
-                base64Decode(widget.photos[i]['base64'] as String);
                 final isActive = i == _currentIndex;
                 return GestureDetector(
                   onTap: () => setState(() => _currentIndex = i),
@@ -174,7 +174,11 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: Image.memory(bytes, fit: BoxFit.cover),
+                      child: SafeBase64Image(
+                        base64: widget.photos[i]['base64'] as String?,
+                        source: 'VideoPreviewScreen thumbnail $i',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 );
@@ -201,7 +205,7 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
                     ),
                   ),
                 ),
-                // ── Ẩn nút lưu khi đang xem lại từ Memories ──
+                // -- ?n nút lưu khi đang xem lại từ Memories --
                 if (!widget.isViewOnly) ...[
                   const SizedBox(width: 12),
                   Expanded(
@@ -268,12 +272,17 @@ class _SlideshowDialogState extends State<_SlideshowDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bytes = base64Decode(widget.photos[_index]['base64'] as String);
     return Dialog.fullscreen(
       backgroundColor: Colors.black,
       child: Stack(
         children: [
-          Center(child: Image.memory(bytes, fit: BoxFit.contain)),
+          Center(
+            child: SafeBase64Image(
+              base64: widget.photos[_index]['base64'] as String?,
+              source: 'SlideshowDialog photo $_index',
+              fit: BoxFit.contain,
+            ),
+          ),
           Positioned(
             top: 48, left: 16, right: 16,
             child: LinearProgressIndicator(
@@ -308,3 +317,4 @@ class _SlideshowDialogState extends State<_SlideshowDialog> {
     );
   }
 }
+

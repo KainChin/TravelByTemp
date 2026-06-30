@@ -33,7 +33,7 @@ class DestinationSection extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: destinations.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (_, i) => DestinationCard(
               destination: destinations[i],
               onFavoriteTap: () => onFavoriteTap?.call(destinations[i].id),

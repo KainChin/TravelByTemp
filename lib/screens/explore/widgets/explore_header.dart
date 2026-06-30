@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 
 class ExploreHeader extends StatelessWidget {
   // TODO: Replace with UserModel from API: GET /api/users/me
@@ -62,10 +63,11 @@ class _Avatar extends StatelessWidget {
       ),
       child: ClipOval(
         child: url != null
-            ? Image.network(
-                url!,
+            ? SafeNetworkImage(
+                url: url,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _DefaultAvatar(),
+                fallback: const _DefaultAvatar(),
+                source: 'explore avatar',
               )
             : const _DefaultAvatar(),
       ),
@@ -99,7 +101,7 @@ class _NotificationButton extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

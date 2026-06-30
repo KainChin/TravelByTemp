@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import '../models/destination_model.dart';
 
 class DestinationCard extends StatelessWidget {
@@ -75,10 +76,10 @@ class _CardImage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              imageUrl,
+            SafeNetworkImage(
+              url: imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
+              source: 'destination card image',
             ),
             Positioned(
               top: 8,
@@ -89,7 +90,7 @@ class _CardImage extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

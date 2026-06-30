@@ -1,66 +1,167 @@
+import 'package:assignment/core/widgets/vietai_scope.dart';
+import 'package:assignment/screens/trips/screens/trip_itinerary_history_screen.dart';
+import 'package:assignment/screens/trips/screens/trip_itinerary_result_screen.dart';
+import 'package:assignment/screens/trips/services/trip_itinerary_service.dart';
 import 'package:flutter/material.dart';
 
-class TripItem {
-  final String name;
-  final String country;
-  final String date;
-  final String imageUrl;
-
-  const TripItem({required this.name, required this.country, required this.date, required this.imageUrl});
-}
-
-class MyTripsSection extends StatelessWidget {
+class MyTripsSection extends StatefulWidget {
   const MyTripsSection({super.key});
 
-  static const _trips = [
-    TripItem(name: 'Da Nang', country: 'Vietnam',  date: 'May 2024', imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200'),
-    TripItem(name: 'Sapa',    country: 'Vietnam',  date: 'Apr 2024', imageUrl: 'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=200'),
-    TripItem(name: 'Japan',   country: 'Japan',    date: 'Mar 2024', imageUrl: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=200'),
-    TripItem(name: 'Hoi An',  country: 'Vietnam',  date: 'Feb 2024', imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=200'),
-  ];
+  @override
+  State<MyTripsSection> createState() => _MyTripsSectionState();
+}
+
+class _MyTripsSectionState extends State<MyTripsSection> {
+  Future<List<TripItineraryHistoryItem>>? _future;
+  String? _token;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final token = VietaiScope.of(context).auth?.accessToken;
+    if (_future == null || token != _token) {
+      _token = token;
+      _future = _load(token);
+    }
+  }
+
+  Future<List<TripItineraryHistoryItem>> _load(String? token) {
+    return TripItineraryService(authToken: token).history();
+  }
+
+  void _refresh() {
+    setState(() {
+      _future = _load(_token);
+    });
+  }
+
+  void _openHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TripItineraryHistoryScreen()),
+    ).then((_) => _refresh());
+  }
+
+  void _openTrip(TripItineraryHistoryItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TripItineraryResultScreen(
+          response: 'Hanh trinh da luu',
+          itinerary: item.itinerary,
+          itineraryId: item.id,
+        ),
+      ),
+    ).then((_) => _refresh());
+  }
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          _buildHeader(),
+          _SectionHeader(onViewAll: _openHistory, onRefresh: _refresh),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 130,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _trips.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _TripCard(trip: _trips[i]),
-            ),
+          FutureBuilder<List<TripItineraryHistoryItem>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 128,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return _StateMessage(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'Khong tai duoc hanh trinh',
+                  message: 'Kiem tra ket noi backend roi thu lai.',
+                  actionLabel: 'Thu lai',
+                  onAction: _refresh,
+                );
+              }
+
+              final trips = snapshot.data ?? const [];
+              if (trips.isEmpty) {
+                return const _StateMessage(
+                  icon: Icons.route_outlined,
+                  title: 'Chua co hanh trinh',
+                  message: 'Nhung chuyen di da luu se hien o day.',
+                );
+              }
+
+              final visibleTrips = trips.take(6).toList();
+              return SizedBox(
+                height: 136,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: visibleTrips.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 10),
+                  itemBuilder: (_, index) => _TripCard(
+                    trip: visibleTrips[index],
+                    onTap: () => _openTrip(visibleTrips[index]),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildHeader() {
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.onViewAll,
+    required this.onRefresh,
+  });
+
+  final VoidCallback onViewAll;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       children: [
-        const Icon(Icons.map_outlined, color: Color(0xFF3A7D5A), size: 20),
+        Icon(Icons.map_outlined, color: colors.primary, size: 20),
         const SizedBox(width: 6),
-        const Text('My Trips', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        const Text(
+          'Hanh trinh cua toi',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
         const Spacer(),
-        GestureDetector(
-          onTap: () {},
-          child: const Row(
-            children: [
-              Text('View all', style: TextStyle(fontSize: 13, color: Color(0xFF3A7D5A), fontWeight: FontWeight.w600)),
-              Icon(Icons.chevron_right, size: 16, color: Color(0xFF3A7D5A)),
-            ],
+        IconButton(
+          tooltip: 'Tai lai',
+          visualDensity: VisualDensity.compact,
+          onPressed: onRefresh,
+          icon: Icon(Icons.refresh_rounded, color: colors.primary, size: 18),
+        ),
+        TextButton.icon(
+          onPressed: onViewAll,
+          iconAlignment: IconAlignment.end,
+          icon: const Icon(Icons.chevron_right, size: 16),
+          label: const Text('Xem tat ca'),
+          style: TextButton.styleFrom(
+            foregroundColor: colors.primary,
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            visualDensity: VisualDensity.compact,
           ),
         ),
       ],
@@ -69,43 +170,190 @@ class MyTripsSection extends StatelessWidget {
 }
 
 class _TripCard extends StatelessWidget {
-  final TripItem trip;
-  const _TripCard({required this.trip});
+  const _TripCard({
+    required this.trip,
+    required this.onTap,
+  });
+
+  final TripItineraryHistoryItem trip;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final days = _dayCount(trip.itinerary);
+    final activities = _activityCount(trip.itinerary);
+    final date = _formatDate(trip.createdAt);
+
     return SizedBox(
-      width: 90,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(trip.imageUrl, width: 90, height: 80, fit: BoxFit.cover),
-              ),
-              Positioned(
-                bottom: 4, left: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00643C).withOpacity(0.75),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(trip.date, style: const TextStyle(color: Colors.white, fontSize: 9)),
+      width: 168,
+      child: Material(
+        color: colors.primaryContainer.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.route_rounded, color: colors.primary, size: 19),
+                    ),
+                    const Spacer(),
+                    Text(
+                      date,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                Text(
+                  trip.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+                const Spacer(),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _MiniChip(label: '$days ngay', icon: Icons.calendar_today_outlined),
+                    _MiniChip(label: '$activities hoat dong', icon: Icons.explore_outlined),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(trip.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          Row(
-            children: [
-              const Icon(Icons.location_on_outlined, size: 10, color: Color(0xFF888888)),
-              Text(trip.country, style: const TextStyle(fontSize: 10, color: Color(0xFF888888))),
-            ],
+        ),
+      ),
+    );
+  }
+
+  static int _dayCount(Map<String, dynamic> itinerary) {
+    final days = itinerary['days'];
+    if (days is List && days.isNotEmpty) return days.length;
+    return 1;
+  }
+
+  static int _activityCount(Map<String, dynamic> itinerary) {
+    final days = itinerary['days'];
+    if (days is! List) return 0;
+    var count = 0;
+    for (final day in days) {
+      if (day is Map<String, dynamic>) {
+        final activities = day['activities'];
+        if (activities is List) count += activities.length;
+      }
+    }
+    return count;
+  }
+
+  static String _formatDate(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    return '$day/$month/${value.year}';
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.surface.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: colors.primary),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StateMessage extends StatelessWidget {
+  const _StateMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: colors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(
+                  message,
+                  style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (actionLabel != null && onAction != null)
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
         ],
       ),
     );

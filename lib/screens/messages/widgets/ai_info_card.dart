@@ -44,7 +44,7 @@ class AiInfoCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.smart_toy_outlined,
                   color: MessageColors.primaryGreen,
                 ),

@@ -64,7 +64,7 @@ class _BudgetSliderState extends State<BudgetSlider> {
             onSubmitted: (_) => _commitInput(),
             onEditingComplete: _commitInput,
             decoration: InputDecoration(
-              labelText: 'Ngân sách mỗi người',
+              labelText: 'Tổng ngân sách chuyến đi',
               prefixIcon: const Icon(Icons.payments_outlined, color: Color(0xFF008F6A)),
               suffixText: 'VND',
               filled: true,

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:assignment/screens/explore/screens/explore_screen.dart';
 import 'package:assignment/screens/messages/messages_screen.dart';
 import 'package:assignment/screens/profile/profile_screen.dart';
@@ -7,8 +7,8 @@ import 'package:assignment/screens/trips/screens/trip_planning_screen.dart';
 
 
 class MainShell extends StatefulWidget {
-  /// TÃªn ngÆ°á»i dÃ¹ng Ä‘Ã£ Ä‘Äƒng nháº­p â€” truyá»n tá»« mÃ n hÃ¬nh Login/Auth khi
-  /// Ä‘iá»u hÆ°á»›ng tá»›i MainShell, vÃ­ dá»¥:
+  /// Tên người dùng đã đăng nhập — truyền từ màn hình Login/Auth khi
+  /// điều hướng tới MainShell, ví dụ:
   /// `Navigator.pushReplacement(context, MaterialPageRoute(
   ///   builder: (_) => MainShell(currentUserName: userModel.fullName),
   /// ));`
@@ -24,11 +24,14 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0; // Open Explore/Home first after login.
   int _savedRefreshToken = 0;
 
-  // KhÃ´ng cÃ²n lÃ  `static final` vÃ¬ danh sÃ¡ch mÃ n hÃ¬nh giá» phá»¥ thuá»™c vÃ o
-  // currentUserName cá»§a widget (chá»‰ biáº¿t Ä‘Æ°á»£c á»Ÿ instance, khÃ´ng pháº£i static).
+  // Không còn là `static final` vì danh sách màn hình giờ phụ thuộc vào
+  // currentUserName của widget (chỉ biết được ở instance, không phải static).
   List<Widget> get _screens => [
         const ExploreScreen(),
-        SavedScreen(refreshToken: _savedRefreshToken),
+        SavedScreen(
+          refreshToken: _savedRefreshToken,
+          onHomePressed: () => setState(() => _currentIndex = 0),
+        ),
         const TripPlanningScreen(),
         MessagesScreen(currentUserName: widget.currentUserName),
         const ProfileScreen(),
@@ -45,7 +48,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  // Giá»¯ nguyÃªn logic _buildBottomNav cá»§a báº¡n vÃ¬ nÃ³ Ä‘Ã£ Ä‘áº¹p rá»“i
+  // Giữ nguyên logic _buildBottomNav của bạn vì nó đã đẹp rồi
   Widget _buildBottomNav() {
     const activeColor = Color(0xFF2ECC71);
     const items = [
@@ -59,7 +62,7 @@ class _MainShellState extends State<MainShell> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         child: Padding(
@@ -85,7 +88,7 @@ class _MainShellState extends State<MainShell> {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isActive ? activeColor.withOpacity(0.12) : Colors.transparent,
+                          color: isActive ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -121,3 +124,5 @@ class _NavItem {
   final String label;
   const _NavItem({required this.icon, required this.activeIcon, required this.label});
 }
+
+

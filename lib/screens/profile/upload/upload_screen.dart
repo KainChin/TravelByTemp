@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:assignment/core/widgets/safe_memory_image.dart';
 import 'package:assignment/services/firestore_service.dart';
 import 'upload_service.dart';
 
@@ -31,7 +31,7 @@ class _UploadScreenState extends State<UploadScreen> {
     if (images.isNotEmpty) setState(() => _selectedImages = images);
   }
 
-  // ── Bottom sheet: chọn trip có sẵn HOẶC tạo mới ──
+  // -- Bottom sheet: chọn trip có sẵn HOẶC tạo mới --
   Future<void> _showTripPicker() async {
     await showModalBottomSheet(
       context: context,
@@ -46,7 +46,7 @@ class _UploadScreenState extends State<UploadScreen> {
             const Text('Chọn chuyến đi',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
-            // ── Nút tạo trip mới ──
+            // ── Nút tạo trip mới --
             ListTile(
               leading: const CircleAvatar(
                 backgroundColor: Color(0xFF3A7D5A),
@@ -60,7 +60,7 @@ class _UploadScreenState extends State<UploadScreen> {
               },
             ),
             const Divider(),
-            // ── Danh sách trip có sẵn ──
+            // -- Danh sách trip có sẵn --
             StreamBuilder<QuerySnapshot>(
               stream: FirestoreService.getTrips(),
               builder: (context, snapshot) {
@@ -105,7 +105,7 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
-  // ── Dialog tạo trip mới ──
+  // -- Dialog tạo trip mới --
   Future<void> _showCreateTripDialog() async {
     _tripNameCtrl.clear();
     await showDialog(
@@ -216,7 +216,7 @@ class _UploadScreenState extends State<UploadScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06), blurRadius: 8)
+                color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)
           ],
         ),
         child: Row(
@@ -253,7 +253,7 @@ class _UploadScreenState extends State<UploadScreen> {
           border: Border.all(color: const Color(0xFF3A7D5A)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06), blurRadius: 8)
+                color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)
           ],
         ),
         child: const Center(
@@ -293,12 +293,16 @@ class _UploadScreenState extends State<UploadScreen> {
           itemBuilder: (_, i) => FutureBuilder<String>(
             future: UploadService.toBase64(_selectedImages[i]),
             builder: (_, snap) {
-              if (!snap.hasData)
+              if (!snap.hasData) {
                 return Container(color: Colors.grey[200]);
+              }
               return ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.memory(base64Decode(snap.data!),
-                    fit: BoxFit.cover),
+                child: SafeBase64Image(
+                  base64: snap.data,
+                  source: 'Upload preview ${_selectedImages[i].name}',
+                  fit: BoxFit.cover,
+                ),
               );
             },
           ),
@@ -344,3 +348,4 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 }
+
