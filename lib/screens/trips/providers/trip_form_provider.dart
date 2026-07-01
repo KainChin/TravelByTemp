@@ -14,7 +14,13 @@ class TripFormProvider extends ChangeNotifier {
 
   final String departurePoint;
   final List<SelectedDestination> _selectedDestinations = [];
-  Destination _departure = DestinationCatalog.hoChiMinh;
+  Destination _departure = const Destination(
+    id: 'default_departure',
+    name: defaultDeparturePoint,
+    region: 'South',
+    latitude: 10.7769,
+    longitude: 106.7009,
+  );
 
   int peopleCount = 2;
   bool isAnalyzing = false;

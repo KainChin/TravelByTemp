@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unnecessary_library_name
+// ignore_for_file: unnecessary_library_name
 
 library trip_itinerary_result_screen;
 
@@ -7,6 +7,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 
 import '../../saved/saved_screen.dart';
@@ -459,15 +461,6 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                     ),
                     const SizedBox(height: 14),
                     const AiInsightSection(),
-                    const SizedBox(height: 14),
-                    BookingSection(
-                      days: _days,
-                      onBookFlight: () => _openChat(initialPrompt: 'Hỗ trợ đặt vé máy bay cho chuyến đi này'),
-                      onBookHotel: () => _openChat(initialPrompt: 'Hỗ trợ chọn và đặt khách sạn cho chuyến đi này'),
-                      onBookTickets: () => _openChat(initialPrompt: 'Hỗ trợ đặt vé tham quan cho chuyến đi này'),
-                    ),
-                    const SizedBox(height: 14),
-                    AiChecklistSection(days: _days),
                   ],
                 );
 

@@ -16,6 +16,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AiItinerary> AiItineraries => Set<AiItinerary>();
     public DbSet<TripRoute> TripRoutes => Set<TripRoute>();
     public DbSet<TripRouteLeg> TripRouteLegs => Set<TripRouteLeg>();
+    public DbSet<TransportHub> TransportHubs => Set<TransportHub>();
+    public DbSet<TransportRoute> TransportRoutes => Set<TransportRoute>();
+    public DbSet<TransportConfig> TransportConfigs => Set<TransportConfig>();
     public DbSet<UserTravelMemory> UserTravelMemories => Set<UserTravelMemory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -205,6 +208,52 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Reason).HasColumnName("reason");
             e.Property(x => x.IsGoogleEstimate).HasColumnName("is_google_estimate");
             e.HasIndex(x => new { x.TripRouteId, x.LegOrder }).IsUnique();
+        });
+
+        modelBuilder.Entity<TransportHub>(e =>
+        {
+            e.ToTable("transport_hubs");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Code).HasColumnName("code");
+            e.Property(x => x.Name).HasColumnName("name");
+            e.Property(x => x.Type).HasColumnName("type");
+            e.Property(x => x.Province).HasColumnName("province");
+            e.Property(x => x.Region).HasColumnName("region");
+            e.Property(x => x.Latitude).HasColumnName("latitude");
+            e.Property(x => x.Longitude).HasColumnName("longitude");
+            e.Property(x => x.Description).HasColumnName("description");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasIndex(x => x.Code).IsUnique();
+            e.HasIndex(x => new { x.Type, x.IsActive });
+        });
+
+        modelBuilder.Entity<TransportRoute>(e =>
+        {
+            e.ToTable("transport_routes");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OriginHubId).HasColumnName("origin_hub_id");
+            e.Property(x => x.DestinationHubId).HasColumnName("destination_hub_id");
+            e.Property(x => x.TransportType).HasColumnName("transport_type");
+            e.Property(x => x.EstimatedDurationHours).HasColumnName("estimated_duration_hours");
+            e.Property(x => x.EstimatedCostVnd).HasColumnName("estimated_cost_vnd");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasIndex(x => new { x.OriginHubId, x.DestinationHubId, x.TransportType }).IsUnique();
+            e.HasOne(x => x.OriginHub).WithMany(x => x.OriginRoutes).HasForeignKey(x => x.OriginHubId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.DestinationHub).WithMany(x => x.DestinationRoutes).HasForeignKey(x => x.DestinationHubId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TransportConfig>(e =>
+        {
+            e.ToTable("transport_configs");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Key).HasColumnName("key");
+            e.Property(x => x.Value).HasColumnName("value");
+            e.Property(x => x.Description).HasColumnName("description");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasIndex(x => x.Key).IsUnique();
         });
 
         modelBuilder.Entity<UserTravelMemory>(e =>

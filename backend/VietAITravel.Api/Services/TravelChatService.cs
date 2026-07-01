@@ -383,6 +383,9 @@ public sealed class TravelChatService(
             - diem xuat phat, diem den
             - cac chang di chuyen da duoc validate
             - so thich, kieu nhom va yeu cau dac biet
+            RouteLegs la ket qua validate bang code. Khong duoc tu quyet dinh availability cua may bay.
+            Neu routeLegs co mode=flight thi coi do la multi-modal da xac minh: origin -> originAirport -> flight -> destinationAirport -> destination.
+            Ollama chi duoc giai thich/goi y cach dat ve va sap xep lich, khong duoc disable hoac thay the flight availability da validate.
 
             Bat buoc sinh dia diem/hoat dong phu hop voi du lieu nguoi dung da chon:
             - travelGroup quyet dinh nhip do va loai dia diem: mot minh, nguoi yeu, gia dinh, ban be.

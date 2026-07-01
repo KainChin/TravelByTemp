@@ -1,6 +1,8 @@
+import 'dart:ui';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import 'login_screen_styles.dart';
 
@@ -66,8 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: BoxConstraints(minHeight: constraints.maxHeight - 36),
                 child: Column(
                   children: [
-                    _HeroHeader(onLanguageTap: _showComingSoon),
-                    const SizedBox(height: 18),
+                    _HeroHeader(onLanguageTap: _showComingSoon)
+                        .animate()
+                        .fadeIn(duration: 800.ms)
+                        .scale(begin: const Offset(0.95, 0.95), duration: 800.ms, curve: Curves.easeOutQuart),
+                    const SizedBox(height: 24),
                     _LoginPanel(
                       formKey: _formKey,
                       usernameController: _usernameController,
@@ -80,9 +85,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       onLogin: _handleLogin,
                       onForgotPassword: _showComingSoon,
                       onSocialTap: _showComingSoon,
-                    ),
-                    const SizedBox(height: 18),
-                    _Footer(onRegister: _showComingSoon),
+                    ).animate().fadeIn(delay: 200.ms, duration: 800.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuart),
+                    const SizedBox(height: 24),
+                    _Footer(onRegister: _showComingSoon)
+                        .animate()
+                        .fadeIn(delay: 400.ms, duration: 800.ms),
                   ],
                 ),
               ),
@@ -102,9 +109,9 @@ class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(26),
+      borderRadius: BorderRadius.circular(32),
       child: SizedBox(
-        height: 230,
+        height: 260,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
@@ -116,7 +123,7 @@ class _HeroHeader extends StatelessWidget {
               fallback: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF006B52), Color(0xFF25B08B)],
+                    colors: [Color(0xFF4338CA), Color(0xFF0EA5E9)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -126,46 +133,55 @@ class _HeroHeader extends StatelessWidget {
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xAA05251D), Color(0x2205251D), Color(0xCC05251D)],
+                  colors: [Colors.transparent, Color(0x990F172A), Color(0xDD0F172A)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 10)],
                         ),
                         child: const Icon(
                           Icons.travel_explore,
-                          color: LoginScreenStyles.primary,
+                          color: Color(0xFF4338CA),
+                          size: 26,
                         ),
                       ),
                       const Spacer(),
-                      TextButton.icon(
-                        onPressed: onLanguageTap,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor: Colors.white.withValues(alpha: 0.16),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                          child: TextButton.icon(
+                            onPressed: onLanguageTap,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.white.withValues(alpha: 0.15),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                              ),
+                            ),
+                            icon: const Icon(Icons.language, size: 18),
+                            label: const Text(
+                              'Tiếng Việt',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                            ),
                           ),
-                        ),
-                        icon: const Icon(Icons.language, size: 17),
-                        label: const Text(
-                          'Tiếng Việt',
-                          style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],
@@ -174,7 +190,7 @@ class _HeroHeader extends StatelessWidget {
                   const Text('VietAI Travel', style: LoginScreenStyles.heroEyebrow),
                   const SizedBox(height: 8),
                   const Text(
-                    'Lên lịch trình Việt Nam dễ hơn.',
+                    'Khám phá thế giới\nvới AI thông minh.',
                     style: LoginScreenStyles.heroTitle,
                   ),
                 ],
@@ -214,16 +230,16 @@ class _LoginPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: LoginScreenStyles.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: LoginScreenStyles.line),
+        color: Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.white),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14005B44),
-            blurRadius: 24,
-            offset: Offset(0, 14),
+            color: Color(0x0A0F172A),
+            blurRadius: 32,
+            offset: Offset(0, 16),
           ),
         ],
       ),
@@ -289,20 +305,43 @@ class _LoginPanel extends StatelessWidget {
                 child: const Text('Quên mật khẩu?', style: LoginScreenStyles.linkText),
               ),
             ),
-            const SizedBox(height: 4),
-            ElevatedButton(
-              onPressed: isLoading ? null : onLogin,
-              style: LoginScreenStyles.primaryButtonStyle,
-              child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Đăng nhập', style: LoginScreenStyles.primaryButtonText),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4338CA), Color(0xFF0EA5E9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4338CA).withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: isLoading ? null : onLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Đăng nhập', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+              ),
             ),
             const SizedBox(height: 18),
             Row(
@@ -355,9 +394,10 @@ class _SocialButton extends StatelessWidget {
       label: Text(label),
       style: OutlinedButton.styleFrom(
         foregroundColor: LoginScreenStyles.ink,
-        side: const BorderSide(color: LoginScreenStyles.line),
-        minimumSize: const Size.fromHeight(46),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        backgroundColor: const Color(0xFFF8FAFC),
+        minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
     );
   }
@@ -382,7 +422,7 @@ class _Footer extends StatelessWidget {
           child: const Text(
             'Đăng ký',
             style: TextStyle(
-              color: LoginScreenStyles.primary,
+              color: Color(0xFF4338CA),
               fontWeight: FontWeight.w900,
             ),
           ),

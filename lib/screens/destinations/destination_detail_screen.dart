@@ -24,10 +24,13 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDetail());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadDetail();
+    });
   }
 
   Future<void> _loadDetail() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final api = VietaiScope.of(context).api;

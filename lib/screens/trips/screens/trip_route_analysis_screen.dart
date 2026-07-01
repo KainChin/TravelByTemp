@@ -196,10 +196,22 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
     ];
   }
 
-  void _changeLegMode(RouteLeg leg, TransportMode mode, String reason) {
+  void _changeLegMode(RouteLeg leg, TransportOption option) {
     final updated = _analysis.legs.map((item) {
       if (item.order != leg.order) return item;
-      return item.copyWith(recommendedMode: mode, reason: reason);
+      return item.copyWith(
+        recommendedMode: option.mode,
+        reason: option.reason,
+        durationHours: option.durationHours,
+        estimatedCostVndOverride: option.estimatedCostVnd,
+        transportOptions: item.transportOptions
+            .map(
+              (candidate) => candidate.copyWith(
+                isRecommended: candidate.mode == option.mode,
+              ),
+            )
+            .toList(),
+      );
     }).toList();
     setState(() => _analysis = _analysis.copyWith(legs: updated));
   }

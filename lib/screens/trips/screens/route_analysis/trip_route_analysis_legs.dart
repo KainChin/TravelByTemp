@@ -9,7 +9,7 @@ class _LegList extends StatelessWidget {
   });
 
   final TripRouteAnalysis analysis;
-  final void Function(RouteLeg leg, TransportMode mode, String reason) onChangeMode;
+  final void Function(RouteLeg leg, TransportOption option) onChangeMode;
 
   Future<void> _showTransportPicker(BuildContext context, RouteLeg leg) async {
     final options = transportOptionsForLeg(leg);
@@ -23,7 +23,7 @@ class _LegList extends StatelessWidget {
           options: options,
           onSelected: (option) {
             Navigator.pop(context);
-            onChangeMode(leg, option.mode, option.reason);
+            onChangeMode(leg, option);
           },
         );
       },

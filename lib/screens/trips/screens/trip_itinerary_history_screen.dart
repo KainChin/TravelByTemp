@@ -15,16 +15,20 @@ class TripItineraryHistoryScreen extends StatefulWidget {
 class _TripItineraryHistoryScreenState
     extends State<TripItineraryHistoryScreen> {
   late Future<List<TripItineraryHistoryItem>> _future;
+  bool _initialized = false;
+  String? _authToken;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _authToken = VietaiScope.of(context).auth?.accessToken;
     _future = _load();
   }
 
   Future<List<TripItineraryHistoryItem>> _load() {
-    final token = VietaiScope.of(context).auth?.accessToken;
-    return TripItineraryService(authToken: token).history();
+    return TripItineraryService(authToken: _authToken).history();
   }
 
   Future<void> _refresh() async {

@@ -98,20 +98,13 @@ class TripItineraryService {
     int? peopleCount,
     double? budgetPerPerson,
   }) async {
-    final localFallback = TripRouteAnalysis.from(
-      departurePoint: departurePoint,
-      departure: departure,
-      selectedDestinations: destinations,
-      budgetPerPerson: budgetPerPerson,
-    );
-
     try {
       final response = await _client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/api/trip/analyze-route'),
             headers: _headers,
             body: utf8.encode(jsonEncode({
-              'departure': _placeToJson(localFallback.departure),
+              'departure': _placeToJson(departure),
               'destinations': destinations
                   .map((item) => _placeToJson(item.destination))
                   .toList(),
@@ -143,9 +136,17 @@ class TripItineraryService {
         );
       }
 
-      return localFallback;
-    } catch (_) {
-      return localFallback;
+      throw TripItineraryException(_serverMessage(body, response.statusCode));
+    } on TimeoutException {
+      throw const TripItineraryException('Backend took too long to analyze route.');
+    } on http.ClientException {
+      throw const TripItineraryException('Cannot connect to backend.');
+    } on FormatException {
+      throw const TripItineraryException('Cannot parse backend route analysis.');
+    } on TripItineraryException {
+      rethrow;
+    } catch (e) {
+      throw TripItineraryException('Unexpected route analysis error: $e');
     }
   }
 

@@ -79,28 +79,7 @@ num _dayCost(Object? day) {
   return _activitiesFor(day).fold<num>(0, (sum, item) => sum + _activityCost(item));
 }
 
-double _dayDurationHours(Object? day) {
-  return _activitiesFor(day).fold<double>(0, (sum, item) => sum + _activityDurationHours(item));
-}
 
-double _activityDurationHours(Map<String, dynamic> activity) {
-  final minutes = activity['durationMinutes'];
-  if (minutes is num && minutes > 0) return minutes / 60;
-  final raw = _normalizeText('${activity['duration'] ?? activity['estimatedDuration'] ?? ''}');
-  final number = double.tryParse(RegExp(r'\d+([.,]\d+)?').firstMatch(raw)?.group(0)?.replaceAll(',', '.') ?? '');
-  if (number == null) return 1.25;
-  if (raw.contains('phut')) return number / 60;
-  return number;
-}
-
-String _formatHoursCompact(double hours) {
-  if (hours <= 0) return 'Chưa có dữ liệu';
-  final h = hours.floor();
-  final m = ((hours - h) * 60).round();
-  if (h <= 0) return '$m phút';
-  if (m == 0) return '$h giờ';
-  return '$h giờ $m phút';
-}
 
 String _distanceToNextLabel(Map<String, dynamic> current, Map<String, dynamic>? next) {
   if (next == null) return '';

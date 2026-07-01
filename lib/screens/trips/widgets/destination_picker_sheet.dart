@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:assignment/core/config/api_config.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/destination.dart';
 
@@ -20,6 +24,7 @@ class DestinationPickerSheet extends StatefulWidget {
 
 class _DestinationPickerSheetState extends State<DestinationPickerSheet> {
   final TextEditingController _searchController = TextEditingController();
+  late final Future<List<Destination>> _destinationsFuture = _loadDestinations();
   String _query = '';
 
   @override
@@ -45,6 +50,44 @@ class _DestinationPickerSheetState extends State<DestinationPickerSheet> {
       '${destination.name} ${destination.region} ${destination.highlight}',
     );
     return haystack.contains(query);
+  }
+
+  Future<List<Destination>> _loadDestinations() async {
+    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/destinations'));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Cannot load destinations from backend.');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! List) return const [];
+
+    return decoded.whereType<Map<String, dynamic>>().map((json) {
+      return Destination(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        region: json['region'] as String? ?? '',
+        latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
+        longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+        highlight: json['province'] as String? ??
+            json['category'] as String? ??
+            json['description'] as String? ??
+            '',
+      );
+    }).where((destination) {
+      return destination.id.isNotEmpty &&
+          destination.name.isNotEmpty &&
+          destination.latitude != 0 &&
+          destination.longitude != 0;
+    }).toList();
+  }
+
+  Map<String, List<Destination>> _groupByRegion(List<Destination> destinations) {
+    final grouped = <String, List<Destination>>{};
+    for (final destination in destinations.where(_matches)) {
+      final region = destination.region.isEmpty ? 'Other' : destination.region;
+      grouped.putIfAbsent(region, () => []).add(destination);
+    }
+    return grouped;
   }
 
   @override
@@ -99,21 +142,42 @@ class _DestinationPickerSheetState extends State<DestinationPickerSheet> {
                 ),
               ),
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  children: DestinationCatalog.regionOrder
-                      .map((region) {
-                        final destinations = DestinationCatalog.byRegion[region]!
-                            .where(_matches)
-                            .toList();
-                        if (destinations.isEmpty) return const SizedBox.shrink();
+                child: FutureBuilder<List<Destination>>(
+                  future: _destinationsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('Khong tai duoc danh sach diem den.'),
+                        ),
+                      );
+                    }
+
+                    final grouped = _groupByRegion(snapshot.data ?? const []);
+                    if (grouped.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('Khong co diem den phu hop.'),
+                        ),
+                      );
+                    }
+
+                    return ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      children: grouped.entries.map((entry) {
                         return _RegionSection(
-                          region: region,
-                          destinations: destinations,
+                          region: entry.key,
+                          destinations: entry.value,
                         );
-                      })
-                      .toList(),
+                      }).toList(),
+                    );
+                  },
                 ),
               ),
             ],
