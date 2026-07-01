@@ -4,32 +4,88 @@ part of route_analysis;
 
 enum TransportMode { motorbike, car, coach, train, ferry, flight }
 
-class TransportAvailability {
-  const TransportAvailability({
-    required this.mode,
-    required this.isAvailable,
-    required this.reason,
-  });
-
-  final TransportMode mode;
-  final bool isAvailable;
-  final String reason;
-}
-
 class TransportOption {
   const TransportOption({
     required this.mode,
     required this.isAvailable,
+    required this.isRecommended,
     required this.reason,
     required this.durationHours,
     required this.estimatedCostVnd,
+    this.segments = const [],
+    this.aiScore = 0,
+    this.pros = const [],
+    this.cons = const [],
   });
 
   final TransportMode mode;
   final bool isAvailable;
+  final bool isRecommended;
   final String reason;
   final double durationHours;
   final double estimatedCostVnd;
+  final List<String> segments;
+  final double aiScore;
+  final List<String> pros;
+  final List<String> cons;
+
+  factory TransportOption.fromJson(Map<String, dynamic> json) {
+    return TransportOption(
+      mode: _modeFromApi(json['type'] as String? ??
+          json['mode'] as String? ??
+          json['Type'] as String? ??
+          json['Mode'] as String?),
+      isAvailable: json['isAvailable'] as bool? ??
+          json['IsAvailable'] as bool? ??
+          false,
+      isRecommended: json['isRecommended'] as bool? ??
+          json['IsRecommended'] as bool? ??
+          false,
+      reason: json['reason'] as String? ?? json['Reason'] as String? ?? '',
+      durationHours: (json['estimatedDuration'] as num?)?.toDouble() ??
+          (json['EstimatedDuration'] as num?)?.toDouble() ??
+          (json['durationHours'] as num?)?.toDouble() ??
+          (json['DurationHours'] as num?)?.toDouble() ??
+          0,
+      estimatedCostVnd: (json['estimatedCost'] as num?)?.toDouble() ??
+          (json['EstimatedCost'] as num?)?.toDouble() ??
+          (json['estimatedCostVnd'] as num?)?.toDouble() ??
+          (json['EstimatedCostVnd'] as num?)?.toDouble() ??
+          0,
+      segments: _stringList(json['segments'] ?? json['Segments']),
+      aiScore: (json['aiScore'] as num?)?.toDouble() ??
+          (json['AiScore'] as num?)?.toDouble() ??
+          0,
+      pros: _stringList(json['pros'] ?? json['Pros']),
+      cons: _stringList(json['cons'] ?? json['Cons']),
+    );
+  }
+
+  TransportOption copyWith({
+    TransportMode? mode,
+    bool? isAvailable,
+    bool? isRecommended,
+    String? reason,
+    double? durationHours,
+    double? estimatedCostVnd,
+    List<String>? segments,
+    double? aiScore,
+    List<String>? pros,
+    List<String>? cons,
+  }) {
+    return TransportOption(
+      mode: mode ?? this.mode,
+      isAvailable: isAvailable ?? this.isAvailable,
+      isRecommended: isRecommended ?? this.isRecommended,
+      reason: reason ?? this.reason,
+      durationHours: durationHours ?? this.durationHours,
+      estimatedCostVnd: estimatedCostVnd ?? this.estimatedCostVnd,
+      segments: segments ?? this.segments,
+      aiScore: aiScore ?? this.aiScore,
+      pros: pros ?? this.pros,
+      cons: cons ?? this.cons,
+    );
+  }
 }
 
 class RouteLeg {
@@ -41,6 +97,9 @@ class RouteLeg {
     required this.recommendedMode,
     required this.reason,
     this.isGoogleEstimate = false,
+    this.durationHours,
+    this.estimatedCostVndOverride,
+    this.transportOptions = const [],
   });
 
   final int order;
@@ -50,6 +109,9 @@ class RouteLeg {
   final TransportMode recommendedMode;
   final String reason;
   final bool isGoogleEstimate;
+  final double? durationHours;
+  final double? estimatedCostVndOverride;
+  final List<TransportOption> transportOptions;
 
   String get routeLabel => '$fromName -> ${to.name}';
 
@@ -61,6 +123,9 @@ class RouteLeg {
     TransportMode? recommendedMode,
     String? reason,
     bool? isGoogleEstimate,
+    double? durationHours,
+    double? estimatedCostVndOverride,
+    List<TransportOption>? transportOptions,
   }) {
     return RouteLeg(
       order: order ?? this.order,
@@ -70,49 +135,41 @@ class RouteLeg {
       recommendedMode: recommendedMode ?? this.recommendedMode,
       reason: reason ?? this.reason,
       isGoogleEstimate: isGoogleEstimate ?? this.isGoogleEstimate,
+      durationHours: durationHours ?? this.durationHours,
+      estimatedCostVndOverride:
+          estimatedCostVndOverride ?? this.estimatedCostVndOverride,
+      transportOptions: transportOptions ?? this.transportOptions,
     );
   }
 
-  double get motorbikeHours => distanceKm / 45;
-  double get carHours => distanceKm / 65;
-  double get trainHours => distanceKm / 55;
-  double get flightHours => 2.5 + distanceKm / 650;
-
-  double get estimatedCostVnd {
-    switch (recommendedMode) {
-      case TransportMode.motorbike:
-        return max(25000, distanceKm * 900);
-      case TransportMode.car:
-        return max(90000, distanceKm * 11500);
-      case TransportMode.coach:
-        return max(120000, distanceKm * 850);
-      case TransportMode.train:
-        return max(160000, distanceKm * 950);
-      case TransportMode.ferry:
-        return max(185000, distanceKm * 1800);
-      case TransportMode.flight:
-        return _flightFareEstimateVnd(fromName, to.name, distanceKm);
+  TransportOption? get selectedTransportOption {
+    for (final option in transportOptions) {
+      if (option.mode == recommendedMode && option.isRecommended) return option;
     }
+    for (final option in transportOptions) {
+      if (option.mode == recommendedMode) return option;
+    }
+    return null;
   }
 
-  double get recommendedHours {
-    switch (recommendedMode) {
-      case TransportMode.motorbike:
-        return motorbikeHours;
-      case TransportMode.car:
-        return carHours;
-      case TransportMode.coach:
-        return carHours * 1.08;
-      case TransportMode.train:
-        return trainHours;
-      case TransportMode.ferry:
-        return 1.0 + distanceKm / 35;
-      case TransportMode.flight:
-        return flightHours;
-    }
+  double get estimatedCostVnd =>
+      estimatedCostVndOverride ?? selectedTransportOption?.estimatedCostVnd ?? 0;
+
+  double get recommendedHours =>
+      durationHours ?? selectedTransportOption?.durationHours ?? 0;
+
+  int get segmentTransferCount {
+    final segments = selectedTransportOption?.segments ?? const [];
+    if (segments.length <= 1) return 0;
+    return segments.length - 1;
   }
 
   bool get usesFlight => recommendedMode == TransportMode.flight;
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) return const [];
+  return value.map((item) => '$item').where((item) => item.trim().isNotEmpty).toList();
 }
 
 

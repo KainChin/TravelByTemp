@@ -2,7 +2,7 @@ import 'package:assignment/core/theme/app_colors.dart';
 import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/screens/destinations/destination_detail_screen.dart';
-import 'package:assignment/screens/trips/screens/trip_itinerary_result_screen.dart';
+import 'package:assignment/screens/saved/saved_trip_detail_screen.dart';
 import 'package:assignment/screens/trips/services/saved_itinerary_store.dart';
 import 'package:assignment/screens/trips/services/trip_itinerary_service.dart';
 import 'package:assignment/services/api_client.dart';
@@ -31,18 +31,23 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
   }
 
   @override
   void didUpdateWidget(covariant SavedScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.refreshToken != widget.refreshToken) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _load();
+      });
     }
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -138,13 +143,9 @@ class _SavedScreenState extends State<SavedScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TripItineraryResultScreen(
-          response: '${item.itinerary['summary'] ?? ''}',
-          itinerary: item.itinerary,
-          itineraryId: item.id,
-        ),
+        builder: (_) => SavedTripDetailScreen(item: item),
       ),
-    );
+    ).then((_) => _load()); // reload if deleted inside detail
   }
 
   void _openFavorite(FavoriteDestination item) {

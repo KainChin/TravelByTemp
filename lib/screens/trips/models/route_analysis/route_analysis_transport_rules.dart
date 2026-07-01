@@ -5,247 +5,153 @@ part of route_analysis;
 String transportLabel(TransportMode mode) {
   switch (mode) {
     case TransportMode.motorbike:
-      return 'Xe máy';
+      return 'Xe may';
     case TransportMode.car:
-      return 'Ô tô';
+      return 'O to';
     case TransportMode.coach:
-      return 'Xe khách';
+      return 'Xe khach';
     case TransportMode.train:
-      return 'Tàu hỏa';
+      return 'Tau hoa';
     case TransportMode.ferry:
-      return 'Phà/tàu cao tốc';
+      return 'Pha/tau cao toc';
     case TransportMode.flight:
-      return 'Máy bay';
+      return 'May bay';
   }
 }
 
 List<TransportOption> transportOptionsForLeg(RouteLeg leg) {
-  final checks = [
-    canUseCar(leg),
-    canUseMotorbike(leg),
-    canUseBus(leg),
-    canUseTrain(leg),
-    canUseFlight(leg),
-    canUseFerry(leg),
-  ];
-  return checks.map((item) {
-    final preview = leg.copyWith(
-      recommendedMode: item.mode,
-      reason: item.reason,
-    );
-    return TransportOption(
-      mode: item.mode,
-      isAvailable: item.isAvailable,
-      reason: item.reason,
-      durationHours: preview.recommendedHours,
-      estimatedCostVnd: preview.estimatedCostVnd,
-    );
-  }).toList();
+  if (leg.transportOptions.length > 1) return leg.transportOptions;
+  if (leg.transportOptions.length == 1 &&
+      leg.transportOptions.first.mode != leg.recommendedMode) {
+    return leg.transportOptions;
+  }
+  final fallback = _fallbackTransportOptionsForLeg(leg);
+  if (leg.transportOptions.isEmpty) return fallback;
+  final serverOnlyOption = leg.transportOptions.first;
+  return fallback
+      .map((option) => option.mode == serverOnlyOption.mode ? serverOnlyOption : option)
+      .toList();
 }
 
-TransportAvailability canUseCar(RouteLeg leg) {
-  if (_routeTouchesIslandWithoutPort(leg)) {
-    return const TransportAvailability(
+List<TransportOption> _fallbackTransportOptionsForLeg(RouteLeg leg) {
+  final recommendedMode = leg.recommendedMode;
+  final distanceKm = leg.distanceKm;
+  final currentReason = leg.reason.isEmpty
+      ? 'Phuong tien hien tai cua chang nay.'
+      : leg.reason;
+  return [
+    TransportOption(
       mode: TransportMode.car,
-      isAvailable: false,
-      reason: 'Ô tô không thể đi thẳng đến đảo, cần trung chuyển qua cảng hoặc sân bay.',
-    );
-  }
-  if (_isFerryOnlyLeg(leg)) {
-    return const TransportAvailability(
-      mode: TransportMode.car,
-      isAvailable: false,
-      reason: 'Chặng này phải đi tàu/phà vì nối đất liền với đảo.',
-    );
-  }
-  return const TransportAvailability(
-    mode: TransportMode.car,
-    isAvailable: true,
-    reason: 'Có kết nối đường bộ, ô tô/taxi phù hợp cho chặng này.',
-  );
-}
-
-TransportAvailability canUseMotorbike(RouteLeg leg) {
-  if (_routeTouchesIslandWithoutPort(leg) || _isFerryOnlyLeg(leg)) {
-    return const TransportAvailability(
-      mode: TransportMode.motorbike,
-      isAvailable: false,
-      reason: 'Xe máy không phù hợp cho chặng nối đảo hoặc chặng cần tàu/phà.',
-    );
-  }
-  if (leg.distanceKm > 180) {
-    return const TransportAvailability(
-      mode: TransportMode.motorbike,
-      isAvailable: false,
-      reason: 'Quãng đường dài, xe máy không phải lựa chọn an toàn và thực tế.',
-    );
-  }
-  return const TransportAvailability(
-    mode: TransportMode.motorbike,
-    isAvailable: true,
-    reason: 'Chặng ngắn có đường bộ, xe máy linh hoạt và tiết kiệm.',
-  );
-}
-
-TransportAvailability canUseBus(RouteLeg leg) {
-  if (_routeTouchesIslandWithoutPort(leg) || _isFerryOnlyLeg(leg)) {
-    return const TransportAvailability(
-      mode: TransportMode.coach,
-      isAvailable: false,
-      reason: 'Xe khách không thể đi thẳng đến đảo, cần trung chuyển qua cảng hoặc sân bay.',
-    );
-  }
-  if (leg.distanceKm < 40) {
-    return const TransportAvailability(
-      mode: TransportMode.coach,
-      isAvailable: false,
-      reason: 'Chặng quá ngắn, ô tô/taxi hoặc xe máy phù hợp hơn xe khách.',
-    );
-  }
-  return const TransportAvailability(
-    mode: TransportMode.coach,
-    isAvailable: true,
-    reason: 'Có kết nối đường bộ, xe khách phù hợp chi phí cho chặng này.',
-  );
-}
-
-TransportAvailability canUseTrain(RouteLeg leg) {
-  if (_routeTouchesIslandWithoutPort(leg) || _isFerryOnlyLeg(leg)) {
-    return const TransportAvailability(
-      mode: TransportMode.train,
-      isAvailable: false,
-      reason: 'Không có tuyến tàu hỏa đi thẳng đến đảo.',
-    );
-  }
-  if (!_hasRailName(leg.fromName) || !TripRouteAnalysis._hasRail(leg.to)) {
-    return const TransportAvailability(
-      mode: TransportMode.train,
-      isAvailable: false,
-      reason: 'Tàu hỏa không khả dụng vì một trong hai điểm không có ga phù hợp.',
-    );
-  }
-  return const TransportAvailability(
-    mode: TransportMode.train,
-    isAvailable: true,
-    reason: 'Hai điểm có hạ tầng đường sắt phù hợp.',
-  );
-}
-
-TransportAvailability canUseFlight(RouteLeg leg) {
-  if (leg.distanceKm < 250) {
-    return const TransportAvailability(
-      mode: TransportMode.flight,
-      isAvailable: false,
-      reason: 'Máy bay không phù hợp vì chặng quá ngắn.',
-    );
-  }
-  if (!_hasNearbyAirportName(leg.fromName) || !TripRouteAnalysis._hasAirport(leg.to)) {
-    return const TransportAvailability(
-      mode: TransportMode.flight,
-      isAvailable: false,
-      reason: 'Máy bay không khả dụng vì điểm đi hoặc điểm đến không có sân bay phù hợp.',
-    );
-  }
-  if (!_hasPracticalFlightConnection(leg)) {
-    return const TransportAvailability(
-      mode: TransportMode.flight,
-      isAvailable: false,
-      reason: 'Không có tuyến bay trực tiếp hoặc nối chuyến hợp lý cho chặng này.',
-    );
-  }
-  return const TransportAvailability(
-    mode: TransportMode.flight,
-    isAvailable: true,
-    reason: 'Có sân bay và khoảng cách đủ xa, máy bay giúp tiết kiệm thời gian.',
-  );
-}
-
-TransportAvailability canUseFerry(RouteLeg leg) {
-  if (_isFerryOnlyLeg(leg)) {
-    return const TransportAvailability(
-      mode: TransportMode.ferry,
       isAvailable: true,
-      reason: 'Chặng nối cảng với đảo, tàu/phà là phương tiện bắt buộc.',
-    );
+      isRecommended: recommendedMode == TransportMode.car,
+      reason: recommendedMode == TransportMode.car
+          ? currentReason
+          : 'Co the di bang o to/taxi tren chang duong bo.',
+      durationHours: _fallbackHours(distanceKm, TransportMode.car),
+      estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.car),
+      segments: [leg.routeLabel],
+    ),
+    TransportOption(
+      mode: TransportMode.motorbike,
+      isAvailable: distanceKm <= 180,
+      isRecommended: recommendedMode == TransportMode.motorbike,
+      reason: distanceKm <= 180
+          ? (recommendedMode == TransportMode.motorbike ? currentReason : 'Xe may phu hop hon voi chang ngan.')
+          : 'Quang duong dai, xe may khong phu hop de chon.',
+      durationHours: _fallbackHours(distanceKm, TransportMode.motorbike),
+      estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.motorbike),
+      segments: [leg.routeLabel],
+    ),
+    TransportOption(
+      mode: TransportMode.coach,
+      isAvailable: distanceKm >= 40,
+      isRecommended: recommendedMode == TransportMode.coach,
+      reason: recommendedMode == TransportMode.coach
+          ? currentReason
+          : 'Xe khach phu hop cho chang lien tinh va chi phi thap.',
+      durationHours: _fallbackHours(distanceKm, TransportMode.coach),
+      estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.coach),
+      segments: [leg.routeLabel],
+    ),
+    TransportOption(
+      mode: TransportMode.train,
+      isAvailable: recommendedMode == TransportMode.train,
+      isRecommended: recommendedMode == TransportMode.train,
+      reason: recommendedMode == TransportMode.train
+          ? currentReason
+          : 'Can backend xac minh ga tau/tuyen tau phu hop cho chang nay.',
+      durationHours: _fallbackHours(distanceKm, TransportMode.train),
+      estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.train),
+      segments: [leg.routeLabel],
+    ),
+    TransportOption(
+      mode: TransportMode.flight,
+      isAvailable: recommendedMode == TransportMode.flight || distanceKm >= 150,
+      isRecommended: recommendedMode == TransportMode.flight,
+      reason: recommendedMode == TransportMode.flight
+          ? currentReason
+          : distanceKm < 150
+              ? 'Khong khuyen nghi: chang ngan, may bay chi nen hien neu backend xac minh san bay hai dau.'
+              : 'Co the chon may bay neu backend xac minh co san bay phu hop hai dau.',
+      durationHours: _fallbackHours(distanceKm, TransportMode.flight),
+      estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.flight),
+      segments: [leg.routeLabel],
+    ),
+    TransportOption(
+      mode: TransportMode.ferry,
+      isAvailable: recommendedMode == TransportMode.ferry,
+      isRecommended: recommendedMode == TransportMode.ferry,
+      reason: recommendedMode == TransportMode.ferry
+          ? currentReason
+          : 'Chi kha dung khi backend xac minh co ben pha/cang phu hop.',
+      durationHours: _fallbackHours(distanceKm, TransportMode.ferry),
+      estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.ferry),
+      segments: [leg.routeLabel],
+    ),
+  ];
+}
+
+double _fallbackHours(double distanceKm, TransportMode mode) {
+  switch (mode) {
+    case TransportMode.motorbike:
+      return distanceKm / 45;
+    case TransportMode.car:
+      return distanceKm / 65;
+    case TransportMode.coach:
+      return distanceKm / 60;
+    case TransportMode.train:
+      return distanceKm / 55;
+    case TransportMode.ferry:
+      return 1 + distanceKm / 35;
+    case TransportMode.flight:
+      return 2 + distanceKm / 650;
   }
-  return const TransportAvailability(
-    mode: TransportMode.ferry,
-    isAvailable: false,
-    reason: 'Tàu/phà chỉ khả dụng khi chặng có cảng và điểm đảo.',
-  );
 }
 
-bool _routeTouchesIslandWithoutPort(RouteLeg leg) {
-  final toIsland = TripRouteAnalysis._isIsland(leg.to);
-  final fromIsland = _isIslandName(leg.fromName);
-  return (toIsland || fromIsland) && !_isPortName(leg.fromName);
-}
-
-bool _isFerryOnlyLeg(RouteLeg leg) {
-  final fromPort = _isPortName(leg.fromName);
-  final toIsland = TripRouteAnalysis._isIsland(leg.to);
-  final fromIsland = _isIslandName(leg.fromName);
-  final toPort = _isPortName(leg.to.name);
-  return (fromPort && toIsland) || (fromIsland && toPort);
-}
-
-bool _hasPracticalFlightConnection(RouteLeg leg) {
-  final from = _flightFarePlaceKey(leg.fromName);
-  final to = _flightFarePlaceKey(leg.to.name);
-  if (_domesticFlightFareVnd.containsKey(_routeFareKey(from, to))) return true;
-  if (_isIslandName(leg.to.name) && TripRouteAnalysis._hasAirport(leg.to)) {
-    return leg.distanceKm >= 250;
+double _fallbackCost(double distanceKm, TransportMode mode) {
+  switch (mode) {
+    case TransportMode.motorbike:
+      return max(25000, distanceKm * 900);
+    case TransportMode.car:
+      return max(90000, distanceKm * 11500);
+    case TransportMode.coach:
+      return max(120000, distanceKm * 850);
+    case TransportMode.train:
+      return max(160000, distanceKm * 950);
+    case TransportMode.ferry:
+      return max(185000, distanceKm * 1800);
+    case TransportMode.flight:
+      if (distanceKm < 300) return 1200000;
+      if (distanceKm < 700) return 1800000;
+      if (distanceKm < 1200) return 2500000;
+      return 3500000;
   }
-  return _hasNearbyAirportName(leg.fromName) &&
-      TripRouteAnalysis._hasAirport(leg.to) &&
-      leg.distanceKm >= 500;
-}
-
-bool _hasAirportName(String value) {
-  final normalized = _normalizeFareText(value);
-  return normalized.contains('san bay') ||
-      TripRouteAnalysis._airportNames.any((name) => normalized.contains(name));
-}
-
-bool _hasNearbyAirportName(String value) {
-  if (_hasAirportName(value)) return true;
-  final normalized = _normalizeFareText(value);
-  return normalized.contains('vi tri hien tai') ||
-      normalized.contains('binh duong') ||
-      normalized.contains('dong nai') ||
-      normalized.contains('vung tau') ||
-      normalized.contains('ha long') ||
-      normalized.contains('ninh binh') ||
-      normalized.contains('hoi an') ||
-      normalized.contains('rach gia') ||
-      normalized.contains('ha tien');
-}
-
-bool _hasRailName(String value) {
-  final normalized = _normalizeFareText(value);
-  return TripRouteAnalysis._railNames.any((name) => normalized.contains(name));
-}
-
-bool _isPortName(String value) {
-  final normalized = _normalizeFareText(value);
-  return normalized.contains('cang') ||
-      normalized.contains('ben pha') ||
-      normalized.contains('rach gia') ||
-      normalized.contains('ha tien') ||
-      normalized.contains('tran de');
-}
-
-bool _isIslandName(String value) {
-  final normalized = _normalizeFareText(value);
-  return normalized.contains('phu quoc') || normalized.contains('con dao');
 }
 
 String formatHours(double hours) {
-  if (hours < 1) return '${(hours * 60).round()} phút';
+  if (hours < 1) return '${(hours * 60).round()} phut';
   final h = hours.floor();
   final m = ((hours - h) * 60).round();
-  if (m == 0) return '$h giờ';
-  return '$h giờ $m phút';
+  if (m == 0) return '$h gio';
+  return '$h gio $m phut';
 }
-
-

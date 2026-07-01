@@ -142,6 +142,47 @@ CREATE TABLE ai_itineraries (
     CONSTRAINT fk_ai_itineraries_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+CREATE TABLE transport_hubs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    type VARCHAR(40) NOT NULL,
+    province VARCHAR(120) NOT NULL,
+    region VARCHAR(80) NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_transport_hubs_type CHECK (type IN ('airport', 'train_station', 'ferry_port', 'bus_station'))
+);
+
+CREATE TABLE transport_routes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    origin_hub_id UUID NOT NULL,
+    destination_hub_id UUID NOT NULL,
+    transport_type VARCHAR(40) NOT NULL,
+    estimated_duration_hours DOUBLE PRECISION NOT NULL,
+    estimated_cost_vnd DECIMAL(18,2) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_transport_routes_origin FOREIGN KEY (origin_hub_id) REFERENCES transport_hubs(id),
+    CONSTRAINT fk_transport_routes_destination FOREIGN KEY (destination_hub_id) REFERENCES transport_hubs(id),
+    CONSTRAINT ck_transport_routes_type CHECK (transport_type IN ('flight', 'train', 'ferry', 'coach', 'car', 'motorbike')),
+    CONSTRAINT ck_transport_routes_duration CHECK (estimated_duration_hours >= 0),
+    CONSTRAINT ck_transport_routes_cost CHECK (estimated_cost_vnd >= 0),
+    CONSTRAINT uq_transport_route UNIQUE (origin_hub_id, destination_hub_id, transport_type)
+);
+
+CREATE TABLE transport_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key VARCHAR(120) NOT NULL UNIQUE,
+    value VARCHAR(120) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE trip_routes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NULL,
@@ -208,7 +249,107 @@ CREATE INDEX idx_ai_itineraries_created_at ON ai_itineraries(created_at);
 CREATE INDEX idx_trip_routes_user_id ON trip_routes(user_id);
 CREATE INDEX idx_trip_routes_created_at ON trip_routes(created_at);
 CREATE INDEX idx_trip_route_legs_trip_route_id ON trip_route_legs(trip_route_id);
+CREATE INDEX idx_transport_hubs_type_active ON transport_hubs(type, is_active);
+CREATE INDEX idx_transport_routes_type_active ON transport_routes(transport_type, is_active);
+CREATE INDEX idx_transport_configs_active ON transport_configs(is_active);
 CREATE INDEX idx_user_travel_memories_user_id ON user_travel_memories(user_id);
+
+INSERT INTO transport_configs (key, value, description) VALUES
+('airportSearchRadiusKm', '100', 'Radius for finding an airport near origin/destination.'),
+('recommendedFlightDistanceKm', '250', 'Distance threshold where flight becomes the recommended mode when airport hubs exist.'),
+('shortFlightDistanceKm', '150', 'Below this distance flight remains selectable but is marked not recommended.'),
+('railSearchRadiusKm', '35', 'Radius for finding a railway station near origin/destination.'),
+('ferryPortSearchRadiusKm', '70', 'Radius for finding a ferry/speedboat port near origin/destination.');
+
+INSERT INTO transport_hubs (code, name, type, province, region, latitude, longitude, description) VALUES
+('tan_son_nhat_airport', 'San bay Tan Son Nhat', 'airport', 'TP.HCM', 'South', 10.8188, 106.6519, 'Airport serving Ho Chi Minh City'),
+('noi_bai_airport', 'San bay Noi Bai', 'airport', 'Ha Noi', 'North', 21.2187, 105.8042, 'Airport serving Ha Noi'),
+('da_nang_airport', 'San bay Da Nang', 'airport', 'Da Nang', 'Central', 16.0439, 108.1994, 'Airport serving Da Nang'),
+('tho_xuan_airport', 'San bay Tho Xuan', 'airport', 'Thanh Hoa', 'Central', 19.9017, 105.4678, 'Airport serving Thanh Hoa'),
+('cam_ranh_airport', 'San bay Cam Ranh', 'airport', 'Khanh Hoa', 'Central', 11.9982, 109.2194, 'Airport serving Nha Trang/Khanh Hoa'),
+('phu_quoc_airport', 'San bay Phu Quoc', 'airport', 'Kien Giang', 'South', 10.1698, 103.9931, 'Airport serving Phu Quoc'),
+('can_tho_airport', 'San bay Can Tho', 'airport', 'Can Tho', 'South', 10.0851, 105.7119, 'Airport serving Can Tho'),
+('lien_khuong_airport', 'San bay Lien Khuong', 'airport', 'Lam Dong', 'Central Highlands', 11.7500, 108.3736, 'Airport serving Da Lat/Lam Dong'),
+('phu_cat_airport', 'San bay Phu Cat', 'airport', 'Binh Dinh', 'Central', 13.9550, 109.0420, 'Airport serving Binh Dinh'),
+('vinh_airport', 'San bay Vinh', 'airport', 'Nghe An', 'Central', 18.7376, 105.6708, 'Airport serving Vinh/Nghe An'),
+('cat_bi_airport', 'San bay Cat Bi', 'airport', 'Hai Phong', 'North', 20.8194, 106.7247, 'Airport serving Hai Phong'),
+('phu_bai_airport', 'San bay Phu Bai', 'airport', 'Thua Thien Hue', 'Central', 16.4015, 107.7031, 'Airport serving Hue'),
+('buon_ma_thuot_airport', 'San bay Buon Ma Thuot', 'airport', 'Dak Lak', 'Central Highlands', 12.6683, 108.1203, 'Airport serving Buon Ma Thuot'),
+('pleiku_airport', 'San bay Pleiku', 'airport', 'Gia Lai', 'Central Highlands', 14.0045, 108.0172, 'Airport serving Pleiku'),
+('tuy_hoa_airport', 'San bay Tuy Hoa', 'airport', 'Phu Yen', 'Central', 13.0496, 109.3337, 'Airport serving Tuy Hoa'),
+('chu_lai_airport', 'San bay Chu Lai', 'airport', 'Quang Nam', 'Central', 15.4033, 108.7060, 'Airport serving Quang Nam/Quang Ngai'),
+('dong_hoi_airport', 'San bay Dong Hoi', 'airport', 'Quang Binh', 'Central', 17.5150, 106.5906, 'Airport serving Dong Hoi'),
+('rach_gia_airport', 'San bay Rach Gia', 'airport', 'Kien Giang', 'South', 9.9580, 105.1320, 'Airport serving Rach Gia'),
+('ca_mau_airport', 'San bay Ca Mau', 'airport', 'Ca Mau', 'South', 9.1777, 105.1778, 'Airport serving Ca Mau'),
+('con_dao_airport', 'San bay Con Dao', 'airport', 'Ba Ria - Vung Tau', 'South', 8.7318, 106.6326, 'Airport serving Con Dao'),
+('dien_bien_airport', 'San bay Dien Bien', 'airport', 'Dien Bien', 'North', 21.3975, 103.0080, 'Airport serving Dien Bien'),
+('ha_noi_station', 'Ga Ha Noi', 'train_station', 'Ha Noi', 'North', 21.0245, 105.8412, 'North-South railway station'),
+('vinh_station', 'Ga Vinh', 'train_station', 'Nghe An', 'Central', 18.6733, 105.6922, 'North-South railway station'),
+('hue_station', 'Ga Hue', 'train_station', 'Thua Thien Hue', 'Central', 16.4564, 107.5786, 'North-South railway station'),
+('da_nang_station', 'Ga Da Nang', 'train_station', 'Da Nang', 'Central', 16.0703, 108.2098, 'North-South railway station'),
+('nha_trang_station', 'Ga Nha Trang', 'train_station', 'Khanh Hoa', 'Central', 12.2488, 109.1843, 'North-South railway station'),
+('quy_nhon_station', 'Ga Quy Nhon', 'train_station', 'Binh Dinh', 'Central', 13.7693, 109.2245, 'Railway station serving Quy Nhon'),
+('sai_gon_station', 'Ga Sai Gon', 'train_station', 'TP.HCM', 'South', 10.7827, 106.6779, 'North-South railway station'),
+('ha_tien_port', 'Cang Ha Tien', 'ferry_port', 'Kien Giang', 'South', 10.3833, 104.4833, 'Ferry/speedboat port for Phu Quoc'),
+('phu_quoc_port', 'Cang Phu Quoc', 'ferry_port', 'Kien Giang', 'South', 10.2131, 103.9592, 'Ferry/speedboat port on Phu Quoc'),
+('tran_de_port', 'Cang Tran De', 'ferry_port', 'Soc Trang', 'South', 9.4969, 106.2089, 'Speedboat port for Con Dao'),
+('con_dao_port', 'Cang Con Dao', 'ferry_port', 'Ba Ria - Vung Tau', 'South', 8.6849, 106.6086, 'Ferry/speedboat port on Con Dao');
+
+INSERT INTO transport_routes (origin_hub_id, destination_hub_id, transport_type, estimated_duration_hours, estimated_cost_vnd)
+SELECT
+    a.id,
+    b.id,
+    'flight',
+    ROUND((2.0 + (
+        6371 * 2 * ASIN(SQRT(LEAST(1,
+            POWER(SIN(RADIANS(b.latitude - a.latitude) / 2), 2) +
+            COS(RADIANS(a.latitude)) * COS(RADIANS(b.latitude)) *
+            POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
+        ))) / 650))::numeric, 2),
+    CASE
+        WHEN (6371 * 2 * ASIN(SQRT(LEAST(1,
+            POWER(SIN(RADIANS(b.latitude - a.latitude) / 2), 2) +
+            COS(RADIANS(a.latitude)) * COS(RADIANS(b.latitude)) *
+            POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
+        )))) < 300 THEN 1200000
+        WHEN (6371 * 2 * ASIN(SQRT(LEAST(1,
+            POWER(SIN(RADIANS(b.latitude - a.latitude) / 2), 2) +
+            COS(RADIANS(a.latitude)) * COS(RADIANS(b.latitude)) *
+            POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
+        )))) < 700 THEN 1800000
+        WHEN (6371 * 2 * ASIN(SQRT(LEAST(1,
+            POWER(SIN(RADIANS(b.latitude - a.latitude) / 2), 2) +
+            COS(RADIANS(a.latitude)) * COS(RADIANS(b.latitude)) *
+            POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
+        )))) < 1200 THEN 2500000
+        ELSE 3500000
+    END
+FROM transport_hubs a
+JOIN transport_hubs b ON a.type = 'airport' AND b.type = 'airport' AND a.code < b.code;
+
+INSERT INTO transport_routes (origin_hub_id, destination_hub_id, transport_type, estimated_duration_hours, estimated_cost_vnd)
+SELECT a.id, b.id, 'train',
+       ROUND((6371 * 2 * ASIN(SQRT(LEAST(1,
+           POWER(SIN(RADIANS(b.latitude - a.latitude) / 2), 2) +
+           COS(RADIANS(a.latitude)) * COS(RADIANS(b.latitude)) *
+           POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
+       ))) / 55)::numeric, 2),
+       GREATEST(160000, ROUND((6371 * 2 * ASIN(SQRT(LEAST(1,
+           POWER(SIN(RADIANS(b.latitude - a.latitude) / 2), 2) +
+           COS(RADIANS(a.latitude)) * COS(RADIANS(b.latitude)) *
+           POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
+       ))) * 950)::numeric, 0))
+FROM transport_hubs a
+JOIN transport_hubs b ON a.type = 'train_station' AND b.type = 'train_station' AND a.code < b.code;
+
+INSERT INTO transport_routes (origin_hub_id, destination_hub_id, transport_type, estimated_duration_hours, estimated_cost_vnd)
+SELECT p1.id, p2.id, 'ferry', 2.5, 250000
+FROM transport_hubs p1
+JOIN transport_hubs p2 ON p1.code = 'ha_tien_port' AND p2.code = 'phu_quoc_port'
+UNION ALL
+SELECT p1.id, p2.id, 'ferry', 2.25, 390000
+FROM transport_hubs p1
+JOIN transport_hubs p2 ON p1.code = 'tran_de_port' AND p2.code = 'con_dao_port';
 
 CREATE OR REPLACE VIEW vw_destination_ratings AS
 SELECT d.id AS destination_id, d.name AS destination_name, d.province, d.region, d.category,

@@ -37,7 +37,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadData();
+    });
   }
 
   @override
@@ -47,6 +49,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     try {
       final api = VietaiScope.of(context).api;
       final regions = await _regionService

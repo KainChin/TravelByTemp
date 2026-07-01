@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+final Set<String> _loggedImageDecodeIssues = <String>{};
+
 bool isSupportedImageBytes(Uint8List bytes) {
   if (bytes.length < 4) return false;
 
@@ -43,6 +45,31 @@ bool isSupportedImageContentType(String? contentType) {
       value == 'image/webp';
 }
 
+bool hasSupportedImageUrlExtension(Uri uri) {
+  final path = uri.path.toLowerCase();
+  return path.endsWith('.jpg') ||
+      path.endsWith('.jpeg') ||
+      path.endsWith('.png') ||
+      path.endsWith('.webp') ||
+      path.endsWith('.gif');
+}
+
+bool isKnownNonImageUrl(Uri uri) {
+  final host = uri.host.toLowerCase();
+  final path = uri.path.toLowerCase();
+  return host.contains('docs.google.com') ||
+      host.contains('sheets.google.com') ||
+      (host.contains('drive.google.com') && !path.contains('/uc')) ||
+      path.endsWith('.pdf') ||
+      path.endsWith('.doc') ||
+      path.endsWith('.docx') ||
+      path.endsWith('.xls') ||
+      path.endsWith('.xlsx') ||
+      path.endsWith('.csv') ||
+      path.endsWith('.txt') ||
+      path.endsWith('.url');
+}
+
 Uint8List? safeBase64ImageDecode(
   String? value, {
   required String source,
@@ -56,8 +83,13 @@ Uint8List? safeBase64ImageDecode(
     logInvalidImageBytes(source: source, bytes: bytes);
     return null;
   } on FormatException catch (error) {
-    debugPrint('[ImageDecode] Invalid base64 from $source: $error');
-    debugPrint('[ImageDecode] Body preview: ${_previewText(raw.codeUnits)}');
+    _debugPrintOnce(
+      'invalid-base64|$source|${raw.hashCode}',
+      () {
+        debugPrint('[ImageDecode] Invalid base64 from $source: $error');
+        debugPrint('[ImageDecode] Body preview: ${_previewText(raw.codeUnits)}');
+      },
+    );
     return null;
   }
 }
@@ -70,12 +102,26 @@ void logInvalidImageBytes({
   String? url,
 }) {
   final header = bytes.take(12).map((byte) => '0x${byte.toRadixString(16).padLeft(2, '0')}').join(' ');
-  debugPrint('[ImageDecode] Invalid image bytes from $source');
-  if (url != null) debugPrint('[ImageDecode] URL: $url');
-  if (httpStatusCode != null) debugPrint('[ImageDecode] HTTP Status Code: $httpStatusCode');
-  if (contentType != null) debugPrint('[ImageDecode] Content-Type: $contentType');
-  debugPrint('[ImageDecode] File header: [$header]');
-  debugPrint('[ImageDecode] Response Body preview: ${_previewText(bytes)}');
+  _debugPrintOnce(
+    'invalid-bytes|$source|$url|$contentType|$header|${bytes.length}',
+    () {
+      debugPrint('[ImageDecode] Invalid image bytes from $source');
+      if (url != null) debugPrint('[ImageDecode] URL: $url');
+      if (httpStatusCode != null) debugPrint('[ImageDecode] HTTP Status Code: $httpStatusCode');
+      if (contentType != null) debugPrint('[ImageDecode] Content-Type: $contentType');
+      debugPrint('[ImageDecode] File header: [$header]');
+      debugPrint('[ImageDecode] Response Body preview: ${_previewText(bytes)}');
+    },
+  );
+}
+
+void logImageDecodeIssueOnce(String key, void Function() write) {
+  _debugPrintOnce(key, write);
+}
+
+void _debugPrintOnce(String key, void Function() write) {
+  if (!_loggedImageDecodeIssues.add(key)) return;
+  write();
 }
 
 String _previewText(Iterable<int> bytes) {

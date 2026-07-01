@@ -8,10 +8,10 @@ class LoginScreenStyles {
   static const Color primary = Color(0xFF008F6A);
   static const Color primaryDark = Color(0xFF006B52);
   static const Color accent = Color(0xFFFF8A5B);
-  static const Color background = Color(0xFFF5F7F4);
+  static const Color background = Color(0xFFF8FAFC); // Modern cool gray
   static const Color surface = Colors.white;
   static const Color line = Color(0xFFE2E8E4);
-  static const Color fieldFill = Color(0xFFF8FAF8);
+  static const Color fieldFill = Color(0xFFF1F5F9); // Light slate for inputs
 
   static const double horizontalPadding = 20;
   static const double radius = 18;
@@ -68,33 +68,33 @@ class LoginScreenStyles {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF9AA6A0), fontSize: 14),
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
       prefixIcon: prefixIcon == null
           ? null
-          : Icon(prefixIcon, color: muted, size: 20),
+          : Icon(prefixIcon, color: const Color(0xFF64748B), size: 20),
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: fieldFill,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: line),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: line),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: primary, width: 1.4),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE5484D)),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFEF4444)),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE5484D), width: 1.4),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
       ),
     );
   }

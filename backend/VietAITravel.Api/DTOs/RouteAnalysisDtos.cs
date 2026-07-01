@@ -13,6 +13,23 @@ public sealed record AnalyzeRouteRequest(
     int? PeopleCount = null,
     decimal? BudgetPerPerson = null);
 
+public sealed record TransportOptionResponse(
+    string Mode,
+    bool IsAvailable,
+    string Reason,
+    double DurationHours,
+    double EstimatedCostVnd,
+    bool IsRecommended = false,
+    List<string>? Segments = null,
+    double AiScore = 0,
+    List<string>? Pros = null,
+    List<string>? Cons = null)
+{
+    public string Type => Mode;
+    public double EstimatedDuration => DurationHours;
+    public double EstimatedCost => EstimatedCostVnd;
+}
+
 public sealed record RouteLegResponse(
     int Order,
     string FromName,
@@ -21,7 +38,9 @@ public sealed record RouteLegResponse(
     double DurationHours,
     string RecommendedMode,
     string Reason,
-    bool IsGoogleEstimate);
+    bool IsGoogleEstimate,
+    double EstimatedCostVnd,
+    List<TransportOptionResponse> TransportOptions);
 
 public sealed record AnalyzeRouteResponse(
     RoutePlaceDto Departure,
