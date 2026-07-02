@@ -12,16 +12,16 @@ class RegionTabBar extends StatelessWidget {
   });
 
   static const _tabs = [
-    (type: RegionType.west, label: 'Miền Tây', sub: 'West'),
-    (type: RegionType.north, label: 'Miền Bắc', sub: 'North'),
-    (type: RegionType.central, label: 'Miền Trung', sub: 'Central'),
-    (type: RegionType.south, label: 'Miền Nam', sub: 'South'),
+    (type: RegionType.west, label: 'Miền Tây'),
+    (type: RegionType.north, label: 'Miền Bắc'),
+    (type: RegionType.central, label: 'Miền Trung'),
+    (type: RegionType.south, label: 'Miền Nam'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 60,
+      height: 48,
       decoration: BoxDecoration(
         color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(16),
@@ -51,29 +51,17 @@ class RegionTabBar extends StatelessWidget {
                         ]
                       : null,
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      tab.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFF6B7280),
-                      ),
+                child: Center(
+                  child: Text(
+                    tab.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFF6B7280),
                     ),
-                    Text(
-                      tab.sub,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isSelected
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFF9CA3AF),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

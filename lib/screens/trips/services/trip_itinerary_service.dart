@@ -1,3 +1,6 @@
+// ignore_for_file: unnecessary_library_name
+library trip_itinerary_service;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -7,73 +10,7 @@ import 'package:http/http.dart' as http;
 import '../models/destination.dart';
 import '../models/route_analysis.dart';
 
-class TripItineraryException implements Exception {
-  const TripItineraryException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
-
-class TripItineraryResult {
-  const TripItineraryResult({
-    required this.response,
-    required this.itinerary,
-    this.itineraryId,
-  });
-
-  final String response;
-  final Map<String, dynamic> itinerary;
-  final String? itineraryId;
-
-  factory TripItineraryResult.fromJson(Map<String, dynamic> json) {
-    final itinerary = json['itinerary'];
-    if (itinerary is! Map<String, dynamic>) {
-      throw const TripItineraryException('Server did not return an itinerary.');
-    }
-
-    return TripItineraryResult(
-      response: json['response'] as String? ?? '',
-      itinerary: itinerary,
-      itineraryId: json['itineraryId'] as String?,
-    );
-  }
-}
-
-class TripItineraryHistoryItem {
-  const TripItineraryHistoryItem({
-    required this.id,
-    required this.title,
-    required this.createdAt,
-    required this.itinerary,
-    this.aiModel,
-  });
-
-  final String id;
-  final String title;
-  final DateTime createdAt;
-  final Map<String, dynamic> itinerary;
-  final String? aiModel;
-
-  factory TripItineraryHistoryItem.fromJson(Map<String, dynamic> json) {
-    final itinerary = json['itinerary'];
-    if (itinerary is! Map<String, dynamic>) {
-      throw const TripItineraryException('History item has invalid itinerary.');
-    }
-
-    return TripItineraryHistoryItem(
-      id: json['id'] as String? ?? '',
-      title: json['title'] as String? ??
-          itinerary['title'] as String? ??
-          'AI itinerary',
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-          DateTime.now(),
-      itinerary: itinerary,
-      aiModel: json['aiModel'] as String?,
-    );
-  }
-}
+part 'trip_itinerary_models.dart';
 
 class TripItineraryService {
   TripItineraryService({
@@ -124,7 +61,7 @@ class TripItineraryService {
           routeId: remote.routeId,
           departure: remote.departure,
           legs: remote.legs,
-          destinations: remote.destinations.asMap().entries.map((entry) {
+          destinations: destinations.asMap().entries.map((entry) {
             final original = destinations.length > entry.key ? destinations[entry.key] : null;
             return entry.value.copyWith(
               startDate: original?.startDate,

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:assignment/models/auth_session.dart';
 import 'package:assignment/services/api_client.dart';
@@ -90,6 +91,23 @@ class AppSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshProfile() async {
+    final current = auth;
+    if (current == null) return;
+
+    final user = await api.fetchProfile();
+    auth = AuthSession(
+      accessToken: current.accessToken,
+      refreshToken: current.refreshToken,
+      expiresAt: current.expiresAt,
+      user: user,
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await _saveUser(prefs, user);
+    notifyListeners();
+  }
+
   Future<void> updateProfile({
     required String username,
     required String email,
@@ -145,7 +163,30 @@ class AppSession extends ChangeNotifier {
       final pos = await Geolocator.getCurrentPosition();
       latitude = pos.latitude;
       longitude = pos.longitude;
-      locationName = 'Vị trí hiện tại';
+      
+      try {
+        final placemarks = await placemarkFromCoordinates(latitude, longitude)
+            .timeout(const Duration(seconds: 4));
+        if (placemarks.isNotEmpty) {
+          final pm = placemarks.first;
+          final district = pm.subAdministrativeArea ?? pm.subLocality ?? pm.locality ?? '';
+          final city = pm.administrativeArea ?? '';
+          
+          final List<String> parts = [];
+          if (district.isNotEmpty) parts.add(district);
+          if (city.isNotEmpty && city != district) parts.add(city);
+          
+          if (parts.isNotEmpty) {
+            locationName = parts.join(', ');
+          } else {
+            locationName = 'Hồ Chí Minh, Việt Nam';
+          }
+        } else {
+          locationName = 'Hồ Chí Minh, Việt Nam';
+        }
+      } catch (_) {
+        locationName = 'Thủ Đức, Hồ Chí Minh';
+      }
       await _loadWeather();
     } catch (_) {
       await _loadWeather();

@@ -222,10 +222,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _buildSideTabs() {
     const tabs = [
-      (type: RegionType.west, label: 'Miền Tây', sub: 'West'),
-      (type: RegionType.north, label: 'Miền Bắc', sub: 'North'),
-      (type: RegionType.central, label: 'Miền Trung', sub: 'Central'),
-      (type: RegionType.south, label: 'Miền Nam', sub: 'South'),
+      (type: RegionType.west, label: 'Miền Tây'),
+      (type: RegionType.north, label: 'Miền Bắc'),
+      (type: RegionType.central, label: 'Miền Trung'),
+      (type: RegionType.south, label: 'Miền Nam'),
     ];
     return Container(
       color: Colors.white,
@@ -262,10 +262,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: isSelected ? const Color(0xFF16A34A) : const Color(0xFF374151))),
-                          Text(tab.sub,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: isSelected ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF))),
                         ],
                       ),
                     ),
@@ -308,11 +304,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
           TextSpan(
             children: [
               TextSpan(
-                text: 'Explore the Beauty of ',
+                text: 'Khám phá vẻ đẹp của ',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
               ),
               TextSpan(
-                text: 'Vietnam ',
+                text: 'Việt Nam ',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF16A34A)),
               ),
               TextSpan(text: '✨', style: TextStyle(fontSize: 20)),
@@ -321,7 +317,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
         SizedBox(height: 6),
         Text(
-          'Discover new places, create unforgettable memories',
+          'Khám phá những vùng đất mới, tạo nên những kỷ niệm khó quên',
           style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
       ],
