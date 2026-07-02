@@ -48,81 +48,55 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  // Giữ nguyên logic _buildBottomNav của bạn vì nó đã đẹp rồi
+  // ── Material 3 Bottom Navigation ──────────────────────────────────────────
   Widget _buildBottomNav() {
     const activeColor = Color(0xFF2ECC71);
-    const items = [
-      _NavItem(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explore'),
-      _NavItem(icon: Icons.favorite_outline, activeIcon: Icons.favorite, label: 'Saved'),
-      _NavItem(icon: Icons.luggage_outlined, activeIcon: Icons.luggage, label: 'Trips'),
-      _NavItem(icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Messages'),
-      _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
-    ];
+    const inactiveColor = Color(0xFF9CA3AF);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, -4))],
+    return NavigationBar(
+      height: 68,
+      elevation: 0,
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black26,
+      indicatorColor: activeColor.withValues(alpha: 0.12),
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
-              final isActive = index == _currentIndex;
-
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() {
-                    _currentIndex = index;
-                    if (index == 1) {
-                      _savedRefreshToken++;
-                    }
-                  }),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isActive ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isActive ? item.activeIcon : item.icon,
-                          size: 22,
-                          color: isActive ? activeColor : const Color(0xFF9CA3AF),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                          color: isActive ? activeColor : const Color(0xFF9CA3AF),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+      animationDuration: const Duration(milliseconds: 400),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      selectedIndex: _currentIndex,
+      onDestinationSelected: (index) => setState(() {
+        _currentIndex = index;
+        if (index == 1) _savedRefreshToken++;
+      }),
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.explore_outlined, color: inactiveColor, size: 22),
+          selectedIcon: Icon(Icons.explore, color: activeColor, size: 22),
+          label: 'Explore',
         ),
-      ),
+        NavigationDestination(
+          icon: Icon(Icons.favorite_outline, color: inactiveColor, size: 22),
+          selectedIcon: Icon(Icons.favorite, color: activeColor, size: 22),
+          label: 'Saved',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.luggage_outlined, color: inactiveColor, size: 22),
+          selectedIcon: Icon(Icons.luggage, color: activeColor, size: 22),
+          label: 'Trips',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.chat_bubble_outline, color: inactiveColor, size: 22),
+          selectedIcon: Icon(Icons.chat_bubble, color: activeColor, size: 22),
+          label: 'Messages',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline, color: inactiveColor, size: 22),
+          selectedIcon: Icon(Icons.person, color: activeColor, size: 22),
+          label: 'Profile',
+        ),
+      ],
     );
   }
 }
-
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  const _NavItem({required this.icon, required this.activeIcon, required this.label});
-}
-
-

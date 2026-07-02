@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:assignment/core/widgets/safe_network_image.dart';
+import 'package:assignment/core/widgets/vietai_scope.dart';
 
 class ExploreHeader extends StatelessWidget {
-  // TODO: Replace with UserModel from API: GET /api/users/me
   final String userName;
   final String? avatarUrl;
   final VoidCallback? onNotificationTap;
 
   const ExploreHeader({
     super.key,
-    this.userName = 'Thu Duc',
+    this.userName = 'Khách',
     this.avatarUrl,
     this.onNotificationTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final session = VietaiScope.of(context);
+    final displayUserName = session.auth?.user.fullName ?? userName;
+    final locationName = session.locationName;
+    
     return Row(
       children: [
         _Avatar(url: avatarUrl),
@@ -24,20 +28,35 @@ class ExploreHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Xin chào 👋',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF6B7280),
-                ),
-              ),
               Text(
-                userName,
+                displayUserName,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF111827),
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 14, color: Color(0xFF6B7280)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      locationName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF6B7280)),
+                ],
               ),
             ],
           ),

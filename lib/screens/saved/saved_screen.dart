@@ -1,3 +1,8 @@
+// ignore_for_file: unnecessary_library_name
+library saved_screen;
+
+import 'dart:convert';
+
 import 'package:assignment/core/theme/app_colors.dart';
 import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
@@ -7,6 +12,15 @@ import 'package:assignment/screens/trips/services/saved_itinerary_store.dart';
 import 'package:assignment/screens/trips/services/trip_itinerary_service.dart';
 import 'package:assignment/services/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+part 'saved/saved_header.dart';
+part 'saved/stat_card.dart';
+part 'saved/quick_action_chip.dart';
+part 'saved/favorite_card.dart';
+part 'saved/itinerary_card.dart';
+part 'saved/message_card.dart';
+part 'saved/ai_suggestion_card.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({
@@ -27,13 +41,27 @@ class _SavedScreenState extends State<SavedScreen> {
   String? _error;
   List<FavoriteDestination> _favorites = [];
   List<SavedItineraryItem> _itineraries = [];
+  
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -110,7 +138,10 @@ class _SavedScreenState extends State<SavedScreen> {
     if (!mounted) return;
     setState(() => _itineraries.removeWhere((saved) => saved.id == item.id));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã xóa ${item.title}')),
+      SnackBar(
+        content: Text('Đã xóa ${item.title}'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -129,7 +160,10 @@ class _SavedScreenState extends State<SavedScreen> {
       if (!mounted) return;
       setState(() => _favorites.removeWhere((favorite) => favorite.id == item.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã xóa ${item.destination.name}')),
+        SnackBar(
+          content: Text('Đã xóa ${item.destination.name}'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -157,79 +191,314 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
+  Future<void> _renameItinerary(SavedItineraryItem item) async {
+    final token = VietaiScope.of(context).auth?.accessToken;
+    final controller = TextEditingController(text: item.title);
+    final nextName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đổi tên hành trình'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Nhập tên hành trình mới',
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF16A34A)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Lưu', style: TextStyle(color: Color(0xFF16A34A))),
+          ),
+        ],
+      ),
+    );
+
+    if (nextName != null && nextName.isNotEmpty && nextName != item.title) {
+      final map = {
+        ...item.itinerary,
+        'title': nextName,
+        'id': item.id,
+      };
+      try {
+        await TripItineraryService(authToken: token).saveItinerary(
+          itineraryId: item.id,
+          itinerary: map,
+        );
+      } catch (_) {
+        await SavedItineraryStore.remove(item.id);
+        await SavedItineraryStore.save(map);
+      }
+      _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã đổi tên thành "$nextName"'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _cloneItinerary(SavedItineraryItem item) async {
+    final clonedTitle = '${item.title} (Bản sao)';
+    final clonedId = '${item.id}-copy-${DateTime.now().millisecondsSinceEpoch}';
+    final map = {
+      ...item.itinerary,
+      'title': clonedTitle,
+      'id': clonedId,
+    };
+    try {
+      final token = VietaiScope.of(context).auth?.accessToken;
+      final saved = await TripItineraryService(authToken: token).saveItinerary(
+        itinerary: map,
+      );
+      await SavedItineraryStore.save({
+        ...saved.itinerary,
+        'id': saved.id,
+        'title': saved.title,
+      });
+    } catch (_) {
+      await SavedItineraryStore.save(map);
+    }
+    _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã sao chép hành trình thành công!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _shareItinerary(SavedItineraryItem item) {
+    Clipboard.setData(ClipboardData(text: 'Khám phá hành trình: ${item.title} \n${item.itinerary['summary'] ?? ''}'));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã sao chép liên kết chia sẻ hành trình!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _exportItineraryPdf(SavedItineraryItem item) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đang xuất PDF hành trình "${item.title}"...'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  List<SavedItineraryItem> get _filteredItineraries {
+    final query = _searchQuery.toLowerCase().trim();
+    if (query.isEmpty) return _itineraries;
+    return _itineraries.where((item) {
+      final title = item.title.toLowerCase();
+      final summary = (item.itinerary['summary'] ?? '').toString().toLowerCase();
+      return title.contains(query) || summary.contains(query);
+    }).toList();
+  }
+
+  List<FavoriteDestination> get _filteredFavorites {
+    final query = _searchQuery.toLowerCase().trim();
+    if (query.isEmpty) return _favorites;
+    return _favorites.where((item) {
+      final name = item.destination.name.toLowerCase();
+      final location = (item.destination.location ?? '').toLowerCase();
+      return name.contains(query) || location.contains(query);
+    }).toList();
+  }
+
+  Widget _buildLoading() {
+    return const SizedBox(
+      height: 260,
+      child: Center(
+        child: CircularProgressIndicator(color: Color(0xFF16A34A)),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return _MessageCard(
+      icon: Icons.cloud_off_rounded,
+      title: 'Chưa tải được danh sách đã lưu',
+      subtitle: 'Kiểm tra kết nối và kéo xuống để tải lại dữ liệu.',
+      actionLabel: 'Thử lại',
+      onPressed: _load,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return _MessageCard(
+      icon: Icons.favorite_border_rounded,
+      title: 'Bạn chưa lưu hành trình nào',
+      subtitle: 'Hãy tạo hoặc lưu hành trình đầu tiên để AI có thể hỗ trợ bạn nhanh hơn.',
+      actionLabel: 'Tạo hành trình',
+      onPressed: _goHome,
+    );
+  }
+
+  Widget _buildItinerarySection() {
+    final showInlineSuggestion = MediaQuery.of(context).size.width < 1024;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showInlineSuggestion) ...[
+          const _AISuggestionCard(),
+          const SizedBox(height: 20),
+        ],
+        const _SectionTitle(
+          title: 'Hành trình đã lưu',
+          icon: Icons.map_rounded,
+        ),
+        const SizedBox(height: 12),
+        if (_filteredItineraries.isEmpty && _searchQuery.isNotEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text('Không tìm thấy hành trình phù hợp',
+                  style: TextStyle(color: Color(0xFF6B7280))),
+            ),
+          )
+        else
+          ..._filteredItineraries.map(
+            (item) => _ItineraryCard(
+              item: item,
+              onOpen: () => _openItinerary(item),
+              onRename: () => _renameItinerary(item),
+              onClone: () => _cloneItinerary(item),
+              onShare: () => _shareItinerary(item),
+              onExportPdf: () => _exportItineraryPdf(item),
+              onRemove: () => _removeItinerary(item),
+            ),
+          ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildFavoritesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle(
+          title: 'Địa điểm yêu thích',
+          icon: Icons.favorite_border_rounded,
+        ),
+        const SizedBox(height: 12),
+        if (_filteredFavorites.isEmpty && _searchQuery.isNotEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text('Không tìm thấy địa điểm phù hợp',
+                  style: TextStyle(color: Color(0xFF6B7280))),
+            ),
+          )
+        else
+          ..._filteredFavorites.map(
+            (item) => _FavoriteCard(
+              favorite: item,
+              onOpen: () => _openFavorite(item),
+              onRemove: () => _remove(item),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSavedBody() {
+    if (_loading) return _buildLoading();
+    if (_error != null) return _buildError();
+    if (_favorites.isEmpty && _itineraries.isEmpty) return _buildEmptyState();
+    return Column(
+      children: [
+        if (_itineraries.isNotEmpty) _buildItinerarySection(),
+        if (_favorites.isNotEmpty) _buildFavoritesSection(),
+      ],
+    );
+  }
+
+  Widget _buildSavedSidebar() {
+    return Column(
+      children: [
+        const _AISuggestionCard(),
+        const SizedBox(height: 16),
+        _SavedDashboardPanel(
+          trips: _itineraries.length,
+          places: _favorites.length,
+        ),
+        const SizedBox(height: 16),
+        const _SavedInsightPanel(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isTablet = width >= 600;
+    final isDesktop = width >= 1024;
+    final padding = isTablet
+        ? const EdgeInsets.symmetric(horizontal: 28, vertical: 32)
+        : const EdgeInsets.all(16);
+    final maxWidth = isDesktop ? 1240.0 : (isTablet ? 900.0 : double.infinity);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 980),
-            child: RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-                children: [
-                  _SavedHeader(
-                    savedTrips: _itineraries.length,
-                    savedPlaces: _favorites.length,
-                    onHomePressed: _goHome,
-                  ),
-                  const SizedBox(height: 18),
-                  if (_loading)
-                    const SizedBox(
-                      height: 260,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_error != null)
-                    _MessageCard(
-                      icon: Icons.cloud_off_outlined,
-                      title: 'Chưa tải được danh sách đã lưu',
-                      subtitle: 'Kiểm tra backend API rồi kéo xuống để tải lại.',
-                      actionLabel: 'Thử lại',
-                      onPressed: _load,
-                    )
-                  else if (_favorites.isEmpty && _itineraries.isEmpty)
-                    _MessageCard(
-                      icon: Icons.favorite_border,
-                      title: 'Chưa có mục đã lưu',
-                      subtitle: 'Lưu địa điểm hoặc hành trình để xem lại tại đây.',
-                      actionLabel: 'Tải lại',
-                      onPressed: _load,
-                    )
-                  else ...[
-                    if (_itineraries.isNotEmpty) ...[
-                      const _SectionTitle(
-                        title: 'Hành trình đã lưu',
-                        icon: Icons.route_outlined,
-                      ),
-                      const SizedBox(height: 10),
-                      ..._itineraries.map(
-                        (item) => _ItineraryCard(
-                          item: item,
-                          onOpen: () => _openItinerary(item),
-                          onRemove: () => _removeItinerary(item),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (_favorites.isNotEmpty) ...[
-                      const _SectionTitle(
-                        title: 'Địa điểm yêu thích',
-                        icon: Icons.favorite_border,
-                      ),
-                      const SizedBox(height: 10),
-                      ..._favorites.map(
-                        (item) => _FavoriteCard(
-                          favorite: item,
-                          onOpen: () => _openFavorite(item),
-                          onRemove: () => _remove(item),
-                        ),
-                      ),
-                    ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFFFFF), Color(0xFFF7FBF8)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: RefreshIndicator(
+                onRefresh: _load,
+                color: const Color(0xFF16A34A),
+                child: ListView(
+                  padding: padding,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    _SavedHeader(
+                      savedTrips: _itineraries.length,
+                      savedPlaces: _favorites.length,
+                      onHomePressed: _goHome,
+                      searchController: _searchController,
+                      onQuickAction: (action) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Đang kích hoạt: $action'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    if (isDesktop)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildSavedBody()),
+                          const SizedBox(width: 28),
+                          SizedBox(width: 360, child: _buildSavedSidebar()),
+                        ],
+                      )
+                    else
+                      _buildSavedBody(),
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -244,417 +513,5 @@ class _SavedScreenState extends State<SavedScreen> {
       return;
     }
     Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-}
-
-class _SavedHeader extends StatelessWidget {
-  const _SavedHeader({
-    required this.savedTrips,
-    required this.savedPlaces,
-    required this.onHomePressed,
-  });
-
-  final int savedTrips;
-  final int savedPlaces;
-  final VoidCallback onHomePressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final canPop = Navigator.of(context).canPop();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            if (canPop) ...[
-              Material(
-                color: Colors.white,
-                shape: const CircleBorder(),
-                child: IconButton(
-                  tooltip: 'Quay lại',
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            const Expanded(
-              child: Text(
-                'Đã lưu',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            FilledButton.icon(
-              onPressed: onHomePressed,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              icon: const Icon(Icons.home_outlined, size: 18),
-              label: const Text(
-                'Trang chủ',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Xem lại hành trình và địa điểm bạn muốn giữ cho chuyến đi sau.',
-          style: TextStyle(color: AppColors.textSecondary, height: 1.35),
-        ),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _SummaryChip(
-              icon: Icons.route_outlined,
-              label: '$savedTrips hành trình',
-            ),
-            _SummaryChip(
-              icon: Icons.favorite_border,
-              label: '$savedPlaces địa điểm',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.icon});
-
-  final String title;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 19, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FavoriteCard extends StatelessWidget {
-  const _FavoriteCard({
-    required this.favorite,
-    required this.onOpen,
-    required this.onRemove,
-  });
-
-  final FavoriteDestination favorite;
-  final VoidCallback onOpen;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final destination = favorite.destination;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.cardBorder),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onOpen,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 92,
-                  child: NetworkImageCard(
-                    imageUrl: destination.imageUrl,
-                    height: 92,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        destination.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        destination.location ?? destination.tagline,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 6,
-                        children: [
-                          _InlineMeta(
-                            icon: Icons.star,
-                            label: destination.ratingLabel,
-                            color: Colors.amber,
-                          ),
-                          _InlineMeta(
-                            icon: Icons.near_me_outlined,
-                            label: destination.distanceLabel,
-                            color: AppColors.primary,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Xóa khỏi đã lưu',
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ItineraryCard extends StatelessWidget {
-  const _ItineraryCard({
-    required this.item,
-    required this.onOpen,
-    required this.onRemove,
-  });
-
-  final SavedItineraryItem item;
-  final VoidCallback onOpen;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final days = item.itinerary['days'] is List
-        ? (item.itinerary['days'] as List).length
-        : 0;
-    final summary =
-        '${item.itinerary['summary'] ?? 'Mở để xem lại và chỉnh sửa hành trình.'}';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.cardBorder),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onOpen,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(Icons.route_outlined, color: AppColors.primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        days == 0 ? summary : '$days ngày • $summary',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Xóa hành trình',
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InlineMeta extends StatelessWidget {
-  const _InlineMeta({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MessageCard extends StatelessWidget {
-  const _MessageCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.actionLabel,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String actionLabel;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: AppColors.cardBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Icon(icon, size: 38, color: AppColors.primary),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            TextButton(onPressed: onPressed, child: Text(actionLabel)),
-          ],
-        ),
-      ),
-    );
   }
 }

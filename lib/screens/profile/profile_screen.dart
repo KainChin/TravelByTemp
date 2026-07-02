@@ -12,8 +12,48 @@ import 'widgets/my_trips_section.dart';
 import 'widgets/cta_card.dart';
 import 'edit_profile_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  var _profileLoading = false;
+  String? _profileError;
+  bool _profileLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_profileLoaded) return;
+    _profileLoaded = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshProfile();
+    });
+  }
+
+  Future<void> _refreshProfile() async {
+    final session = VietaiScope.of(context);
+    if (session.auth == null) return;
+
+    setState(() {
+      _profileLoading = true;
+      _profileError = null;
+    });
+
+    try {
+      await session.refreshProfile();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _profileError = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _profileLoading = false);
+      }
+    }
+  }
 
   Future<void> _confirmLogout(BuildContext context) async {
     final session = VietaiScope.of(context);
@@ -246,8 +286,14 @@ class ProfileScreen extends StatelessWidget {
               onEditTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              ),
+              ).then((_) => _refreshProfile()),
             ),
+            if (_profileLoading || _profileError != null)
+              _ProfileApiStatus(
+                loading: _profileLoading,
+                error: _profileError,
+                onRetry: _refreshProfile,
+              ),
             // -- Stats --
             const StatsCard(),
             // -- My Trips --
@@ -288,6 +334,61 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileApiStatus extends StatelessWidget {
+  const _ProfileApiStatus({
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+  });
+
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: LinearProgressIndicator(minHeight: 2),
+      );
+    }
+
+    final message = error;
+    if (message == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 18, color: Color(0xFFD97706)),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Could not refresh profile from API.',
+              style: TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }
