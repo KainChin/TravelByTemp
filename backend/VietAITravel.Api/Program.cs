@@ -135,6 +135,7 @@ var googleMapsOpts = new GoogleMapsOptions
 builder.Services.AddSingleton(googleMapsOpts);
 builder.Services.AddScoped<RouteAnalysisService>();
 
+builder.Services.AddScoped<ContentActivityService>();
 builder.Services.AddScoped<TravelChatService>();
 
 var mongoOpts = new MongoOptions
@@ -164,6 +165,14 @@ builder.Services.AddSingleton<EmbeddingSeedService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmbeddingSeedService>());
 
 var app = builder.Build();
+
+var uploadsDir = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "uploads");
+Directory.CreateDirectory(uploadsDir);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
+    RequestPath = "/uploads"
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -467,6 +476,7 @@ app.MapDelete("/api/trip/itineraries/{id:guid}", async (
     return Results.NoContent();
 });
 
+await AppStartup.EnsureDatabaseReadyAsync(app.Services);
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 
 app.Run();

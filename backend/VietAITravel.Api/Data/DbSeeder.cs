@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using VietAITravel.Api.Constants;
 using VietAITravel.Api.Entities;
-using VietAITravel.Api.Services;
 
 namespace VietAITravel.Api.Data;
 
@@ -51,9 +50,18 @@ public static class DbSeeder
         }
 
         await EnsureUser("admin", "admin@vietai.travel", "Admin@123", RoleNames.Admin, "Quản trị viên");
-        await EnsureUser("manager", "manager@vietai.travel", "Manager@123", RoleNames.TravelManager, "Travel Manager");
+        await EnsureUser("manager", "manager@vietai.travel", "Manager@123", RoleNames.TravelManager, "Content Manager");
         await EnsureUser("traveler", "traveler@vietai.travel", "Traveler@123", RoleNames.Traveler, "Khách du lịch");
         await db.SaveChangesAsync();
+
+        try
+        {
+            await ContentSeeder.SeedAsync(db, logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Content seed skipped.");
+        }
 
         // Embeddings được tạo bởi EmbeddingSeedService sau khi Ollama sẵn sàng.
         logger.LogInformation("User seed completed. Embedding seed runs in background.");

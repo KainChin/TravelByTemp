@@ -109,8 +109,6 @@ public class AuthService(AppDbContext db, JwtOptions jwt)
         user.Username = username;
         user.Email = email;
         user.FullName = fullName;
-        user.Bio = bio;
-        user.Phone = phone;
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
@@ -159,5 +157,5 @@ public class AuthService(AppDbContext db, JwtOptions jwt)
     }
 
     public static UserDto ToDto(User user) =>
-        new(user.Id, user.Username, user.Email, user.FullName, user.Role.Name, user.Bio, user.Phone);
+        new(user.Id, user.Username, user.Email, user.FullName, user.Role.Name, null, null);
 }

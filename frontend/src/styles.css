@@ -29,7 +29,10 @@ header {
   margin-bottom: 16px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.06);
 }
-input, textarea, select, button {
+.app input,
+.app textarea,
+.app select,
+.app button {
   font: inherit;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
@@ -37,7 +40,7 @@ input, textarea, select, button {
   width: 100%;
   margin-bottom: 10px;
 }
-button {
+.app button {
   background: var(--primary);
   color: white;
   border: none;

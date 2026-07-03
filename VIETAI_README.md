@@ -13,6 +13,24 @@ Hệ thống gợi ý du lịch AI-assisted với **PostgreSQL + pgvector**, **M
 | Frontend web | React + Vite | Portal đăng nhập, explore, AI planner |
 | Flutter app | `lib/` (root) | Mobile UI đã tích hợp API (`10.0.2.2:5000` trên Android emulator) |
 
+## Design tooling (DESIGN.md + Impeccable)
+
+| File | Vai trò |
+|------|---------|
+| `PRODUCT.md` | Chiến lược sản phẩm cho AI agent |
+| `design-rules/DESIGN.md` | **Canonical** design tokens (sửa file này) |
+| `DESIGN.md` | Bản sync — `npm run design:sync` |
+| `.cursor/skills/impeccable` | `/impeccable audit`, `polish`, detector |
+
+```bash
+npm run design:lint      # validate DESIGN.md
+npm run design:export    # theme.css, tokens.json
+npm run design:sync      # copy → DESIGN.md + .agents/context/
+npm run impeccable:detect
+```
+
+Thư mục `ExtentionProject(donotpush)/` là sandbox local — **không commit** (đã gitignore).
+
 ## Khởi chạy
 
 ```bash
@@ -47,7 +65,8 @@ Khi can cap nhat database dang co data, chay cac script trong `database/postgres
 Vi du them bang favorites:
 
 ```bash
-docker exec -i vietai_postgres psql -U vietai_user -d vietai_travel_db < database/postgres/updates/20260623_add_user_favorites.sql
+docker exec -i vietai_postgres psql -U vietai_user -d vietai_travel_db < database/postgres/updates/20260703_add_user_favorites.sql
+docker exec -i vietai_postgres psql -U vietai_user -d vietai_travel_db < database/postgres/updates/20260703_add_content_management.sql
 ```
 
 Neu muon tao lai database sach tu dau va chap nhan mat data local:

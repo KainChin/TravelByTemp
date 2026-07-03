@@ -58,3 +58,12 @@ frontend/dist/
 *.user
 local.properties
 web/google_maps_config.js
+
+# Design tooling (local only — do not push extension sandbox)
+ExtentionProject(donotpush)/
+node_modules/
+design-rules/node_modules/
+design-rules/.turbo/
+design-rules/packages/cli/dist/
+.impeccable/config.local.json
+.cursor/settings.local.json

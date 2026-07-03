@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace VietAITravel.Api.Controllers;
 public class ManagerController(
     AppDbContext db,
     AiRecommendationService ai,
-    EmbeddingSeedService embeddingSeed) : ControllerBase
+    EmbeddingSeedService embeddingSeed,
+    ContentActivityService activity) : ControllerBase
 {
     [HttpPost("destinations/embed-all")]
     public async Task<IActionResult> EmbedAll(CancellationToken ct)
@@ -55,6 +57,7 @@ public class ManagerController(
         db.Destinations.Add(dest);
         await db.SaveChangesAsync(ct);
         await ai.UpdateDestinationEmbeddingAsync(dest.Id, ct);
+        await activity.LogAsync(GetUserId(), "create_destination", $"Thêm địa điểm \"{dest.Name}\"", "destination", dest.Id, ct);
         return Created($"/api/destinations/{dest.Id}", Map(dest));
     }
 
@@ -133,6 +136,7 @@ public class ManagerController(
         if (shouldRegenerateEmbedding)
             await ai.UpdateDestinationEmbeddingAsync(dest.Id, ct);
 
+        await activity.LogAsync(GetUserId(), "update_destination", $"Cập nhật địa điểm \"{dest.Name}\"", "destination", dest.Id, ct);
         return Ok(Map(dest));
     }
 
@@ -145,6 +149,20 @@ public class ManagerController(
         dest.IsActive = false;
         dest.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        await activity.LogAsync(GetUserId(), "delete_destination", $"Xóa địa điểm \"{dest.Name}\"", "destination", dest.Id, ct);
+        return NoContent();
+    }
+
+    [HttpPatch("destinations/{id:guid}/restore")]
+    public async Task<IActionResult> RestoreDestination(Guid id, CancellationToken ct)
+    {
+        var dest = await db.Destinations.FindAsync([id], ct)
+            ?? throw new KeyNotFoundException("Destination not found.");
+
+        dest.IsActive = true;
+        dest.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await activity.LogAsync(GetUserId(), "restore_destination", $"Khôi phục địa điểm \"{dest.Name}\"", "destination", dest.Id, ct);
         return NoContent();
     }
 
@@ -182,25 +200,36 @@ public class ManagerController(
     [HttpPatch("comments/{id:guid}/approve")]
     public async Task<IActionResult> ApproveComment(Guid id, CancellationToken ct)
     {
-        var c = await db.Comments.FindAsync([id], ct)
+        var c = await db.Comments.Include(x => x.Destination).FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new KeyNotFoundException("Comment not found.");
         c.IsApproved = true;
         c.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        await activity.LogAsync(GetUserId(), "approve_comment",
+            $"Duyệt bình luận tại \"{c.Destination.Name}\"", "comment", c.Id, ct);
         return NoContent();
     }
 
     [HttpPatch("comments/{id:guid}/reject")]
     public async Task<IActionResult> RejectComment(Guid id, CancellationToken ct)
     {
-        var c = await db.Comments.FindAsync([id], ct)
+        var c = await db.Comments.Include(x => x.Destination).FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new KeyNotFoundException("Comment not found.");
+        var destinationName = c.Destination.Name;
         db.Comments.Remove(c);
         await db.SaveChangesAsync(ct);
+        await activity.LogAsync(GetUserId(), "reject_comment",
+            $"Từ chối bình luận tại \"{destinationName}\"", "comment", id, ct);
         return NoContent();
     }
 
     private static DestinationDto Map(Destination dest) =>
         new(dest.Id, dest.Name, dest.Slug, dest.Description, dest.Province, dest.Region,
             dest.Latitude, dest.Longitude, dest.Category, dest.EstimatedCost, dest.CostUnit, dest.ImageUrl);
+
+    private Guid GetUserId()
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(id!);
+    }
 }
