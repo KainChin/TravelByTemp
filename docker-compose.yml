@@ -104,7 +104,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:5000
+        VITE_API_BASE_URL: ""
     container_name: vietai_frontend
     restart: always
     depends_on:

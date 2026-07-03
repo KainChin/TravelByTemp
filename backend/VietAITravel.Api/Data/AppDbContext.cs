@@ -20,6 +20,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TransportRoute> TransportRoutes => Set<TransportRoute>();
     public DbSet<TransportConfig> TransportConfigs => Set<TransportConfig>();
     public DbSet<UserTravelMemory> UserTravelMemories => Set<UserTravelMemory>();
+    public DbSet<ContentArticle> ContentArticles => Set<ContentArticle>();
+    public DbSet<ContentActivityLog> ContentActivityLogs => Set<ContentActivityLog>();
+    public DbSet<Banner> Banners => Set<Banner>();
+    public DbSet<GalleryImage> GalleryImages => Set<GalleryImage>();
+    public DbSet<FeaturedContent> FeaturedContents => Set<FeaturedContent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,9 +49,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Email).HasColumnName("email");
             e.Property(x => x.PasswordHash).HasColumnName("password_hash");
             e.Property(x => x.FullName).HasColumnName("full_name");
-            e.Property(x => x.Bio).HasColumnName("bio");
-            e.Property(x => x.Phone).HasColumnName("phone");
-            e.Property(x => x.AvatarUrl).HasColumnName("avatar_url");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
@@ -270,6 +272,81 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
             e.HasIndex(x => x.UserId).IsUnique();
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ContentArticle>(e =>
+        {
+            e.ToTable("content_articles");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.Slug).HasColumnName("slug");
+            e.Property(x => x.Summary).HasColumnName("summary");
+            e.Property(x => x.Content).HasColumnName("content");
+            e.Property(x => x.ArticleType).HasColumnName("article_type");
+            e.Property(x => x.Category).HasColumnName("category");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.AuthorId).HasColumnName("author_id");
+            e.Property(x => x.ThumbnailUrl).HasColumnName("thumbnail_url");
+            e.Property(x => x.DestinationId).HasColumnName("destination_id");
+            e.Property(x => x.ViewCount).HasColumnName("view_count");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.PublishedAt).HasColumnName("published_at");
+            e.HasOne(x => x.Author).WithMany().HasForeignKey(x => x.AuthorId);
+            e.HasOne(x => x.Destination).WithMany().HasForeignKey(x => x.DestinationId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ContentActivityLog>(e =>
+        {
+            e.ToTable("content_activity_logs");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.ActionType).HasColumnName("action_type");
+            e.Property(x => x.Description).HasColumnName("description");
+            e.Property(x => x.EntityType).HasColumnName("entity_type");
+            e.Property(x => x.EntityId).HasColumnName("entity_id");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+        });
+
+        modelBuilder.Entity<Banner>(e =>
+        {
+            e.ToTable("banners");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.ImageUrl).HasColumnName("image_url");
+            e.Property(x => x.LinkUrl).HasColumnName("link_url");
+            e.Property(x => x.SortOrder).HasColumnName("sort_order");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<GalleryImage>(e =>
+        {
+            e.ToTable("gallery_images");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.ImageUrl).HasColumnName("image_url");
+            e.Property(x => x.DestinationId).HasColumnName("destination_id");
+            e.Property(x => x.SortOrder).HasColumnName("sort_order");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.Destination).WithMany().HasForeignKey(x => x.DestinationId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<FeaturedContent>(e =>
+        {
+            e.ToTable("featured_content");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.Subtitle).HasColumnName("subtitle");
+            e.Property(x => x.ImageUrl).HasColumnName("image_url");
+            e.Property(x => x.LinkUrl).HasColumnName("link_url");
+            e.Property(x => x.ContentType).HasColumnName("content_type");
+            e.Property(x => x.ReferenceId).HasColumnName("reference_id");
+            e.Property(x => x.SortOrder).HasColumnName("sort_order");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
     }
 }
