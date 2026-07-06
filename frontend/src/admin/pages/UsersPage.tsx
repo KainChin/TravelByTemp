@@ -23,6 +23,7 @@ export function UsersPage() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CreateAdminUserPayload>(emptyUser);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -46,13 +47,29 @@ export function UsersPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const submitCreate = async () => {
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyUser());
+    setModalOpen(true);
+  };
+
+  const submitSave = async () => {
     setSaving(true);
     try {
-      await adminApi.createAdminUser(form);
-      setToast(t('users.created'));
+      if (editingId) {
+        await adminApi.updateAdminUser(editingId, {
+          email: form.email,
+          fullName: form.fullName,
+          password: form.password || undefined,
+        });
+        setToast(t('users.updated'));
+      } else {
+        await adminApi.createAdminUser(form);
+        setToast(t('users.created'));
+      }
       setModalOpen(false);
       setForm(emptyUser());
+      setEditingId(null);
       load();
     } catch (err) {
       setToast(err instanceof Error ? err.message : t('common.saveFailed'));
@@ -92,7 +109,7 @@ export function UsersPage() {
     <div className="content-page">
       <Breadcrumb items={[{ label: t('users.title') }]} />
       <ContentPageHeader title={t('users.title')} description={t('users.description')}>
-        <button type="button" className="btn-primary" onClick={() => setModalOpen(true)}>
+        <button type="button" className="btn-primary" onClick={openCreate}>
           <PlusIcon size={16} />
           {t('users.create')}
         </button>
@@ -147,6 +164,24 @@ export function UsersPage() {
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
+                      style={{ marginRight: 8 }}
+                      onClick={() => {
+                        setEditingId(u.id);
+                        setForm({
+                          username: u.username,
+                          email: u.email,
+                          fullName: u.fullName,
+                          password: '',
+                          role: u.role,
+                        });
+                        setModalOpen(true);
+                      }}
+                    >
+                      {t('common.edit')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
                       disabled={busyId === u.id}
                       onClick={() => toggleActive(u)}
                     >
@@ -162,9 +197,9 @@ export function UsersPage() {
 
       <EditorModal
         open={modalOpen}
-        title={t('users.createTitle')}
+        title={editingId ? t('common.edit') : t('users.createTitle')}
         onClose={() => setModalOpen(false)}
-        onSave={submitCreate}
+        onSave={submitSave}
         saving={saving}
       >
         <label className="editor-field">
@@ -173,6 +208,7 @@ export function UsersPage() {
             value={form.username}
             onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
             required
+            disabled={!!editingId}
           />
         </label>
         <label className="editor-field">
@@ -193,12 +229,12 @@ export function UsersPage() {
           />
         </label>
         <label className="editor-field">
-          <span className="field-label">{t('login.password')} *</span>
+          <span className="field-label">{t('login.password')}{!editingId && ' *'}</span>
           <input
             type="password"
             value={form.password}
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            required
+            required={!editingId}
             minLength={8}
           />
         </label>

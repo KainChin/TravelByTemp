@@ -33,25 +33,103 @@ class AppSession extends ChangeNotifier {
   Future<void> restore() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);
+    final expiresAtText = prefs.getString(_expiresAtKey);
     final userJson = prefs.getString(_userKey);
-    if (token != null && userJson != null) {
+
+    if (token == null || userJson == null || expiresAtText == null) {
+      await _clearStoredAuth(prefs);
+      return;
+    }
+
+    try {
+      final expiresAt = DateTime.tryParse(expiresAtText);
+      if (expiresAt == null || !expiresAt.isAfter(DateTime.now())) {
+        await _clearStoredAuth(prefs);
+        return;
+      }
+
       api.setToken(token);
       auth = AuthSession(
         accessToken: token,
         refreshToken: prefs.getString(_refreshTokenKey) ?? '',
-        expiresAt: DateTime.tryParse(prefs.getString(_expiresAtKey) ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
+        expiresAt: expiresAt,
         user: AuthUser.fromJson(
           jsonDecode(userJson) as Map<String, dynamic>,
         ),
       );
       notifyListeners();
       await loadSchedules();
+    } catch (_) {
+      await _clearStoredAuth(prefs);
     }
   }
 
   Future<void> login(String username, String password) async {
     final session = await api.login(username, password);
+    await _applyAuthSession(session);
+    await refreshLocationAndWeather();
+    await loadSchedules();
+  }
+
+  Future<void> register({
+    required String username,
+    String? email,
+    required String password,
+    required String fullName,
+    String? phone,
+  }) async {
+    final session = await api.register(
+      username: username,
+      email: email,
+      password: password,
+      fullName: fullName,
+      phone: phone,
+    );
+    await _applyAuthSession(session);
+    await refreshLocationAndWeather();
+    await loadSchedules();
+  }
+
+  Future<BeginRegisterResult> beginRegister({
+    required String username,
+    String? email,
+    required String password,
+    required String fullName,
+    String? phone,
+  }) {
+    return api.beginRegister(
+      username: username,
+      email: email,
+      password: password,
+      fullName: fullName,
+      phone: phone,
+    );
+  }
+
+  Future<void> verifyRegister({
+    required String verificationId,
+    required String code,
+  }) async {
+    final session = await api.verifyRegister(
+      verificationId: verificationId,
+      code: code,
+    );
+    await _applyAuthSession(session);
+    await refreshLocationAndWeather();
+    await loadSchedules();
+  }
+
+  Future<void> resetPassword({
+    required String usernameOrEmail,
+    required String newPassword,
+  }) {
+    return api.resetPassword(
+      usernameOrEmail: usernameOrEmail,
+      newPassword: newPassword,
+    );
+  }
+
+  Future<void> _applyAuthSession(AuthSession session) async {
     auth = session;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, session.accessToken);
@@ -59,8 +137,6 @@ class AppSession extends ChangeNotifier {
     await prefs.setString(_expiresAtKey, session.expiresAt.toIso8601String());
     await _saveUser(prefs, session.user);
     notifyListeners();
-    await refreshLocationAndWeather();
-    await loadSchedules();
   }
 
   Future<void> logout() async {
@@ -70,11 +146,17 @@ class AppSession extends ChangeNotifier {
     schedulesError = null;
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
+    await _clearStoredAuth(prefs);
+    notifyListeners();
+  }
+
+  Future<void> _clearStoredAuth(SharedPreferences prefs) async {
+    auth = null;
+    api.setToken(null);
     await prefs.remove(_tokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_expiresAtKey);
     await prefs.remove(_userKey);
-    notifyListeners();
   }
 
   Future<void> refreshAuth() async {
@@ -114,6 +196,7 @@ class AppSession extends ChangeNotifier {
     required String fullName,
     String? bio,
     String? phone,
+    String? avatarUrl,
   }) async {
     final current = auth;
     if (current == null) return;
@@ -124,6 +207,7 @@ class AppSession extends ChangeNotifier {
       fullName: fullName,
       bio: bio,
       phone: phone,
+      avatarUrl: avatarUrl,
     );
     auth = AuthSession(
       accessToken: current.accessToken,
@@ -146,6 +230,7 @@ class AppSession extends ChangeNotifier {
       'role': user.role,
       'bio': user.bio,
       'phone': user.phone,
+      'avatarUrl': user.avatarUrl,
     }));
   }
 

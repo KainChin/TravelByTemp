@@ -23,7 +23,7 @@ public class ContentAssetsController(AppDbContext db, ContentActivityService act
         var items = await db.Banners.AsNoTracking()
             .OrderBy(b => b.SortOrder)
             .ThenByDescending(b => b.CreatedAt)
-            .Select(b => new BannerDto(b.Id, b.Title, b.ImageUrl, b.LinkUrl, b.SortOrder, b.IsActive, b.CreatedAt))
+            .Select(b => new BannerDto(b.Id, b.Title, b.ImageUrl, b.LinkUrl, b.SortOrder, b.IsActive, b.Region, b.CreatedAt))
             .ToListAsync(ct);
         return Ok(items);
     }
@@ -40,6 +40,7 @@ public class ContentAssetsController(AppDbContext db, ContentActivityService act
             LinkUrl = request.LinkUrl,
             SortOrder = request.SortOrder,
             IsActive = request.IsActive,
+            Region = request.Region,
             CreatedAt = now
         };
         db.Banners.Add(banner);
@@ -59,6 +60,7 @@ public class ContentAssetsController(AppDbContext db, ContentActivityService act
         if (request.LinkUrl is not null) banner.LinkUrl = request.LinkUrl;
         if (request.SortOrder.HasValue) banner.SortOrder = request.SortOrder.Value;
         if (request.IsActive.HasValue) banner.IsActive = request.IsActive.Value;
+        if (!string.IsNullOrWhiteSpace(request.Region)) banner.Region = request.Region;
         banner.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
@@ -275,7 +277,7 @@ public class ContentAssetsController(AppDbContext db, ContentActivityService act
             .ToDictionaryAsync(x => x.Id, x => x.Count, ct);
 
     private static BannerDto MapBanner(Banner b) =>
-        new(b.Id, b.Title, b.ImageUrl, b.LinkUrl, b.SortOrder, b.IsActive, b.CreatedAt);
+        new(b.Id, b.Title, b.ImageUrl, b.LinkUrl, b.SortOrder, b.IsActive, b.Region, b.CreatedAt);
 
     private static FeaturedContentDto MapFeatured(FeaturedContent f) =>
         new(f.Id, f.Title, f.Subtitle, f.ImageUrl, f.LinkUrl, f.ContentType, f.IsActive, f.SortOrder, f.CreatedAt);

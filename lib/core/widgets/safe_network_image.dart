@@ -117,12 +117,12 @@ class _SafeNetworkImageState extends State<SafeNetworkImage> {
       logImageDecodeIssueOnce(
         'content-type-check-failed|${widget.source}|$trimmedUrl',
         () {
-          debugPrint('[ImageDecode] Could not verify Content-Type for ${widget.source}; using Image.network fallback handling.');
+          debugPrint('[ImageDecode] Could not verify Content-Type for ${widget.source}; showing image fallback.');
           debugPrint('[ImageDecode] URL: $trimmedUrl');
           debugPrint('[ImageDecode] Error: $error');
         },
       );
-      return const _NetworkImageDecision(showImage: true);
+      return const _NetworkImageDecision(showImage: false);
     }
   }
 

@@ -319,7 +319,7 @@ export function Header({
             }}
           >
             <img
-              src={`https://i.pravatar.cc/80?u=${auth.user.username}`}
+              src={auth.user.avatarUrl || `https://i.pravatar.cc/80?u=${auth.user.username}`}
               alt=""
               className="user-avatar"
             />
@@ -333,7 +333,7 @@ export function Header({
             <div className="user-dropdown" role="menu">
               <div className="user-dropdown-head">
                 <img
-                  src={`https://i.pravatar.cc/80?u=${auth.user.username}`}
+                  src={auth.user.avatarUrl || `https://i.pravatar.cc/80?u=${auth.user.username}`}
                   alt=""
                   className="user-dropdown-avatar"
                 />

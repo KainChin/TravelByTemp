@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/budget_tier.dart';
 import '../models/route_analysis.dart';
 import '../services/trip_itinerary_service.dart';
+import '../../../core/widgets/vietai_scope.dart';
 import 'trip_itinerary_result_screen.dart';
 
 part 'route_analysis/trip_route_analysis_map.dart';
@@ -66,7 +67,8 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
   Future<void> _generateItinerary() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
-    final service = TripItineraryService();
+    final token = VietaiScope.of(context).auth?.accessToken;
+    final service = TripItineraryService(authToken: token);
     try {
       final result = await service.generate(
         destinations: _analysis.destinations,
@@ -94,6 +96,11 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
     } on TripItineraryException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (error, stackTrace) {
+      debugPrint('[RouteAnalysis] Could not generate itinerary: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       service.dispose();
       if (mounted) setState(() => _isGenerating = false);

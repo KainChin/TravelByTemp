@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
+import 'package:assignment/services/api_client.dart';
 import '../models/destination_model.dart';
 import '../models/region_model.dart';
 import '../services/region_service.dart';
@@ -13,7 +14,16 @@ import '../widgets/article_section.dart';
 import 'article_detail_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({
+    super.key,
+    this.onProfileTap,
+    this.onSettingsTap,
+    this.onLogoutTap,
+  });
+
+  final VoidCallback? onProfileTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onLogoutTap;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -24,6 +34,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final _scrollController = ScrollController();
 
   List<RegionModel> _regions = [];
+  List<BannerItem> _banners = [];
   RegionType _selectedRegion = RegionType.west;
   bool _isLoading = true;
 
@@ -89,18 +100,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
         _regions = markedRegions;
         _isLoading = false;
       });
+      _fetchBanners();
     } catch (_) {
       if (mounted) {
         setState(() {
           _regions = [];
+          _banners = [];
           _isLoading = false;
         });
       }
     }
   }
 
+  Future<void> _fetchBanners() async {
+    if (!mounted) return;
+    try {
+      final api = VietaiScope.of(context).api;
+      final banners = await api
+          .fetchBanners(region: _selectedRegion.name)
+          .timeout(const Duration(seconds: 5));
+      if (mounted) setState(() => _banners = banners);
+    } catch (_) {
+      if (mounted) setState(() => _banners = []);
+    }
+  }
+
   void _onTabChanged(RegionType type) {
     setState(() => _selectedRegion = type);
+    _fetchBanners();
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(
       0,
@@ -283,7 +310,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const ExploreHeader(),
+          ExploreHeader(
+            onProfileTap: widget.onProfileTap,
+            onSettingsTap: widget.onSettingsTap,
+            onLogoutTap: widget.onLogoutTap,
+          ),
           const SizedBox(height: 20),
           _buildTitle(),
           const SizedBox(height: 20),
@@ -331,7 +362,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 4),
-          RegionBanner(region: region, onExplore: () {}),
+          RegionBanner(
+            region: region,
+            banners: _banners,
+            onExplore: () {},
+          ),
           const SizedBox(height: 24),
           DestinationSection(
             region: region,

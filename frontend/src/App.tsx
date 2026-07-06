@@ -3,6 +3,12 @@ import { api, AuthResponse, Destination, FavoriteDestination } from './api';
 
 type Tab = 'explore' | 'saved' | 'ai' | 'trips';
 
+function isAuthResponse(value: unknown): value is AuthResponse {
+  if (!value || typeof value !== 'object') return false;
+  const auth = value as Partial<AuthResponse>;
+  return Boolean(auth.accessToken && auth.refreshToken && auth.user?.role);
+}
+
 export default function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [tab, setTab] = useState<Tab>('explore');
@@ -25,7 +31,18 @@ export default function App() {
 
   useEffect(() => {
     const saved = localStorage.getItem('auth');
-    if (saved) setAuth(JSON.parse(saved));
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (isAuthResponse(parsed)) {
+        setAuth(parsed);
+        return;
+      }
+    } catch {
+      // Ignore invalid persisted auth and start a fresh session.
+    }
+    localStorage.removeItem('auth');
+    localStorage.removeItem('token');
   }, []);
 
   useEffect(() => {

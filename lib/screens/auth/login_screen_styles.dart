@@ -65,9 +65,12 @@ class LoginScreenStyles {
     required String hint,
     IconData? prefixIcon,
     Widget? suffixIcon,
+    String? helperText,
   }) {
     return InputDecoration(
       hintText: hint,
+      helperText: helperText,
+      helperMaxLines: 2,
       hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
       prefixIcon: prefixIcon == null
           ? null

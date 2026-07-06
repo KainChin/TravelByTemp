@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:assignment/core/widgets/safe_memory_image.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
@@ -13,7 +14,12 @@ import 'widgets/cta_card.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    required this.refreshToken,
+  });
+
+  final int refreshToken;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -32,6 +38,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _refreshProfile();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refreshProfile();
+      });
+    }
   }
 
   Future<void> _refreshProfile() async {
@@ -76,7 +92,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (shouldLogout == true) {
-      await session.logout();
+      try {
+        await WidgetsBinding.instance.endOfFrame;
+        if (!context.mounted) return;
+        await session.logout();
+      } catch (error, stackTrace) {
+        debugPrint('[Profile] Logout failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    }
+  }
+
+  void _shareProfile(BuildContext context) {
+    final user = VietaiScope.of(context).auth?.user;
+    final name = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName.trim()
+        : user?.username ?? 'Traveler';
+    final text = 'VietAI Travel profile: $name';
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Profile info copied.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _openUpload(BuildContext context) async {
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const UploadScreen()),
+      );
+      if (!context.mounted) return;
+      _refreshProfile();
+    } catch (error, stackTrace) {
+      debugPrint('[Profile] Could not open upload flow: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
     }
   }
 
@@ -282,7 +342,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               bio: user?.bio,
               role: user?.role ?? 'Traveler',
               location: session.locationName,
+              avatarUrl: user?.avatarUrl,
               onLogoutTap: () => _confirmLogout(context),
+              onShareTap: () => _shareProfile(context),
+              onAvatarTap: () => _openUpload(context),
               onEditTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
@@ -295,9 +358,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onRetry: _refreshProfile,
               ),
             // -- Stats --
-            const StatsCard(),
+            StatsCard(refreshToken: widget.refreshToken),
             // -- My Trips --
-            const MyTripsSection(),
+            MyTripsSection(refreshToken: widget.refreshToken),
             // -- My Memories --
             _buildMemoriesSection(context),
             // -- Create Travel Video --
@@ -326,10 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=200',
                 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200',
               ],
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UploadScreen()),
-              ),
+              onPressed: () => _openUpload(context),
             ),
             const SizedBox(height: 20),
           ],

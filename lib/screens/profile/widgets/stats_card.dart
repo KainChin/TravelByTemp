@@ -1,10 +1,16 @@
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/screens/trips/services/trip_itinerary_service.dart';
+import 'package:assignment/services/api_client.dart';
 import 'package:assignment/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 
 class StatsCard extends StatefulWidget {
-  const StatsCard({super.key});
+  const StatsCard({
+    super.key,
+    required this.refreshToken,
+  });
+
+  final int refreshToken;
 
   @override
   State<StatsCard> createState() => _StatsCardState();
@@ -38,49 +44,92 @@ class _StatsCardState extends State<StatsCard> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant StatsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      _refresh();
+    }
+  }
+
   Future<_ProfileStats> _loadStats() async {
     final session = VietaiScope.of(context);
-    final token = session.auth?.accessToken;
+    try {
+      final summary = await session.api.fetchProfileSummary();
+      return _ProfileStats(
+        trips: summary.trips,
+        photos: summary.photos,
+        videos: summary.videos,
+        places: summary.savedPlaces,
+      );
+    } on ApiException catch (error, stackTrace) {
+      if (error.statusCode != 404) {
+        debugPrint('[ProfileStats] Failed to load /api/profile/summary: $error');
+        debugPrintStack(stackTrace: stackTrace);
+        rethrow;
+      }
+      debugPrint('[ProfileStats] /api/profile/summary is not available. Falling back to existing data sources.');
+      return _loadFallbackStats(session.auth?.accessToken);
+    } catch (error, stackTrace) {
+      debugPrint('[ProfileStats] Unexpected error while loading profile summary: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
 
-    final results = await Future.wait<dynamic>([
-      _safe(() => TripItineraryService(authToken: token).history(), const <TripItineraryHistoryItem>[]),
-      _safe(() => session.api.fetchFavorites(), const []),
-      _safe(() => FirestoreService.getTrips().first, null),
-      _safe(() => FirestoreService.getVideos().first, null),
+  Future<_ProfileStats> _loadFallbackStats(String? token) async {
+    final results = await Future.wait<Object>([
+      _safeCount('itinerary history', () async {
+        return TripItineraryService(authToken: token).history().then((items) => items.length);
+      }),
+      _safeCount('favorites', () async {
+        return VietaiScope.of(context).api.fetchFavorites().then((items) => items.length);
+      }),
+      _safeCount('Firestore trips', _countFirestoreTrips),
+      _safeCount('Firestore videos', _countFirestoreVideos),
     ]);
 
-    final itineraries = results[0] as List<TripItineraryHistoryItem>;
-    final favorites = results[1] as List;
-    final tripsSnapshot = results[2];
-    final videosSnapshot = results[3];
-
-    var photos = 0;
-    if (tripsSnapshot != null) {
-      final docs = (tripsSnapshot as dynamic).docs as List;
-      for (final doc in docs) {
-        final data = doc.data();
-        if (data is Map<String, dynamic>) {
-          photos += (data['photoCount'] as num?)?.toInt() ?? 0;
-        }
-      }
-    }
-
-    final videos = videosSnapshot == null ? 0 : ((videosSnapshot as dynamic).docs as List).length;
+    final itineraryTrips = results[0] as int;
+    final places = results[1] as int;
+    final firestore = results[2] as _FirestoreTripCount;
+    final videos = results[3] as int;
 
     return _ProfileStats(
-      trips: itineraries.length,
-      photos: photos,
+      trips: itineraryTrips > firestore.trips ? itineraryTrips : firestore.trips,
+      photos: firestore.photos,
       videos: videos,
-      places: favorites.length,
+      places: places,
     );
   }
 
-  Future<T> _safe<T>(Future<T> Function() load, T fallback) async {
+  Future<T> _safeCount<T>(String source, Future<T> Function() load) async {
     try {
       return await load();
-    } catch (_) {
-      return fallback;
+    } catch (error, stackTrace) {
+      debugPrint('[ProfileStats] Could not load $source: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (T == _FirestoreTripCount) {
+        return const _FirestoreTripCount(trips: 0, photos: 0) as T;
+      }
+      return 0 as T;
     }
+  }
+
+  Future<_FirestoreTripCount> _countFirestoreTrips() async {
+    final snapshot = await FirestoreService.getTrips().first.timeout(const Duration(seconds: 5));
+    var photos = 0;
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      if (data is Map<String, dynamic>) {
+        photos += (data['photoCount'] as num?)?.toInt() ?? 0;
+      }
+    }
+    return _FirestoreTripCount(trips: snapshot.docs.length, photos: photos);
+  }
+
+  Future<int> _countFirestoreVideos() async {
+    final snapshot = await FirestoreService.getVideos().first.timeout(const Duration(seconds: 5));
+    return snapshot.docs.length;
   }
 
   void _refresh() {
@@ -143,6 +192,16 @@ class _StatsCardState extends State<StatsCard> {
       ),
     );
   }
+}
+
+class _FirestoreTripCount {
+  const _FirestoreTripCount({
+    required this.trips,
+    required this.photos,
+  });
+
+  final int trips;
+  final int photos;
 }
 
 class _ProfileStats {

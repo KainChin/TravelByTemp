@@ -7,11 +7,11 @@ import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
+        <Route path="/" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/*" element={<AdminApp />} />
         <Route path="/*" element={<App />} />
-        <Route path="/" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

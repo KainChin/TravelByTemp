@@ -83,6 +83,7 @@ export type Banner = {
   linkUrl?: string;
   sortOrder: number;
   isActive: boolean;
+  region: string;
   createdAt: string;
 };
 
@@ -220,6 +221,7 @@ export type BannerPayload = {
   linkUrl?: string | null;
   sortOrder: number;
   isActive: boolean;
+  region: string;
 };
 
 export type GalleryPayload = {
@@ -478,6 +480,11 @@ export const adminApi = {
     }),
   toggleUserActive: (id: string) =>
     request<void>(`/api/admin/users/${id}/toggle-active`, { method: 'PATCH' }),
+  updateAdminUser: (id: string, body: Partial<CreateAdminUserPayload>) =>
+    request<AdminUser>(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
 };
 
 export function formatViewCount(n: number): string {

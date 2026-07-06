@@ -19,3 +19,9 @@ public record CreateAdminUserRequest(
 public record UpdateAdminUserRoleRequest(string Role);
 
 public record BulkPublishRequest(IReadOnlyList<Guid> Ids);
+
+public record UpdateAdminUserRequest(
+    string? Email,
+    string? FullName,
+    string? Password);
+

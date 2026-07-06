@@ -2,6 +2,7 @@
 library edit_profile_screen;
 
 import 'package:assignment/core/widgets/vietai_scope.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:flutter/material.dart';
 
 part 'edit_profile/edit_profile_widgets.dart';
@@ -19,6 +20,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _emailCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _avatarUrlCtrl = TextEditingController();
   bool _initialized = false;
   bool _isSaving = false;
 
@@ -33,6 +35,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailCtrl.text = user?.email ?? '';
     _bioCtrl.text = user?.bio ?? '';
     _phoneCtrl.text = user?.phone ?? '';
+    _avatarUrlCtrl.text = user?.avatarUrl ?? '';
     _initialized = true;
   }
 
@@ -43,6 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailCtrl.dispose();
     _bioCtrl.dispose();
     _phoneCtrl.dispose();
+    _avatarUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -52,6 +56,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final email = _emailCtrl.text.trim();
     final bio = _bioCtrl.text.trim();
     final phone = _phoneCtrl.text.trim();
+    final avatarUrl = _avatarUrlCtrl.text.trim();
 
     if (name.isEmpty || username.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,6 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         fullName: name,
         bio: bio.isEmpty ? null : bio,
         phone: phone.isEmpty ? null : phone,
+        avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,7 +142,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
-          _AvatarHero(name: _nameCtrl.text),
+          _AvatarHero(name: _nameCtrl.text, avatarUrl: _avatarUrlCtrl.text),
           const SizedBox(height: 12),
           _Section(
             icon: Icons.person_outline,
@@ -166,6 +172,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
                 maxLength: 30,
+              ),
+              _ProfileField(
+                label: 'Avatar image URL',
+                controller: _avatarUrlCtrl,
+                keyboardType: TextInputType.url,
+                maxLength: 500,
               ),
             ],
           ),

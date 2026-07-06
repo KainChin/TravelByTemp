@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using VietAITravel.Api.Constants;
 using VietAITravel.Api.Data;
 using VietAITravel.Api.DTOs;
+using VietAITravel.Api.Services;
 
 namespace VietAITravel.Api.Controllers;
 
@@ -19,7 +20,7 @@ public class AdminController(AppDbContext db) : ControllerBase
             .Include(u => u.Role)
             .OrderByDescending(u => u.CreatedAt)
             .Select(u => new AdminUserDto(
-                u.Id, u.Username, u.Email, u.FullName, u.Role.Name, u.IsActive, u.CreatedAt))
+                u.Id, u.Username, u.Email ?? "", u.FullName, u.Role.Name, u.IsActive, u.CreatedAt))
             .ToListAsync(ct);
         return Ok(users);
     }
@@ -51,7 +52,7 @@ public class AdminController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync(ct);
 
         return Created($"/api/admin/users/{user.Id}",
-            new AdminUserDto(user.Id, user.Username, user.Email, user.FullName, role.Name, user.IsActive, user.CreatedAt));
+            new AdminUserDto(user.Id, user.Username, user.Email ?? "", user.FullName, role.Name, user.IsActive, user.CreatedAt));
     }
 
     [HttpPatch("users/{id:guid}/role")]
@@ -78,6 +79,26 @@ public class AdminController(AppDbContext db) : ControllerBase
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    [HttpPut("users/{id:guid}")]
+    public async Task<ActionResult<AdminUserDto>> UpdateUser(Guid id, UpdateAdminUserRequest request, CancellationToken ct)
+    {
+        var user = await db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy user.");
+
+        if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email &&
+            await db.Users.AnyAsync(u => u.Email == request.Email, ct))
+            throw new InvalidOperationException("Email đã tồn tại.");
+
+        if (!string.IsNullOrWhiteSpace(request.FullName)) user.FullName = request.FullName.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Email)) user.Email = request.Email.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Password)) user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return Ok(new AdminUserDto(user.Id, user.Username, user.Email ?? "", user.FullName, user.Role.Name, user.IsActive, user.CreatedAt));
     }
 
     [HttpGet("health")]

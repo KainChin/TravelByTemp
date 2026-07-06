@@ -208,7 +208,7 @@ public class ContentArticlesController(AppDbContext db, ContentActivityService a
             ContentLabels.CategoryLabel(a.Category),
             a.Status, ContentLabels.StatusLabel(a.Status),
             a.ThumbnailUrl,
-            new ArticleAuthorDto(a.Author.Id, a.Author.FullName, null),
+            new ArticleAuthorDto(a.Author.Id, a.Author.FullName, a.Author.AvatarUrl),
             a.CreatedAt, a.PublishedAt);
 
     private static ArticleDetailDto MapDetail(ContentArticle a) =>
@@ -216,6 +216,6 @@ public class ContentArticlesController(AppDbContext db, ContentActivityService a
             a.Id, a.Title, a.Slug, a.Summary, a.Content,
             a.ArticleType, a.Category, a.Status, a.ThumbnailUrl,
             a.DestinationId, a.ViewCount,
-            new ArticleAuthorDto(a.Author.Id, a.Author.FullName, null),
+            new ArticleAuthorDto(a.Author.Id, a.Author.FullName, a.Author.AvatarUrl),
             a.CreatedAt, a.UpdatedAt, a.PublishedAt);
 }

@@ -1,18 +1,70 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:assignment/core/config/api_config.dart';
 import '../models/article_model.dart';
 import '../models/region_model.dart';
 
 class ArticleService {
-  // TODO: Replace with real API calls
   // GET /api/articles?region={regionId}
   // GET /api/articles/{id}
 
   Future<List<ArticleModel>> getArticlesByRegion(RegionType region) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final regionStr = region.name; // central, north, south, west
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/articles?region=$regionStr'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data.map((json) => ArticleModel(
+          id: json['id'] as String,
+          title: json['title'] as String? ?? '',
+          summary: json['summary'] as String? ?? '',
+          content: json['content'] as String? ?? '',
+          thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+          source: json['author'] != null && json['author']['fullName'] != null
+              ? json['author']['fullName'] as String
+              : 'AI Travel',
+          publishDate: json['publishedAt'] != null 
+              ? DateTime.parse(json['publishedAt'] as String) 
+              : (json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now()),
+        )).toList();
+      }
+    } catch (e) {
+      debugPrint('Error fetching articles: $e');
+    }
+    // Fallback to fake data if API fails or is empty
     return _fakeData[region] ?? [];
   }
 
   Future<ArticleModel?> getArticleById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/articles/$id'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        return ArticleModel(
+          id: json['id'] as String,
+          title: json['title'] as String? ?? '',
+          summary: json['summary'] as String? ?? '',
+          content: json['content'] as String? ?? '',
+          thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+          source: json['author'] != null && json['author']['fullName'] != null
+              ? json['author']['fullName'] as String
+              : 'AI Travel',
+          publishDate: json['publishedAt'] != null 
+              ? DateTime.parse(json['publishedAt'] as String) 
+              : (json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now()),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching article by id: $e');
+    }
+    // Fallback to fake data
     for (final list in _fakeData.values) {
       for (final article in list) {
         if (article.id == id) return article;
@@ -109,7 +161,7 @@ Hoàng thành Huế là quần thể kiến trúc cung đình đồ sộ với h
         id: 'a7',
         title: 'Đà Lạt – Thành phố ngàn hoa bốn mùa',
         summary: 'Khám phá thành phố mộng mơ với khí hậu mát mẻ và vườn hoa rực rỡ.',
-        content: '''Đà Lạt nằm trên cao nguyên Lâm Viên ở độ cao 1.500m, nơi bốn mùa mát mẻ và hoa nở rực rỡ quanh năm. Thành phố này là điểm đến lý tưởng cho những ai muốn thoát khỏi cái nóng oi ả của miền Nam.''',
+        content: '''Đà Lạt nằm trên cao nguyên Lâm Viên ở độ cao 1.500m, nơi four mùa mát mẻ và hoa nở rực rỡ quanh năm. Thành phố này là điểm đến lý tưởng cho những ai muốn thoát khỏi cái nóng oi ả của miền Nam.''',
         thumbnailUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=400',
         source: 'Booking.com',
         publishDate: DateTime.now().subtract(const Duration(days: 4)),
@@ -128,4 +180,3 @@ Hoàng thành Huế là quần thể kiến trúc cung đình đồ sộ với h
     ],
   };
 }
-

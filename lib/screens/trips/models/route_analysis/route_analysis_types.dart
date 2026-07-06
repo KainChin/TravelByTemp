@@ -152,11 +152,27 @@ class RouteLeg {
     return null;
   }
 
-  double get estimatedCostVnd =>
-      estimatedCostVndOverride ?? selectedTransportOption?.estimatedCostVnd ?? 0;
+  double get estimatedCostVnd {
+    final override = estimatedCostVndOverride;
+    if (override != null && override > 0) return override;
 
-  double get recommendedHours =>
-      durationHours ?? selectedTransportOption?.durationHours ?? 0;
+    final selectedCost = selectedTransportOption?.estimatedCostVnd ?? 0;
+    if (selectedCost > 0) return selectedCost;
+
+    for (final option in transportOptionsForLeg(this)) {
+      if (option.mode == recommendedMode && option.estimatedCostVnd > 0) {
+        return option.estimatedCostVnd;
+      }
+    }
+
+    return _fallbackCost(distanceKm, recommendedMode);
+  }
+
+  double get recommendedHours {
+    final currentDuration = durationHours ?? selectedTransportOption?.durationHours ?? 0;
+    if (currentDuration > 0) return currentDuration;
+    return _fallbackHours(distanceKm, recommendedMode);
+  }
 
   int get segmentTransferCount {
     final segments = selectedTransportOption?.segments ?? const [];

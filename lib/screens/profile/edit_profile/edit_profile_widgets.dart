@@ -2,9 +2,10 @@
 part of edit_profile_screen;
 
 class _AvatarHero extends StatelessWidget {
-  const _AvatarHero({required this.name});
+  const _AvatarHero({required this.name, required this.avatarUrl});
 
   final String name;
+  final String avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -21,17 +22,40 @@ class _AvatarHero extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: CircleAvatar(
-          radius: 42,
-          backgroundColor: const Color(0xFF3A7D5A),
-          child: Text(
-            initial,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-            ),
+        child: ClipOval(
+          child: SizedBox(
+            width: 84,
+            height: 84,
+            child: avatarUrl.trim().isNotEmpty
+                ? SafeNetworkImage(
+                    url: avatarUrl.trim(),
+                    source: 'edit profile avatar',
+                    fallback: _InitialAvatar(initial: initial),
+                  )
+                : _InitialAvatar(initial: initial),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InitialAvatar extends StatelessWidget {
+  const _InitialAvatar({required this.initial});
+
+  final String initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 42,
+      backgroundColor: const Color(0xFF3A7D5A),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 30,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

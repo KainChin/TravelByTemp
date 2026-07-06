@@ -28,7 +28,7 @@ class DestinationService {
             ),
           )
           .toList();
-      return _mergeWithFallback(region, apiItems);
+      return apiItems;
     } catch (_) {
       return _fakeData[region] ?? [];
     }
@@ -41,19 +41,7 @@ class DestinationService {
         RegionType.west => 'West',
       };
 
-  static List<DestinationModel> _mergeWithFallback(
-    RegionType region,
-    List<DestinationModel> apiItems,
-  ) {
-    final fallback = _fakeData[region] ?? const <DestinationModel>[];
-    if (apiItems.length >= fallback.length) return apiItems;
 
-    final names = apiItems.map((item) => item.name.toLowerCase()).toSet();
-    final extras = fallback
-        .where((item) => !names.contains(item.name.toLowerCase()))
-        .take(fallback.length - apiItems.length);
-    return [...apiItems, ...extras];
-  }
 
   static String _sourceImage(String query) {
     return _staticImages[query] ??

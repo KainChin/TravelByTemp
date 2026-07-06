@@ -65,7 +65,7 @@ public record InboxSummaryDto(int PendingArticles, int PendingComments);
 
 public record BannerDto(
     Guid Id, string Title, string ImageUrl, string? LinkUrl,
-    int SortOrder, bool IsActive, DateTime CreatedAt);
+    int SortOrder, bool IsActive, string Region, DateTime CreatedAt);
 
 public record GalleryImageDto(
     Guid Id, string Title, string ImageUrl, Guid? DestinationId, string? DestinationName,
@@ -85,10 +85,10 @@ public record AdminDestinationDetailDto(
     string? ImageUrl, bool IsActive, int ArticleCount);
 
 public record CreateBannerRequest(
-    string Title, string ImageUrl, string? LinkUrl, int SortOrder, bool IsActive);
+    string Title, string ImageUrl, string? LinkUrl, int SortOrder, bool IsActive, string Region);
 
 public record UpdateBannerRequest(
-    string? Title, string? ImageUrl, string? LinkUrl, int? SortOrder, bool? IsActive);
+    string? Title, string? ImageUrl, string? LinkUrl, int? SortOrder, bool? IsActive, string? Region);
 
 public record CreateGalleryImageRequest(
     string Title, string ImageUrl, Guid? DestinationId, int SortOrder);

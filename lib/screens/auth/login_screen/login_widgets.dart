@@ -112,6 +112,7 @@ class _LoginPanel extends StatelessWidget {
     required this.isLoading,
     required this.onTogglePassword,
     required this.onLogin,
+    required this.onRegister,
     required this.onForgotPassword,
     required this.onSocialTap,
   });
@@ -123,6 +124,7 @@ class _LoginPanel extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTogglePassword;
   final VoidCallback onLogin;
+  final VoidCallback onRegister;
   final VoidCallback onForgotPassword;
   final VoidCallback onSocialTap;
 
@@ -160,9 +162,11 @@ class _LoginPanel extends StatelessWidget {
             TextFormField(
               controller: usernameController,
               textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.emailAddress,
               decoration: LoginScreenStyles.inputDecoration(
                 hint: 'Ví dụ: traveler',
-                prefixIcon: Icons.person_outline,
+                prefixIcon: Icons.alternate_email,
+                helperText: 'Bạn có thể đăng nhập bằng email, số điện thoại hoặc tên đăng nhập.',
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -243,6 +247,26 @@ class _LoginPanel extends StatelessWidget {
                     : const Text('Đăng nhập', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: isLoading ? null : onRegister,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                label: const Text(
+                  'Tạo tài khoản mới',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4338CA),
+                  side: const BorderSide(color: Color(0xFF4338CA), width: 1.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 18),
             Row(
               children: [
@@ -299,6 +323,137 @@ class _SocialButton extends StatelessWidget {
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
+    );
+  }
+}
+
+class _AuthDialogShell extends StatelessWidget {
+  const _AuthDialogShell({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.isSubmitting,
+    required this.onSubmit,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final bool isSubmitting;
+  final VoidCallback onSubmit;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(title, style: LoginScreenStyles.title),
+                  ),
+                  IconButton(
+                    tooltip: 'Đóng',
+                    onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(subtitle, style: LoginScreenStyles.subtitle),
+              const SizedBox(height: 18),
+              child,
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  onPressed: isSubmitting ? null : onSubmit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF4338CA),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          actionLabel,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthTextField extends StatelessWidget {
+  const _AuthTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+    this.keyboardType,
+    this.obscureText = false,
+    this.validator,
+    this.onFieldSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+  final String? Function(String?)? validator;
+  final ValueChanged<String>? onFieldSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: LoginScreenStyles.inputLabel),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          textInputAction: onFieldSubmitted == null ? TextInputAction.next : TextInputAction.done,
+          onFieldSubmitted: onFieldSubmitted,
+          decoration: LoginScreenStyles.inputDecoration(
+            hint: hint,
+            prefixIcon: icon,
+          ),
+          validator: validator,
+        ),
+      ],
     );
   }
 }

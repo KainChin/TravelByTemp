@@ -3,7 +3,7 @@ const API = import.meta.env.VITE_API_BASE_URL ?? '';
 export type AuthResponse = {
   accessToken: string;
   refreshToken: string;
-  user: { id: string; username: string; email: string; fullName: string; role: string };
+  user: { id: string; username: string; email: string; fullName: string; role: string; avatarUrl?: string | null };
 };
 
 export type Destination = {

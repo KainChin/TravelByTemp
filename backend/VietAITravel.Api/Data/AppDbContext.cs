@@ -25,6 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Banner> Banners => Set<Banner>();
     public DbSet<GalleryImage> GalleryImages => Set<GalleryImage>();
     public DbSet<FeaturedContent> FeaturedContents => Set<FeaturedContent>();
+    public DbSet<AuthVerificationCode> AuthVerificationCodes => Set<AuthVerificationCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +50,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Email).HasColumnName("email");
             e.Property(x => x.PasswordHash).HasColumnName("password_hash");
             e.Property(x => x.FullName).HasColumnName("full_name");
+            e.Property(x => x.Bio).HasColumnName("bio");
+            e.Property(x => x.Phone).HasColumnName("phone");
+            e.Property(x => x.AvatarUrl).HasColumnName("avatar_url");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
@@ -65,6 +69,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.IsRevoked).HasColumnName("is_revoked");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuthVerificationCode>(e =>
+        {
+            e.ToTable("auth_verification_codes");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Purpose).HasColumnName("purpose");
+            e.Property(x => x.Username).HasColumnName("username");
+            e.Property(x => x.Email).HasColumnName("email");
+            e.Property(x => x.Phone).HasColumnName("phone");
+            e.Property(x => x.FullName).HasColumnName("full_name");
+            e.Property(x => x.PasswordHash).HasColumnName("password_hash");
+            e.Property(x => x.CodeHash).HasColumnName("code_hash");
+            e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+            e.Property(x => x.ConsumedAt).HasColumnName("consumed_at");
+            e.Property(x => x.Attempts).HasColumnName("attempts");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
 
         modelBuilder.Entity<Destination>(e =>
@@ -318,6 +339,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.LinkUrl).HasColumnName("link_url");
             e.Property(x => x.SortOrder).HasColumnName("sort_order");
             e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.Region).HasColumnName("region");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         });

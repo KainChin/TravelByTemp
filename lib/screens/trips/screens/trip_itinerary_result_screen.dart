@@ -348,7 +348,15 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
           );
         });
       },
-    );
+    ).whenComplete(() {
+      time.dispose();
+      title.dispose();
+      destination.dispose();
+      cost.dispose();
+      note.dispose();
+      address.dispose();
+      duration.dispose();
+    });
   }
 
   void _showAddMenu() {

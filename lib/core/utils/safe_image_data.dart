@@ -74,7 +74,10 @@ Uint8List? safeBase64ImageDecode(
   String? value, {
   required String source,
 }) {
-  final raw = value?.trim() ?? '';
+  final rawInput = value?.trim() ?? '';
+  if (rawInput.isEmpty) return null;
+
+  final raw = _normalizeBase64ImagePayload(rawInput, source: source);
   if (raw.isEmpty) return null;
 
   try {
@@ -92,6 +95,37 @@ Uint8List? safeBase64ImageDecode(
     );
     return null;
   }
+}
+
+String _normalizeBase64ImagePayload(String raw, {required String source}) {
+  if (raw.startsWith('[InternetShortcut]')) {
+    _debugPrintOnce(
+      'internet-shortcut|$source|${raw.hashCode}',
+      () {
+        debugPrint('[ImageDecode] Skipped Windows InternetShortcut data from $source.');
+        debugPrint('[ImageDecode] Body preview: ${_previewText(raw.codeUnits)}');
+      },
+    );
+    return '';
+  }
+
+  final dataUriMatch = RegExp(r'^data:([^;,]+)?(?:;[^,]*)?,(.*)$', dotAll: true)
+      .firstMatch(raw);
+  if (dataUriMatch == null) return raw;
+
+  final contentType = dataUriMatch.group(1);
+  if (!isSupportedImageContentType(contentType)) {
+    _debugPrintOnce(
+      'non-image-data-uri|$source|$contentType|${raw.hashCode}',
+      () {
+        debugPrint('[ImageDecode] Skipped non-image data URI from $source.');
+        debugPrint('[ImageDecode] Content-Type: $contentType');
+      },
+    );
+    return '';
+  }
+
+  return dataUriMatch.group(2)?.trim() ?? '';
 }
 
 void logInvalidImageBytes({
