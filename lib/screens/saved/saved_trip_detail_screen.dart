@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:assignment/screens/trips/services/saved_itinerary_store.dart';
 import 'package:assignment/screens/trips/screens/trip_itinerary_result_screen.dart';
 

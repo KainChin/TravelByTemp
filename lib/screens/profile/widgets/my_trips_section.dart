@@ -5,7 +5,12 @@ import 'package:assignment/screens/trips/services/trip_itinerary_service.dart';
 import 'package:flutter/material.dart';
 
 class MyTripsSection extends StatefulWidget {
-  const MyTripsSection({super.key});
+  const MyTripsSection({
+    super.key,
+    required this.refreshToken,
+  });
+
+  final int refreshToken;
 
   @override
   State<MyTripsSection> createState() => _MyTripsSectionState();
@@ -25,8 +30,22 @@ class _MyTripsSectionState extends State<MyTripsSection> {
     }
   }
 
-  Future<List<TripItineraryHistoryItem>> _load(String? token) {
-    return TripItineraryService(authToken: token).history();
+  @override
+  void didUpdateWidget(covariant MyTripsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      _refresh();
+    }
+  }
+
+  Future<List<TripItineraryHistoryItem>> _load(String? token) async {
+    try {
+      return await TripItineraryService(authToken: token).history();
+    } catch (error, stackTrace) {
+      debugPrint('[ProfileTrips] Could not load itinerary history: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   void _refresh() {
@@ -106,17 +125,42 @@ class _MyTripsSectionState extends State<MyTripsSection> {
               }
 
               final visibleTrips = trips.take(6).toList();
-              return SizedBox(
-                height: 136,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: visibleTrips.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 10),
-                  itemBuilder: (_, index) => _TripCard(
-                    trip: visibleTrips[index],
-                    onTap: () => _openTrip(visibleTrips[index]),
-                  ),
-                ),
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth >= 680) {
+                    final cardWidth = constraints.maxWidth >= 980 ? 210.0 : 190.0;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final trip in visibleTrips)
+                          SizedBox(
+                            width: cardWidth,
+                            child: _TripCard(
+                              trip: trip,
+                              onTap: () => _openTrip(trip),
+                            ),
+                          ),
+                      ],
+                    );
+                  }
+
+                  return SizedBox(
+                    height: 172,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: visibleTrips.length,
+                      separatorBuilder: (context, index) => const SizedBox(width: 10),
+                      itemBuilder: (_, index) => SizedBox(
+                        width: 176,
+                        child: _TripCard(
+                          trip: visibleTrips[index],
+                          onTap: () => _openTrip(visibleTrips[index]),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -185,64 +229,67 @@ class _TripCard extends StatelessWidget {
     final activities = _activityCount(trip.itinerary);
     final date = _formatDate(trip.createdAt);
 
-    return SizedBox(
-      width: 168,
-      child: Material(
-        color: colors.primaryContainer.withValues(alpha: 0.38),
+    return Material(
+      color: colors.primaryContainer.withValues(alpha: 0.38),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.route_rounded, color: colors.primary, size: 19),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const Spacer(),
-                    Text(
+                    child: Icon(Icons.route_rounded, color: colors.primary, size: 19),
+                  ),
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
                       date,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  trip.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.onSurface,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                trip.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colors.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  height: 1.15,
                 ),
-                const Spacer(),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _MiniChip(label: '$days ngay', icon: Icons.calendar_today_outlined),
-                    _MiniChip(label: '$activities hoat dong', icon: Icons.explore_outlined),
-                  ],
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _MiniChip(label: '$days ngay', icon: Icons.calendar_today_outlined),
+                  _MiniChip(label: '$activities hoat dong', icon: Icons.explore_outlined),
+                ],
+              ),
+            ],
           ),
         ),
       ),

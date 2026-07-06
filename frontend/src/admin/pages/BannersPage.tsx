@@ -15,6 +15,7 @@ const emptyForm = (): BannerPayload => ({
   linkUrl: '',
   sortOrder: 1,
   isActive: true,
+  region: 'North',
 });
 
 export function BannersPage() {
@@ -64,6 +65,7 @@ export function BannersPage() {
       linkUrl: b.linkUrl ?? '',
       sortOrder: b.sortOrder,
       isActive: b.isActive,
+      region: b.region || 'North',
     });
     setModalOpen(true);
   };
@@ -115,25 +117,6 @@ export function BannersPage() {
         <div className="media-grid">
           {items.map((b) => (
             <article key={b.id} className="media-card asset-card">
-              <div className="asset-card-menu">
-                <RowActionMenu
-                  open={openMenuId === b.id}
-                  onToggle={() => setOpenMenuId((id) => (id === b.id ? null : b.id))}
-                  onClose={() => setOpenMenuId(null)}
-                  items={[
-                    crud.edit(() => openEdit(b), <PenLineIcon size={16} />),
-                    crud.delete(
-                      b.title,
-                      () => adminApi.deleteBanner(b.id).then(() => undefined),
-                      (msg) => {
-                        setToast(msg === t('actions.deleted', { name: b.title }) ? t('banners.deleted') : msg);
-                        load();
-                      },
-                      <TrashIcon size={16} />,
-                    ),
-                  ]}
-                />
-              </div>
               <img src={b.imageUrl} alt="" className="media-card-img" />
               <div className="media-card-body">
                 <h3>{b.title}</h3>
@@ -141,7 +124,38 @@ export function BannersPage() {
                   <span className={`tag tag-status tag-${b.isActive ? 'published' : 'draft'}`}>
                     {b.isActive ? t('common.active') : t('common.inactive')}
                   </span>
+                  <span className="tag" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                    {b.region}
+                  </span>
                   <span>#{b.sortOrder}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={() => openEdit(b)}
+                  >
+                    <PenLineIcon size={14} style={{ marginRight: 4 }} />
+                    {t('common.edit')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    style={{ color: 'var(--color-danger)' }}
+                    onClick={async () => {
+                      if (!window.confirm(t('common.confirmDelete', { name: b.title }))) return;
+                      try {
+                        await adminApi.deleteBanner(b.id);
+                        setToast(t('banners.deleted'));
+                        load();
+                      } catch (e) {
+                        setToast(e instanceof Error ? e.message : t('common.actionFailed'));
+                      }
+                    }}
+                  >
+                    <TrashIcon size={14} style={{ marginRight: 4 }} />
+                    {t('common.delete')}
+                  </button>
                 </div>
               </div>
             </article>
@@ -168,6 +182,15 @@ export function BannersPage() {
         <label className="editor-field">
           <span className="field-label">{t('banners.fieldOrder')}</span>
           <input type="number" className="editor-input" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+        </label>
+        <label className="editor-field">
+          <span className="field-label">Miền (Region)</span>
+          <select className="editor-input" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}>
+            <option value="North">Miền Bắc (North)</option>
+            <option value="Central">Miền Trung (Central)</option>
+            <option value="South">Miền Nam (South)</option>
+            <option value="West">Miền Tây (West)</option>
+          </select>
         </label>
         <label className="editor-field editor-checkbox">
           <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />

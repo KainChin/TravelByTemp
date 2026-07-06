@@ -11,8 +11,19 @@ namespace VietAITravel.Api.Controllers;
 public class AuthController(AuthService auth) : ControllerBase
 {
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct) =>
-        Ok(await auth.RegisterAsync(request, ct));
+    public ActionResult Register(RegisterRequest request) =>
+        BadRequest(new
+        {
+            message = "Registration requires OTP verification. Use /api/auth/register/request-code then /api/auth/register/verify-code."
+        });
+
+    [HttpPost("register/request-code")]
+    public async Task<ActionResult<BeginRegisterResponse>> BeginRegister(BeginRegisterRequest request, CancellationToken ct) =>
+        Ok(await auth.BeginRegisterAsync(request, ct));
+
+    [HttpPost("register/verify-code")]
+    public async Task<ActionResult<AuthResponse>> VerifyRegister(VerifyRegisterRequest request, CancellationToken ct) =>
+        Ok(await auth.VerifyRegisterAsync(request, ct));
 
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken ct) =>
@@ -21,6 +32,13 @@ public class AuthController(AuthService auth) : ControllerBase
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request, CancellationToken ct) =>
         Ok(await auth.RefreshAsync(request.RefreshToken, ct));
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
+    {
+        await auth.ResetPasswordAsync(request, ct);
+        return NoContent();
+    }
 
     [Authorize]
     [HttpGet("me")]

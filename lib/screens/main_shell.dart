@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/screens/explore/screens/explore_screen.dart';
 import 'package:assignment/screens/messages/messages_screen.dart';
+import 'package:assignment/screens/profile/edit_profile_screen.dart';
 import 'package:assignment/screens/profile/profile_screen.dart';
 import 'package:assignment/screens/saved/saved_screen.dart';
 import 'package:assignment/screens/trips/screens/trip_planning_screen.dart';
@@ -23,18 +25,23 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0; // Open Explore/Home first after login.
   int _savedRefreshToken = 0;
+  int _profileRefreshToken = 0;
 
   // Không còn là `static final` vì danh sách màn hình giờ phụ thuộc vào
   // currentUserName của widget (chỉ biết được ở instance, không phải static).
   List<Widget> get _screens => [
-        const ExploreScreen(),
+        ExploreScreen(
+          onProfileTap: _openProfileTab,
+          onSettingsTap: _openProfileSettings,
+          onLogoutTap: _confirmLogout,
+        ),
         SavedScreen(
           refreshToken: _savedRefreshToken,
           onHomePressed: () => setState(() => _currentIndex = 0),
         ),
         const TripPlanningScreen(),
         MessagesScreen(currentUserName: widget.currentUserName),
-        const ProfileScreen(),
+        ProfileScreen(refreshToken: _profileRefreshToken),
       ];
 
   @override
@@ -69,6 +76,7 @@ class _MainShellState extends State<MainShell> {
       onDestinationSelected: (index) => setState(() {
         _currentIndex = index;
         if (index == 1) _savedRefreshToken++;
+        if (index == 4) _profileRefreshToken++;
       }),
       destinations: const [
         NavigationDestination(
@@ -98,5 +106,49 @@ class _MainShellState extends State<MainShell> {
         ),
       ],
     );
+  }
+
+  void _openProfileTab() {
+    setState(() {
+      _currentIndex = 4;
+      _profileRefreshToken++;
+    });
+  }
+
+  Future<void> _openProfileSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+    if (!mounted) return;
+    setState(() {
+      _currentIndex = 4;
+      _profileRefreshToken++;
+    });
+  }
+
+  Future<void> _confirmLogout() async {
+    final session = VietaiScope.of(context);
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn muốn đăng xuất khỏi tài khoản hiện tại?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await session.logout();
   }
 }

@@ -1,10 +1,60 @@
 // ignore_for_file: use_string_in_part_of_directives
 part of api_client;
 
+class BeginRegisterResult {
+  const BeginRegisterResult({
+    required this.verificationId,
+    required this.expiresAt,
+    this.devCode,
+  });
+
+  final String verificationId;
+  final DateTime expiresAt;
+  final String? devCode;
+
+  factory BeginRegisterResult.fromJson(Map<String, dynamic> json) {
+    return BeginRegisterResult(
+      verificationId: '${json['verificationId']}',
+      expiresAt: DateTime.tryParse('${json['expiresAt']}') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      devCode: json['devCode'] as String?,
+    );
+  }
+}
+
 class WeatherSnapshot {
   const WeatherSnapshot({required this.temperatureC, required this.description});
   final double temperatureC;
   final String description;
+}
+
+class ProfileSummary {
+  const ProfileSummary({
+    required this.trips,
+    required this.savedPlaces,
+    required this.photos,
+    required this.videos,
+    required this.averageRating,
+    required this.aiScore,
+  });
+
+  final int trips;
+  final int savedPlaces;
+  final int photos;
+  final int videos;
+  final double averageRating;
+  final double aiScore;
+
+  factory ProfileSummary.fromJson(Map<String, dynamic> json) {
+    return ProfileSummary(
+      trips: (json['trips'] as num?)?.toInt() ?? 0,
+      savedPlaces: (json['savedPlaces'] as num?)?.toInt() ?? 0,
+      photos: (json['photos'] as num?)?.toInt() ?? 0,
+      videos: (json['videos'] as num?)?.toInt() ?? 0,
+      averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+      aiScore: (json['aiScore'] as num?)?.toDouble() ?? 0,
+    );
+  }
 }
 
 class AiRecommendResult {
@@ -278,6 +328,35 @@ class FavoriteDestination {
       destination: Destination.fromApi(
         json['destination'] as Map<String, dynamic>,
       ).copyWith(isFavorite: true),
+    );
+  }
+}
+
+class BannerItem {
+  const BannerItem({
+    required this.id,
+    required this.title,
+    required this.imageUrl,
+    this.linkUrl,
+    required this.sortOrder,
+    required this.isActive,
+  });
+
+  final String id;
+  final String title;
+  final String imageUrl;
+  final String? linkUrl;
+  final int sortOrder;
+  final bool isActive;
+
+  factory BannerItem.fromJson(Map<String, dynamic> json) {
+    return BannerItem(
+      id: '${json['id']}',
+      title: json['title'] as String? ?? '',
+      imageUrl: json['imageUrl'] as String? ?? '',
+      linkUrl: json['linkUrl'] as String?,
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+      isActive: json['isActive'] as bool? ?? true,
     );
   }
 }

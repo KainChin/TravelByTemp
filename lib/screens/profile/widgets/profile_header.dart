@@ -1,19 +1,14 @@
 import 'dart:ui';
+
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:flutter/material.dart';
 
 class ProfileHeader extends StatelessWidget {
-  final VoidCallback onEditTap;
-  final String fullName;
-  final String username;
-  final String email;
-  final String? bio;
-  final String role;
-  final String location;
-  final VoidCallback onLogoutTap;
-
   const ProfileHeader({
     super.key,
     required this.onEditTap,
+    required this.onShareTap,
+    required this.onAvatarTap,
     required this.onLogoutTap,
     required this.fullName,
     required this.username,
@@ -21,7 +16,20 @@ class ProfileHeader extends StatelessWidget {
     this.bio,
     required this.role,
     required this.location,
+    this.avatarUrl,
   });
+
+  final VoidCallback onEditTap;
+  final VoidCallback onShareTap;
+  final VoidCallback onAvatarTap;
+  final VoidCallback onLogoutTap;
+  final String fullName;
+  final String username;
+  final String email;
+  final String? bio;
+  final String role;
+  final String location;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +37,12 @@ class ProfileHeader extends StatelessWidget {
       height: 280,
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: AssetImage('assets/images/banner_bac.png'), // Hình nền cao cấp từ local
+          image: AssetImage('assets/images/banner_bac.png'),
           fit: BoxFit.cover,
         ),
       ),
       child: Stack(
         children: [
-          // Lớp phủ Gradient tối giúp làm nổi bật chữ (Premium feel)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -48,26 +55,42 @@ class ProfileHeader extends StatelessWidget {
               ),
             ),
           ),
-          // Nút thao tác góc trên phải (Glassmorphism)
           Positioned(
-            top: 52, right: 16,
+            top: 52,
+            right: 16,
             child: Row(
               children: [
-                _actionBtn(Icons.ios_share_outlined),
+                _ActionButton(icon: Icons.ios_share_outlined, onTap: onShareTap),
                 const SizedBox(width: 12),
-                _actionBtn(Icons.logout_outlined, onTap: onLogoutTap),
+                _ActionButton(icon: Icons.logout_outlined, onTap: onLogoutTap),
               ],
             ),
           ),
-          // Thông tin người dùng góc dưới trái
           Positioned(
-            bottom: 24, left: 20, right: 20,
+            bottom: 24,
+            left: 20,
+            right: 20,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _buildAvatar(),
+                _AvatarButton(
+                  fullName: fullName,
+                  username: username,
+                  avatarUrl: avatarUrl,
+                  onTap: onAvatarTap,
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: _buildUserInfo()),
+                Expanded(
+                  child: _UserInfo(
+                    fullName: fullName,
+                    username: username,
+                    email: email,
+                    bio: bio,
+                    role: role,
+                    location: location,
+                    onEditTap: onEditTap,
+                  ),
+                ),
               ],
             ),
           ),
@@ -75,90 +98,179 @@ class ProfileHeader extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _actionBtn(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.4),
-                width: 1.5,
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
               ),
+              child: Icon(icon, size: 22, color: Colors.white),
             ),
-            child: Icon(icon, size: 22, color: Colors.white),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildAvatar() {
+class _AvatarButton extends StatelessWidget {
+  const _AvatarButton({
+    required this.fullName,
+    required this.username,
+    required this.avatarUrl,
+    required this.onTap,
+  });
+
+  final String fullName;
+  final String username;
+  final String? avatarUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final initial = fullName.trim().isEmpty
         ? username.trim().isEmpty
             ? 'T'
             : username.trim()[0].toUpperCase()
         : fullName.trim()[0].toUpperCase();
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3A7D5A), Color(0xFF81C784)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF3A7D5A), Color(0xFF81C784)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              ClipOval(
+                child: SizedBox(
+                  width: 84,
+                  height: 84,
+                  child: avatarUrl?.trim().isNotEmpty == true
+                      ? SafeNetworkImage(
+                          url: avatarUrl!.trim(),
+                          source: 'profile avatar',
+                          fallback: _InitialAvatar(initial: initial),
+                        )
+                      : _InitialAvatar(initial: initial),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3A7D5A),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                ),
+              ),
+            ],
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          )
-        ]
-      ),
-      child: Stack(
-        children: [
-          CircleAvatar(
-            radius: 42,
-            backgroundColor: const Color(0xFF3A7D5A),
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0, right: 0,
-            child: Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(
-                color: const Color(0xFF3A7D5A),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2.5),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))
-                ]
-              ),
-              child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
-            ),
-          ),
-        ],
       ),
     );
   }
+}
 
-  Widget _buildUserInfo() {
+class _InitialAvatar extends StatelessWidget {
+  const _InitialAvatar({required this.initial});
+
+  final String initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 42,
+      backgroundColor: const Color(0xFF3A7D5A),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 30,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _UserInfo extends StatelessWidget {
+  const _UserInfo({
+    required this.fullName,
+    required this.username,
+    required this.email,
+    required this.bio,
+    required this.role,
+    required this.location,
+    required this.onEditTap,
+  });
+
+  final String fullName;
+  final String username;
+  final String email;
+  final String? bio;
+  final String role;
+  final String location;
+  final VoidCallback onEditTap;
+
+  @override
+  Widget build(BuildContext context) {
     final displayName = fullName.trim().isEmpty ? username : fullName.trim();
     final subtitle = (bio ?? '').trim().isNotEmpty
         ? (bio ?? '').trim()
@@ -184,15 +296,16 @@ class ProfileHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            GestureDetector(
-              onTap: onEditTap,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
+            Material(
+              color: Colors.white.withValues(alpha: 0.25),
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: onEditTap,
+                customBorder: const CircleBorder(),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.edit_outlined, size: 16, color: Colors.white),
                 ),
-                child: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
               ),
             ),
           ],
@@ -223,7 +336,7 @@ class ProfileHeader extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                '$location • $role',
+                '$location - $role',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -239,4 +352,3 @@ class ProfileHeader extends StatelessWidget {
     );
   }
 }
-

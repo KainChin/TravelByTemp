@@ -477,6 +477,7 @@ app.MapDelete("/api/trip/itineraries/{id:guid}", async (
 });
 
 await AppStartup.EnsureDatabaseReadyAsync(app.Services);
+await AuthSchemaInitializer.EnsureAsync(app.Services);
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 
 app.Run();

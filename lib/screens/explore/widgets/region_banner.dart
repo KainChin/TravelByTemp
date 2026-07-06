@@ -1,15 +1,77 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:assignment/core/widgets/safe_network_image.dart';
+import 'package:assignment/services/api_client.dart';
 import '../models/region_model.dart';
 
-class RegionBanner extends StatelessWidget {
+class RegionBanner extends StatefulWidget {
   final RegionModel region;
+  final List<BannerItem> banners;
   final VoidCallback? onExplore;
 
-  const RegionBanner({super.key, required this.region, this.onExplore});
+  const RegionBanner({
+    super.key,
+    required this.region,
+    required this.banners,
+    this.onExplore,
+  });
+
+  @override
+  State<RegionBanner> createState() => _RegionBannerState();
+}
+
+class _RegionBannerState extends State<RegionBanner> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant RegionBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.banners.length != widget.banners.length) {
+      _timer?.cancel();
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    if (widget.banners.isNotEmpty) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (!mounted || !_pageController.hasClients) return;
+        final next = (_currentPage + 1) % widget.banners.length;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.banners.isEmpty) {
+      return _buildSingleBanner(
+        title: widget.region.name,
+        subtitle: widget.region.englishName,
+        description: widget.region.description,
+        imageUrl: widget.region.bannerImage,
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
@@ -18,14 +80,104 @@ class RegionBanner extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Background image
+            PageView.builder(
+              controller: _pageController,
+              onPageChanged: (page) => setState(() => _currentPage = page),
+              itemCount: widget.banners.length,
+              itemBuilder: (context, index) {
+                final banner = widget.banners[index];
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    SafeNetworkImage(
+                      url: banner.imageUrl,
+                      fit: BoxFit.cover,
+                      fallback: Container(color: const Color(0xFF16A34A)),
+                      source: 'banner image',
+                    ),
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                          colors: [Colors.transparent, Color(0xCC000000)],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      bottom: 20,
+                      top: 20,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            banner.title,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.1,
+                            ),
+                          ),
+                          if (banner.linkUrl != null && banner.linkUrl!.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              banner.linkUrl!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF4ADE80),
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          _ExploreButton(onTap: widget.onExplore),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            Positioned(
+              bottom: 16,
+              right: 20,
+              child: _DotIndicators(
+                count: widget.banners.length,
+                activeIndex: _currentPage,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleBanner({
+    required String title,
+    required String subtitle,
+    required String description,
+    required String imageUrl,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: SizedBox(
+        height: 240,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
             SafeNetworkImage(
-              url: region.bannerImage,
+              url: imageUrl,
               fit: BoxFit.cover,
               fallback: Container(color: const Color(0xFF16A34A)),
               source: 'region banner image',
             ),
-            // Gradient overlay
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -35,7 +187,6 @@ class RegionBanner extends StatelessWidget {
                 ),
               ),
             ),
-            // Content
             Positioned(
               left: 20,
               right: 20,
@@ -46,7 +197,7 @@ class RegionBanner extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    region.name,
+                    title,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -60,7 +211,7 @@ class RegionBanner extends StatelessWidget {
                       const Icon(Icons.location_on, color: Color(0xFF4ADE80), size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        region.englishName,
+                        subtitle,
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF4ADE80),
@@ -71,7 +222,7 @@ class RegionBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    region.description,
+                    description,
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xDDFFFFFF),
@@ -81,15 +232,9 @@ class RegionBanner extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 16),
-                  _ExploreButton(onTap: onExplore),
+                  _ExploreButton(onTap: widget.onExplore),
                 ],
               ),
-            ),
-            // Dot indicators
-            Positioned(
-              bottom: 16,
-              right: 20,
-              child: _DotIndicators(count: 4, activeIndex: 0),
             ),
           ],
         ),

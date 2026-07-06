@@ -243,7 +243,7 @@ public class ContentDashboardController(AppDbContext db) : ControllerBase
             a.Status,
             ContentLabels.StatusLabel(a.Status),
             a.ThumbnailUrl,
-            new ArticleAuthorDto(a.Author.Id, a.Author.FullName, null),
+            new ArticleAuthorDto(a.Author.Id, a.Author.FullName, a.Author.AvatarUrl),
             a.CreatedAt,
             a.PublishedAt);
 }

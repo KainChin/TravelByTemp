@@ -17,7 +17,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id UUID NOT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(500) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
     bio VARCHAR(300),
@@ -130,6 +130,21 @@ CREATE TABLE user_favorites (
     CONSTRAINT fk_user_favorites_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_user_favorites_destinations FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE,
     CONSTRAINT uq_user_favorites_user_destination UNIQUE (user_id, destination_id)
+);
+
+CREATE TABLE auth_verification_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    purpose VARCHAR(40) NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(30),
+    full_name VARCHAR(150) NOT NULL,
+    password_hash VARCHAR(500) NOT NULL,
+    code_hash VARCHAR(500) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    consumed_at TIMESTAMP,
+    attempts INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE ai_itineraries (

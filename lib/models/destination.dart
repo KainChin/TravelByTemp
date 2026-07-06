@@ -154,6 +154,9 @@ class Destination {
     required String name,
     required String? apiImageUrl,
   }) {
+    if (apiImageUrl != null && apiImageUrl.trim().isNotEmpty) {
+      return apiImageUrl;
+    }
     final key = '$slug $name'.toLowerCase();
     for (final entry in _destinationImageQueries.entries) {
       if (key.contains(entry.key)) {
@@ -161,8 +164,7 @@ class Destination {
             'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600';
       }
     }
-    return apiImageUrl ??
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600';
+    return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600';
   }
 
   static const Map<String, String> _destinationImageQueries = {

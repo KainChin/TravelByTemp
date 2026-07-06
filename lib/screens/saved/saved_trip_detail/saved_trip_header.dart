@@ -17,10 +17,11 @@ class _HeroHeader extends StatelessWidget {
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
         background: Stack(fit: StackFit.expand, children: [
-          Image.network(
-            'https://images.unsplash.com/photo-1540202404-d0c7fe46a087?auto=format&fit=crop&w=1400&q=80',
+          SafeNetworkImage(
+            url: 'https://images.unsplash.com/photo-1540202404-d0c7fe46a087?auto=format&fit=crop&w=1400&q=80',
             fit: BoxFit.cover,
-            errorBuilder: (_, e, st) => Container(decoration: const BoxDecoration(
+            source: 'saved trip detail hero',
+            fallback: Container(decoration: const BoxDecoration(
               gradient: LinearGradient(colors: [Color(0xFF0F4C81), Color(0xFF006B52), Color(0xFF0891B2)],
                   begin: Alignment.topLeft, end: Alignment.bottomRight),
             )),

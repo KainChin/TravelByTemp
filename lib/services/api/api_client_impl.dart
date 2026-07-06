@@ -89,23 +89,74 @@ class ApiClient {
 
   Future<AuthSession> register({
     required String username,
-    required String email,
+    String? email,
     required String password,
     required String fullName,
+    String? phone,
   }) async {
-    final res = await _client.post(
+    final res = await _postJson(
       Uri.parse('${ApiConfig.baseUrl}/api/auth/register'),
-      headers: _headers,
-      body: jsonEncode({
+      {
         'username': username,
         'email': email,
         'password': password,
         'fullName': fullName,
-      }),
+        'phone': phone,
+      },
     );
     final session = AuthSession.fromJson(await _decode(res));
     setToken(session.accessToken);
     return session;
+  }
+
+  Future<BeginRegisterResult> beginRegister({
+    required String username,
+    String? email,
+    required String password,
+    required String fullName,
+    String? phone,
+  }) async {
+    final res = await _postJson(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/register/request-code'),
+      {
+        'username': username,
+        'email': email,
+        'password': password,
+        'fullName': fullName,
+        'phone': phone,
+      },
+    );
+    return BeginRegisterResult.fromJson(await _decode(res));
+  }
+
+  Future<AuthSession> verifyRegister({
+    required String verificationId,
+    required String code,
+  }) async {
+    final res = await _postJson(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/register/verify-code'),
+      {
+        'verificationId': verificationId,
+        'code': code,
+      },
+    );
+    final session = AuthSession.fromJson(await _decode(res));
+    setToken(session.accessToken);
+    return session;
+  }
+
+  Future<void> resetPassword({
+    required String usernameOrEmail,
+    required String newPassword,
+  }) async {
+    final res = await _postJson(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/reset-password'),
+      {
+        'usernameOrEmail': usernameOrEmail,
+        'newPassword': newPassword,
+      },
+    );
+    await _decodeEmpty(res);
   }
 
   Future<AuthSession> refresh(String refreshToken) async {
@@ -127,12 +178,21 @@ class ApiClient {
     return AuthUser.fromJson(await _decode(res));
   }
 
+  Future<ProfileSummary> fetchProfileSummary() async {
+    final res = await _client.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/profile/summary'),
+      headers: _headers,
+    );
+    return ProfileSummary.fromJson(await _decode(res));
+  }
+
   Future<AuthUser> updateProfile({
     required String username,
     required String email,
     required String fullName,
     String? bio,
     String? phone,
+    String? avatarUrl,
   }) async {
     final res = await _client.put(
       Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
@@ -143,6 +203,7 @@ class ApiClient {
         'fullName': fullName,
         'bio': bio,
         'phone': phone,
+        'avatarUrl': avatarUrl,
       }),
     );
     return AuthUser.fromJson(await _decode(res));
@@ -169,6 +230,17 @@ class ApiClient {
     final res = await _client.get(uri, headers: _headers);
     final list = await _decodeList(res);
     return list.map((e) => Destination.fromApi(e as Map<String, dynamic>)).toList();
+  }
+
+  // ─── Banners ───────────────────────────────────────────────────────────────
+  Future<List<BannerItem>> fetchBanners({String? region}) async {
+    final q = <String, String>{};
+    if (region != null) q['region'] = region;
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/banners')
+        .replace(queryParameters: q.isEmpty ? null : q);
+    final res = await _client.get(uri, headers: _headers);
+    final list = await _decodeList(res);
+    return list.map((e) => BannerItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<Destination> fetchDestination(String id) async {

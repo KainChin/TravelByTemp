@@ -114,7 +114,9 @@ class _SavedScreenState extends State<SavedScreen> {
           itinerary: item.itinerary,
         );
       }).toList();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('[Saved] Could not load remote itineraries: $error');
+      debugPrintStack(stackTrace: stackTrace);
       return const [];
     }
   }
@@ -133,6 +135,7 @@ class _SavedScreenState extends State<SavedScreen> {
   }
 
   Future<void> _removeItinerary(SavedItineraryItem item) async {
+    try {
     await _removeRemoteItinerary(item.id);
     await SavedItineraryStore.remove(item.id);
     if (!mounted) return;
@@ -143,14 +146,23 @@ class _SavedScreenState extends State<SavedScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+    } catch (error, stackTrace) {
+      debugPrint('[Saved] Could not remove itinerary ${item.id}: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 
   Future<void> _removeRemoteItinerary(String id) async {
     try {
       final token = VietaiScope.of(context).auth?.accessToken;
       await TripItineraryService(authToken: token).deleteItinerary(id);
-    } catch (_) {
-      // Keep local deletion responsive even when backend is offline.
+    } catch (error, stackTrace) {
+      debugPrint('[Saved] Could not delete remote itinerary $id: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
@@ -219,6 +231,7 @@ class _SavedScreenState extends State<SavedScreen> {
         ],
       ),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
 
     if (nextName != null && nextName.isNotEmpty && nextName != item.title) {
       final map = {
@@ -231,7 +244,9 @@ class _SavedScreenState extends State<SavedScreen> {
           itineraryId: item.id,
           itinerary: map,
         );
-      } catch (_) {
+      } catch (error, stackTrace) {
+        debugPrint('[Saved] Could not rename remote itinerary ${item.id}: $error');
+        debugPrintStack(stackTrace: stackTrace);
         await SavedItineraryStore.remove(item.id);
         await SavedItineraryStore.save(map);
       }
@@ -264,7 +279,9 @@ class _SavedScreenState extends State<SavedScreen> {
         'id': saved.id,
         'title': saved.title,
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('[Saved] Could not clone itinerary remotely: $error');
+      debugPrintStack(stackTrace: stackTrace);
       await SavedItineraryStore.save(map);
     }
     _load();
