@@ -35,11 +35,11 @@ class _MainShellState extends State<MainShell> {
           onSettingsTap: _openProfileSettings,
           onLogoutTap: _confirmLogout,
         ),
+        const TripPlanningScreen(),
         SavedScreen(
           refreshToken: _savedRefreshToken,
           onHomePressed: () => setState(() => _currentIndex = 0),
         ),
-        const TripPlanningScreen(),
         MessagesScreen(currentUserName: widget.currentUserName),
         ProfileScreen(refreshToken: _profileRefreshToken),
       ];
@@ -57,7 +57,7 @@ class _MainShellState extends State<MainShell> {
 
   // ── Material 3 Bottom Navigation ──────────────────────────────────────────
   Widget _buildBottomNav() {
-    const activeColor = Color(0xFF2ECC71);
+    const activeColor = Color(0xFF1976D2);
     const inactiveColor = Color(0xFF9CA3AF);
 
     return NavigationBar(
@@ -66,7 +66,7 @@ class _MainShellState extends State<MainShell> {
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.black26,
-      indicatorColor: activeColor.withValues(alpha: 0.12),
+      indicatorColor: activeColor.withValues(alpha: 0.2),
       indicatorShape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
@@ -75,34 +75,34 @@ class _MainShellState extends State<MainShell> {
       selectedIndex: _currentIndex,
       onDestinationSelected: (index) => setState(() {
         _currentIndex = index;
-        if (index == 1) _savedRefreshToken++;
+        if (index == 2) _savedRefreshToken++;
         if (index == 4) _profileRefreshToken++;
       }),
       destinations: const [
         NavigationDestination(
           icon: Icon(Icons.explore_outlined, color: inactiveColor, size: 22),
           selectedIcon: Icon(Icons.explore, color: activeColor, size: 22),
-          label: 'Explore',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.favorite_outline, color: inactiveColor, size: 22),
-          selectedIcon: Icon(Icons.favorite, color: activeColor, size: 22),
-          label: 'Saved',
+          label: 'Khám phá',
         ),
         NavigationDestination(
           icon: Icon(Icons.luggage_outlined, color: inactiveColor, size: 22),
           selectedIcon: Icon(Icons.luggage, color: activeColor, size: 22),
-          label: 'Trips',
+          label: 'Chuyến đi',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.favorite_outline, color: inactiveColor, size: 22),
+          selectedIcon: Icon(Icons.favorite, color: activeColor, size: 22),
+          label: 'Đã lưu',
         ),
         NavigationDestination(
           icon: Icon(Icons.chat_bubble_outline, color: inactiveColor, size: 22),
           selectedIcon: Icon(Icons.chat_bubble, color: activeColor, size: 22),
-          label: 'Messages',
+          label: 'Tin nhắn',
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline, color: inactiveColor, size: 22),
           selectedIcon: Icon(Icons.person, color: activeColor, size: 22),
-          label: 'Profile',
+          label: 'Tài khoản',
         ),
       ],
     );

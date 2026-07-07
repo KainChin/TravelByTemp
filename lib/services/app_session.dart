@@ -64,9 +64,9 @@ class AppSession extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String username, String password, {bool delayNotify = false}) async {
     final session = await api.login(username, password);
-    await _applyAuthSession(session);
+    await _applyAuthSession(session, delayNotify: delayNotify);
     await refreshLocationAndWeather();
     await loadSchedules();
   }
@@ -109,12 +109,13 @@ class AppSession extends ChangeNotifier {
   Future<void> verifyRegister({
     required String verificationId,
     required String code,
+    bool delayNotify = false,
   }) async {
     final session = await api.verifyRegister(
       verificationId: verificationId,
       code: code,
     );
-    await _applyAuthSession(session);
+    await _applyAuthSession(session, delayNotify: delayNotify);
     await refreshLocationAndWeather();
     await loadSchedules();
   }
@@ -129,13 +130,17 @@ class AppSession extends ChangeNotifier {
     );
   }
 
-  Future<void> _applyAuthSession(AuthSession session) async {
+  Future<void> _applyAuthSession(AuthSession session, {bool delayNotify = false}) async {
     auth = session;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, session.accessToken);
     await prefs.setString(_refreshTokenKey, session.refreshToken);
     await prefs.setString(_expiresAtKey, session.expiresAt.toIso8601String());
     await _saveUser(prefs, session.user);
+    if (!delayNotify) notifyListeners();
+  }
+
+  void applyPendingLogin() {
     notifyListeners();
   }
 
