@@ -1,9 +1,8 @@
 // ignore_for_file: unnecessary_library_name
 library saved_screen;
 
-import 'dart:convert';
-
 import 'package:assignment/core/theme/app_colors.dart';
+import 'package:assignment/core/utils/destination_images.dart';
 import 'package:assignment/core/widgets/network_image_card.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/screens/destinations/destination_detail_screen.dart';
@@ -82,14 +81,23 @@ class _SavedScreenState extends State<SavedScreen> {
     });
 
     try {
+      final token = VietaiScope.of(context).auth?.accessToken;
+      final service = TripItineraryService(authToken: token);
       final results = await Future.wait([
         VietaiScope.of(context).api.fetchFavorites(),
+        service.history(),
         SavedItineraryStore.load(),
-        _loadRemoteItineraries(),
       ]);
       if (!mounted) return;
-      final localItineraries = results[1] as List<SavedItineraryItem>;
-      final remoteItineraries = results[2] as List<SavedItineraryItem>;
+      final remoteItineraries = (results[1] as List<TripItineraryHistoryItem>)
+          .map((item) => SavedItineraryItem(
+                id: item.id,
+                title: item.title,
+                savedAt: item.createdAt,
+                itinerary: item.itinerary,
+              ))
+          .toList();
+      final localItineraries = results[2] as List<SavedItineraryItem>;
       setState(() {
         _favorites = results[0] as List<FavoriteDestination>;
         _itineraries = _mergeItineraries(remoteItineraries, localItineraries);
@@ -102,31 +110,17 @@ class _SavedScreenState extends State<SavedScreen> {
     }
   }
 
-  Future<List<SavedItineraryItem>> _loadRemoteItineraries() async {
-    try {
-      final token = VietaiScope.of(context).auth?.accessToken;
-      final remote = await TripItineraryService(authToken: token).history();
-      return remote.map((item) {
-        return SavedItineraryItem(
-          id: item.id,
-          title: item.title,
-          savedAt: item.createdAt,
-          itinerary: item.itinerary,
-        );
-      }).toList();
-    } catch (error, stackTrace) {
-      debugPrint('[Saved] Could not load remote itineraries: $error');
-      debugPrintStack(stackTrace: stackTrace);
-      return const [];
-    }
-  }
-
   List<SavedItineraryItem> _mergeItineraries(
     List<SavedItineraryItem> remote,
     List<SavedItineraryItem> local,
   ) {
+    // Remote items are the source of truth. Local-only items are kept as
+    // offline fallbacks (created while server was unreachable).
     final byId = <String, SavedItineraryItem>{};
-    for (final item in [...local, ...remote]) {
+    for (final item in local) {
+      byId[item.id] = item;
+    }
+    for (final item in remote) {
       byId[item.id] = item;
     }
     final items = byId.values.toList()
@@ -294,21 +288,76 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
+  String _buildShareText(SavedItineraryItem item) {
+    final days = item.itinerary['days'];
+    final dests = <String>{};
+    var dayCount = 0;
+    var activityCount = 0;
+    if (days is List) {
+      dayCount = days.length;
+      for (final day in days) {
+        if (day is Map) {
+          final activities = day['activities'] ?? day['schedule'];
+          if (activities is List) {
+            activityCount += activities.length;
+            for (final a in activities) {
+              if (a is Map) {
+                final name = (a['destination'] ?? a['placeName'] ?? '').toString().trim();
+                if (name.isNotEmpty && name.toLowerCase() != 'null') dests.add(name);
+              }
+            }
+          }
+        }
+      }
+    }
+    final route = dests.isEmpty
+        ? 'điểm đến đã chọn'
+        : dests.take(5).join(' → ');
+    final summary = item.itinerary['summary']?.toString().trim();
+    final buffer = StringBuffer()
+      ..writeln('🌏 Hành trình: ${item.title}')
+      ..writeln('🗺️  Lộ trình: $route')
+      ..writeln('📅 $dayCount ngày • $activityCount hoạt động');
+    if (summary != null && summary.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln(summary);
+    }
+    buffer
+      ..writeln()
+      ..writeln('— Lưu bởi VietAI Travel');
+    return buffer.toString();
+  }
+
   void _shareItinerary(SavedItineraryItem item) {
-    Clipboard.setData(ClipboardData(text: 'Khám phá hành trình: ${item.title} \n${item.itinerary['summary'] ?? ''}'));
+    final text = _buildShareText(item);
+    Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Đã sao chép liên kết chia sẻ hành trình!'),
+        content: Text('Đã sao chép nội dung chia sẻ vào bộ nhớ tạm.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  void _exportItineraryPdf(SavedItineraryItem item) {
+  Future<void> _exportItineraryPdf(SavedItineraryItem item) async {
+    // No PDF dependency in this project — export the same shareable text
+    // so the user can paste it into Google Docs / Word and print to PDF
+    // from there. Honest placeholder, not a fake success toast.
+    final text = _buildShareText(item);
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đang xuất PDF hành trình "${item.title}"...'),
+        content: const Text(
+          'Đã sao chép hành trình dạng văn bản — dán vào Word/Docs để xuất PDF.',
+        ),
+        duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'OK',
+          onPressed: () {},
+        ),
       ),
     );
   }
@@ -318,8 +367,27 @@ class _SavedScreenState extends State<SavedScreen> {
     if (query.isEmpty) return _itineraries;
     return _itineraries.where((item) {
       final title = item.title.toLowerCase();
-      final summary = (item.itinerary['summary'] ?? '').toString().toLowerCase();
-      return title.contains(query) || summary.contains(query);
+      final summary =
+          (item.itinerary['summary'] ?? '').toString().toLowerCase();
+      // Include activity destinations so users can search "phú quốc" etc.
+      final days = item.itinerary['days'];
+      var places = '';
+      if (days is List) {
+        for (final day in days) {
+          if (day is Map) {
+            final acts = day['activities'] ?? day['schedule'];
+            if (acts is List) {
+              for (final a in acts) {
+                if (a is Map) {
+                  places += ' ${a['destination'] ?? a['placeName'] ?? ''}';
+                }
+              }
+            }
+          }
+        }
+      }
+      final haystack = '$title $summary $places'.toLowerCase();
+      return haystack.contains(query);
     }).toList();
   }
 
@@ -327,10 +395,41 @@ class _SavedScreenState extends State<SavedScreen> {
     final query = _searchQuery.toLowerCase().trim();
     if (query.isEmpty) return _favorites;
     return _favorites.where((item) {
-      final name = item.destination.name.toLowerCase();
-      final location = (item.destination.location ?? '').toLowerCase();
-      return name.contains(query) || location.contains(query);
+      final d = item.destination;
+      final haystack = [
+        d.name,
+        d.location ?? '',
+        d.tagline,
+        d.description,
+        d.category,
+      ].join(' ').toLowerCase();
+      return haystack.contains(query);
     }).toList();
+  }
+
+  int get _totalItineraryDays {
+    var total = 0;
+    for (final item in _itineraries) {
+      final days = item.itinerary['days'];
+      if (days is List) total += days.length;
+    }
+    return total;
+  }
+
+  int get _totalItineraryActivities {
+    var total = 0;
+    for (final item in _itineraries) {
+      final days = item.itinerary['days'];
+      if (days is List) {
+        for (final day in days) {
+          if (day is Map) {
+            final acts = day['activities'] ?? day['schedule'];
+            if (acts is List) total += acts.length;
+          }
+        }
+      }
+    }
+    return total;
   }
 
   Widget _buildLoading() {
@@ -368,7 +467,10 @@ class _SavedScreenState extends State<SavedScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showInlineSuggestion) ...[
-          const _AISuggestionCard(),
+          _AISuggestionCard(
+            trips: _itineraries.length,
+            places: _favorites.length,
+          ),
           const SizedBox(height: 20),
         ],
         const _SectionTitle(
@@ -445,7 +547,10 @@ class _SavedScreenState extends State<SavedScreen> {
   Widget _buildSavedSidebar() {
     return Column(
       children: [
-        const _AISuggestionCard(),
+        _AISuggestionCard(
+          trips: _itineraries.length,
+          places: _favorites.length,
+        ),
         const SizedBox(height: 16),
         _SavedDashboardPanel(
           trips: _itineraries.length,
@@ -491,6 +596,8 @@ class _SavedScreenState extends State<SavedScreen> {
                     _SavedHeader(
                       savedTrips: _itineraries.length,
                       savedPlaces: _favorites.length,
+                      totalDays: _totalItineraryDays,
+                      totalActivities: _totalItineraryActivities,
                       onHomePressed: _goHome,
                       searchController: _searchController,
                       onQuickAction: (action) {

@@ -1,3 +1,5 @@
+import 'package:assignment/core/utils/destination_images.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -152,7 +154,6 @@ class _RecentTripCardState extends State<_RecentTripCard> {
               borderRadius: BorderRadius.circular(20),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -167,26 +168,108 @@ class _RecentTripCardState extends State<_RecentTripCard> {
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        gradient: grad,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: grad.colors.first.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 5),
+                    // ── Cover image
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          SafeNetworkImage(
+                            url: _resolveCoverUrl(widget.item.itinerary),
+                            fit: BoxFit.cover,
+                            source: 'recent-trip-${widget.item.id}',
+                            fallback: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: grad.colors,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.alt_route_rounded,
+                                    size: 80,
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                  ),
+                                  if (widget.item.title.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                                      child: Text(
+                                        widget.item.title,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.95),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.25,
+                                          shadows: const [
+                                            Shadow(color: Color(0x66000000), blurRadius: 6),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // gradient overlay for chip readability
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.42),
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.62),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Top-left AI chip
+                          Positioned(
+                            left: 10,
+                            top: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.94),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_awesome_rounded, size: 12, color: kTripPrimary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'AI $score',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: kTripInk,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
+                    // ── Info row
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -198,7 +281,7 @@ class _RecentTripCardState extends State<_RecentTripCard> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w900,
                                     color: kTripInk,
                                   ),
@@ -213,14 +296,13 @@ class _RecentTripCardState extends State<_RecentTripCard> {
                             spacing: 7,
                             runSpacing: 6,
                             children: [
-                              _MetaChip(icon: Icons.auto_awesome_rounded, label: 'AI $score', color: kTripPrimary),
                               if (days > 0)
-                                _MetaChip(icon: Icons.schedule_rounded, label: '$days ngay', color: kTripTeal),
+                                _MetaChip(icon: Icons.schedule_rounded, label: '$days ngày', color: kTripTeal),
                               _MetaChip(icon: Icons.savings_rounded, label: budget, color: kTripCoral),
                               _MetaChip(icon: Icons.update_rounded, label: date, color: kTripMuted),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             widget.item.aiModel ?? 'AI generated itinerary',
                             maxLines: 1,
@@ -233,16 +315,6 @@ class _RecentTripCardState extends State<_RecentTripCard> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: kTripPrimary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.chevron_right_rounded, color: kTripPrimary, size: 19),
                     ),
                   ],
                 ),
@@ -290,6 +362,34 @@ class _MetaChip extends StatelessWidget {
       ),
     );
   }
+}
+
+// Cover URL helpers (extracted to keep card markup clean).
+String? _resolveCoverUrl(Map<String, dynamic> itinerary) {
+  final dest = _firstDestinationName(itinerary);
+  if (dest == null || dest.trim().isEmpty) return null;
+  final url = DestinationImages.urlFor(dest);
+  return url.startsWith('http') ? url : null;
+}
+
+String? _firstDestinationName(Map<String, dynamic> itinerary) {
+  final days = itinerary['days'];
+  if (days is List) {
+    for (final day in days) {
+      if (day is Map) {
+        final activities = day['activities'];
+        if (activities is List) {
+          for (final a in activities) {
+            if (a is Map) {
+              final d = (a['destination'] ?? a['placeName'] ?? '').toString().trim();
+              if (d.isNotEmpty && d.toLowerCase() != 'null') return d;
+            }
+          }
+        }
+      }
+    }
+  }
+  return null;
 }
 
 class TripEmptyRecentState extends StatelessWidget {

@@ -23,8 +23,23 @@ class _FavoriteCardState extends State<_FavoriteCard> {
   @override
   Widget build(BuildContext context) {
     final destination = widget.favorite.destination;
-    final weather = destination.avgTempC >= 28 ? 'Sunny' : 'Cool';
-    final bestSeason = destination.avgTempC >= 26 ? 'Dry season' : 'Any season';
+    // Default avgTempC comes from region in Destination.fromApi; only label as
+    // Sunny / Cool based on that real value.
+    final avg = destination.avgTempC;
+    final weather = avg <= 0
+        ? 'Đang cập nhật'
+        : avg >= 28
+            ? 'Nắng ấm'
+            : avg >= 22
+                ? 'Dễ chịu'
+                : 'Mát mẻ';
+    final bestSeason = avg <= 0
+        ? 'Đang cập nhật'
+        : avg >= 26
+            ? 'Mùa khô'
+            : avg >= 20
+                ? 'Mùa mát'
+                : 'Mùa đông';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -66,19 +81,10 @@ class _FavoriteCardState extends State<_FavoriteCard> {
                     SizedBox(
                       width: 112,
                       height: 112,
-                      child: Stack(
-                        children: [
-                          NetworkImageCard(
-                            imageUrl: destination.imageUrl,
-                            height: 112,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          const Positioned(
-                            top: 8,
-                            left: 8,
-                            child: _FavoriteBadge(label: 'Trending'),
-                          ),
-                        ],
+                      child: NetworkImageCard(
+                        imageUrl: destination.imageUrl,
+                        height: 112,
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -124,7 +130,7 @@ class _FavoriteCardState extends State<_FavoriteCard> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: IconButton(
-                        tooltip: 'Remove saved place',
+                        tooltip: 'Bỏ lưu địa điểm',
                         onPressed: widget.onRemove,
                         icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 20),
                       ),
@@ -135,34 +141,6 @@ class _FavoriteCardState extends State<_FavoriteCard> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FavoriteBadge extends StatelessWidget {
-  const _FavoriteBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.local_fire_department_rounded, size: 11, color: Color(0xFFF97316)),
-          SizedBox(width: 3),
-          Text(
-            'Trending',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
-          ),
-        ],
       ),
     );
   }

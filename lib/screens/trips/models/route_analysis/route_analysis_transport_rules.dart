@@ -33,77 +33,102 @@ List<TransportOption> transportOptionsForLeg(RouteLeg leg) {
       .toList();
 }
 
+bool _isIslandLeg(RouteLeg leg) {
+  if (leg.to.isIsland) return true;
+  if (Destination.isIslandName(leg.fromName)) return true;
+  return false;
+}
+
 List<TransportOption> _fallbackTransportOptionsForLeg(RouteLeg leg) {
   final recommendedMode = leg.recommendedMode;
   final distanceKm = leg.distanceKm;
+  final islandLeg = _isIslandLeg(leg);
   final currentReason = leg.reason.isEmpty
-      ? 'Phuong tien hien tai cua chang nay.'
+      ? 'Phương tiện hiện tại của chặng này.'
       : leg.reason;
+  const landReason = 'Điểm đến/trung gian là đảo, phương tiện đường bộ không thể tới.';
   return [
     TransportOption(
       mode: TransportMode.car,
-      isAvailable: true,
-      isRecommended: recommendedMode == TransportMode.car,
-      reason: recommendedMode == TransportMode.car
-          ? currentReason
-          : 'Co the di bang o to/taxi tren chang duong bo.',
+      isAvailable: !islandLeg,
+      isRecommended: !islandLeg && recommendedMode == TransportMode.car,
+      reason: islandLeg
+          ? landReason
+          : recommendedMode == TransportMode.car
+              ? currentReason
+              : 'Có thể đi bằng ô tô/taxi trên chặng đường bộ.',
       durationHours: _fallbackHours(distanceKm, TransportMode.car),
       estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.car),
       segments: [leg.routeLabel],
     ),
     TransportOption(
       mode: TransportMode.motorbike,
-      isAvailable: distanceKm <= 180,
-      isRecommended: recommendedMode == TransportMode.motorbike,
-      reason: distanceKm <= 180
-          ? (recommendedMode == TransportMode.motorbike ? currentReason : 'Xe may phu hop hon voi chang ngan.')
-          : 'Quang duong dai, xe may khong phu hop de chon.',
+      isAvailable: !islandLeg && distanceKm <= 180,
+      isRecommended: !islandLeg && recommendedMode == TransportMode.motorbike,
+      reason: islandLeg
+          ? landReason
+          : distanceKm > 180
+              ? 'Quãng đường dài, xe máy không phù hợp để chọn.'
+              : (recommendedMode == TransportMode.motorbike
+                  ? currentReason
+                  : 'Xe máy phù hợp hơn với chặng ngắn.'),
       durationHours: _fallbackHours(distanceKm, TransportMode.motorbike),
       estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.motorbike),
       segments: [leg.routeLabel],
     ),
     TransportOption(
       mode: TransportMode.coach,
-      isAvailable: distanceKm >= 40,
-      isRecommended: recommendedMode == TransportMode.coach,
-      reason: recommendedMode == TransportMode.coach
-          ? currentReason
-          : 'Xe khach phu hop cho chang lien tinh va chi phi thap.',
+      isAvailable: !islandLeg && distanceKm >= 40,
+      isRecommended: !islandLeg && recommendedMode == TransportMode.coach,
+      reason: islandLeg
+          ? landReason
+          : recommendedMode == TransportMode.coach
+              ? currentReason
+              : distanceKm < 40
+                  ? 'Chặng quá ngắn, xe khách thường không có tuyến phù hợp.'
+                  : 'Xe khách phù hợp cho chặng liên tỉnh và chi phí thấp.',
       durationHours: _fallbackHours(distanceKm, TransportMode.coach),
       estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.coach),
       segments: [leg.routeLabel],
     ),
     TransportOption(
       mode: TransportMode.train,
-      isAvailable: recommendedMode == TransportMode.train,
-      isRecommended: recommendedMode == TransportMode.train,
-      reason: recommendedMode == TransportMode.train
-          ? currentReason
-          : 'Can backend xac minh ga tau/tuyen tau phu hop cho chang nay.',
+      isAvailable: !islandLeg && recommendedMode == TransportMode.train,
+      isRecommended: !islandLeg && recommendedMode == TransportMode.train,
+      reason: islandLeg
+          ? landReason
+          : recommendedMode == TransportMode.train
+              ? currentReason
+              : 'Hiện chưa có ga/tuyến tàu hỏa phù hợp cho chặng này.',
       durationHours: _fallbackHours(distanceKm, TransportMode.train),
       estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.train),
       segments: [leg.routeLabel],
     ),
     TransportOption(
       mode: TransportMode.flight,
-      isAvailable: recommendedMode == TransportMode.flight || distanceKm >= 150,
+      isAvailable:
+          islandLeg || recommendedMode == TransportMode.flight || distanceKm >= 150,
       isRecommended: recommendedMode == TransportMode.flight,
-      reason: recommendedMode == TransportMode.flight
-          ? currentReason
-          : distanceKm < 150
-              ? 'Khong khuyen nghi: chang ngan, may bay chi nen hien neu backend xac minh san bay hai dau.'
-              : 'Co the chon may bay neu backend xac minh co san bay phu hop hai dau.',
+      reason: islandLeg
+          ? 'Có chuyến bay thẳng đến đảo, nên đặt vé sớm để có giá tốt.'
+          : recommendedMode == TransportMode.flight
+              ? currentReason
+              : distanceKm < 150
+                  ? 'Chặng ngắn, máy bay chỉ nên chọn nếu có sân bay phù hợp hai đầu.'
+                  : 'Có thể chọn máy bay nếu có sân bay phù hợp hai đầu.',
       durationHours: _fallbackHours(distanceKm, TransportMode.flight),
       estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.flight),
       segments: [leg.routeLabel],
     ),
     TransportOption(
       mode: TransportMode.ferry,
-      isAvailable: recommendedMode == TransportMode.ferry,
+      isAvailable: islandLeg || recommendedMode == TransportMode.ferry,
       isRecommended: recommendedMode == TransportMode.ferry,
-      reason: recommendedMode == TransportMode.ferry
-          ? currentReason
-          : 'Chi kha dung khi backend xac minh co ben pha/cang phu hop.',
+      reason: islandLeg
+          ? 'Có tuyến phà/tàu cao tốc đến đảo, nên kiểm tra lịch tàu trước khi đi.'
+          : recommendedMode == TransportMode.ferry
+              ? currentReason
+              : 'Chỉ khả dụng khi có bến phà/cảng phù hợp tại hai đầu.',
       durationHours: _fallbackHours(distanceKm, TransportMode.ferry),
       estimatedCostVnd: _fallbackCost(distanceKm, TransportMode.ferry),
       segments: [leg.routeLabel],

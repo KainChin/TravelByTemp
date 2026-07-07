@@ -18,6 +18,9 @@ class TripMapSection extends StatelessWidget {
     final points = stops.map((s) => s.point).toList();
     final center = points.isEmpty ? const LatLng(16.0544, 108.2022) : points.first;
     final scheme = Theme.of(context).colorScheme;
+    final mapKey = ValueKey<String>(
+      'trip-map-${_dayFingerprint(day)}',
+    );
 
     return Container(
       height: height,
@@ -38,6 +41,7 @@ class TripMapSection extends StatelessWidget {
         children: [
           Positioned.fill(
             child: FlutterMap(
+              key: mapKey,
               options: MapOptions(
                 initialCenter: center,
                 initialZoom: points.length <= 1 ? 12 : 11,
@@ -156,6 +160,15 @@ class TripMapSection extends StatelessWidget {
       ),
     );
   }
+}
+
+String _dayFingerprint(Object? day) {
+  if (day is! Map) return 'empty';
+  final activities = day['activities'];
+  if (activities is List) {
+    return activities.length.toString();
+  }
+  return '${day['day'] ?? 'day'}';
 }
 
 void _showRatedPlacesSheet(BuildContext context, Object? day) {

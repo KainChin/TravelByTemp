@@ -1,4 +1,5 @@
 // ignore_for_file: use_string_in_part_of_directives
+
 part of saved_screen;
 
 class _ItineraryCard extends StatefulWidget {
@@ -28,66 +29,215 @@ class _ItineraryCardState extends State<_ItineraryCard> {
   var _scale = 1.0;
   var _hovered = false;
 
-  String _getThumbnail(String title) {
-    final t = title.toLowerCase();
-    if (t.contains('phu') || t.contains('quoc')) {
-      return 'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=320';
-    } else if (t.contains('ha noi')) {
-      return 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=320';
-    } else if (t.contains('da lat')) {
-      return 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=320';
-    } else if (t.contains('vung tau')) {
-      return 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=320';
-    }
-    return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=320';
-  }
+  static const Set<String> _flightKeywords = {'flight', 'may bay', 'máy bay', 'bay'};
+  static const Set<String> _trainKeywords = {'train', 'tau hoa', 'tàu hỏa'};
+  static const Set<String> _busKeywords = {'bus', 'xe khach', 'xe khách', 'coach'};
+  static const Set<String> _carKeywords = {'taxi', 'o to', 'ô tô', 'car'};
+  static const Set<String> _motorbikeKeywords = {'motorbike', 'xe may', 'xe máy'};
 
-  String _getMainVehicle(Map<String, dynamic> itinerary) {
-    final text = jsonEncode(itinerary).toLowerCase();
-    if (text.contains('flight') || text.contains('bay')) return 'Flight';
-    if (text.contains('bus')) return 'Bus';
-    if (text.contains('motorbike')) return 'Motorbike';
-    if (text.contains('train')) return 'Train';
-    if (text.contains('car') || text.contains('taxi')) return 'Car';
-    return 'Road trip';
-  }
-
-  int _getDestinationCount(Map<String, dynamic> itinerary) {
+  /// Picks the first activity whose category marks "transport" and returns a
+  /// human label. Falls back to scanning the title for keywords.
+  static String detectMainVehicle(Map<String, dynamic> itinerary, String title) {
     final days = itinerary['days'];
-    if (days is! List) return 0;
-    var count = 0;
-    for (final day in days) {
-      if (day is Map) {
-        final acts = day['activities'] ?? day['schedule'];
-        if (acts is List) count += acts.length;
+    if (days is List) {
+      for (final day in days) {
+        if (day is Map) {
+          final activities = day['activities'] ?? day['schedule'];
+          if (activities is List) {
+            for (final a in activities) {
+              if (a is Map) {
+                final cat = (a['category'] ?? '').toString().toLowerCase();
+                if (cat == 'di chuyển' ||
+                    cat == 'di chuyen' ||
+                    cat == 'flight' ||
+                    cat == 'bus' ||
+                    cat == 'train' ||
+                    cat == 'car' ||
+                    cat == 'motorbike' ||
+                    cat == 'transport') {
+                  return _modeLabel(cat);
+                }
+              }
+            }
+          }
+        }
       }
     }
-    return count;
+    return _vehicleFromText(title);
+  }
+
+  static String _modeLabel(String category) {
+    switch (category) {
+      case 'flight':
+        return 'Máy bay';
+      case 'train':
+        return 'Tàu hỏa';
+      case 'bus':
+      case 'coach':
+        return 'Xe khách';
+      case 'car':
+        return 'Ô tô';
+      case 'motorbike':
+        return 'Xe máy';
+      default:
+        return 'Đường bộ';
+    }
+  }
+
+  static String _vehicleFromText(String text) {
+    final lower = text.toLowerCase();
+    if (_flightKeywords.any(lower.contains)) return 'Máy bay';
+    if (_trainKeywords.any(lower.contains)) return 'Tàu hỏa';
+    if (_busKeywords.any(lower.contains)) return 'Xe khách';
+    if (_carKeywords.any(lower.contains)) return 'Ô tô';
+    if (_motorbikeKeywords.any(lower.contains)) return 'Xe máy';
+    return 'Đường bộ';
+  }
+
+  /// Sums the estimatedCost on every activity across all days. Falls back to
+  /// `costBreakdown.total` when activity costs are absent (older payloads).
+  static double computeBudgetVnd(Map<String, dynamic> itinerary) {
+    var total = 0.0;
+    final days = itinerary['days'];
+    if (days is List) {
+      for (final day in days) {
+        if (day is Map) {
+          final activities = day['activities'] ?? day['schedule'];
+          if (activities is List) {
+            for (final a in activities) {
+              if (a is Map) {
+                final cost = (a['estimatedCost'] ??
+                        a['cost'] ??
+                        a['price'])
+                    as num?;
+                if (cost != null) total += cost.toDouble();
+              }
+            }
+          }
+        }
+      }
+    }
+    if (total <= 0) {
+      final breakdown = itinerary['costBreakdown'];
+      if (breakdown is Map) {
+        final t = breakdown['total'];
+        if (t is num) total = t.toDouble();
+      }
+    }
+    return total;
+  }
+
+  static String formatBudgetVnd(double vnd) {
+    if (vnd <= 0) return '—';
+    if (vnd >= 1000000000) return '${(vnd / 1000000000).toStringAsFixed(1)}tỷ';
+    if (vnd >= 1000000) return '${(vnd / 1000000).toStringAsFixed(1)}tr';
+    if (vnd >= 1000) return '${(vnd / 1000).toStringAsFixed(0)}k';
+    return '${vnd.round()}đ';
+  }
+
+  /// Mirrors TripItineraryResultScreen._aiScore so the saved card stays
+  /// consistent with the in-app header.
+  static double computeAiScore(Map<String, dynamic> itinerary) {
+    var score = 8.2;
+    final daysRaw = itinerary['days'];
+    if (daysRaw is List && daysRaw.isNotEmpty) {
+      final totalActs = daysRaw.fold<int>(0, (sum, day) {
+        if (day is Map) {
+          final acts = day['activities'] ?? day['schedule'];
+          return sum + (acts is List ? acts.length : 0);
+        }
+        return sum;
+      });
+      if (totalActs >= daysRaw.length * 5) score += 0.4;
+      final hasTransport = daysRaw.any((day) {
+        if (day is! Map) return false;
+        final acts = day['activities'] ?? day['schedule'];
+        if (acts is! List) return false;
+        return acts.any((a) {
+          if (a is! Map) return false;
+          final cat = a['category']?.toString().toLowerCase() ?? '';
+          return cat == 'di chuyển' || cat == 'di chuyen';
+        });
+      });
+      if (hasTransport) score += 0.2;
+    }
+    if (computeBudgetVnd(itinerary) > 0) score += 0.3;
+    return score.clamp(7.5, 9.6).toDouble();
+  }
+
+  /// Pulls the first place name from activities and uses DestinationImages
+  /// to resolve an Unsplash cover. Falls back to a generic photo when the
+  /// itinerary has no destinations.
+  static String _coverFor(Map<String, dynamic> itinerary, String title) {
+    final names = <String>[];
+    final days = itinerary['days'];
+    if (days is List) {
+      for (final day in days) {
+        if (day is Map) {
+          final acts = day['activities'] ?? day['schedule'];
+          if (acts is List) {
+            for (final a in acts) {
+              if (a is Map) {
+                final n = (a['destination'] ?? a['placeName'] ?? '')
+                    .toString()
+                    .trim();
+                if (n.isNotEmpty && n.toLowerCase() != 'null') {
+                  names.add(n);
+                  if (names.length >= 3) break;
+                }
+              }
+            }
+            if (names.length >= 3) break;
+          }
+        }
+      }
+    }
+    if (names.isEmpty) names.add(title);
+    return DestinationImages.urlFor(names.first);
+  }
+
+  static int dayCountOf(Map<String, dynamic> itinerary) =>
+      itinerary['days'] is List ? (itinerary['days'] as List).length : 0;
+
+  static int activityCountOf(Map<String, dynamic> itinerary) {
+    final days = itinerary['days'];
+    if (days is! List) return 0;
+    return days.fold<int>(0, (sum, day) {
+      if (day is Map) {
+        final acts = day['activities'] ?? day['schedule'];
+        return sum + (acts is List ? acts.length : 0);
+      }
+      return sum;
+    });
   }
 
   String _timeAgo(DateTime dateTime) {
     final difference = DateTime.now().difference(dateTime);
-    if (difference.inDays > 365) return '${(difference.inDays / 365).floor()}y ago';
-    if (difference.inDays > 30) return '${(difference.inDays / 30).floor()}mo ago';
-    if (difference.inDays > 0) return 'Updated ${difference.inDays}d ago';
-    if (difference.inHours > 0) return 'Updated ${difference.inHours}h ago';
-    if (difference.inMinutes > 0) return 'Updated ${difference.inMinutes}m ago';
-    return 'Updated now';
+    if (difference.inDays > 365) return '${(difference.inDays / 365).floor()} năm trước';
+    if (difference.inDays > 30) return '${(difference.inDays / 30).floor()} tháng trước';
+    if (difference.inDays > 0) return '${difference.inDays} ngày trước';
+    if (difference.inHours > 0) return '${difference.inHours} giờ trước';
+    if (difference.inMinutes > 0) return '${difference.inMinutes} phút trước';
+    return 'Vừa lưu';
   }
 
   @override
   Widget build(BuildContext context) {
-    final days = widget.item.itinerary['days'] is List
-        ? (widget.item.itinerary['days'] as List).length
-        : 0;
-    final summary =
-        '${widget.item.itinerary['summary'] ?? 'Open to review and fine tune this AI itinerary.'}';
-    final vehicle = _getMainVehicle(widget.item.itinerary);
-    final places = _getDestinationCount(widget.item.itinerary);
+    final itinerary = widget.item.itinerary;
+    final days = dayCountOf(itinerary);
+    final summary = (itinerary['summary'] ??
+            'Nhấn để mở và xem chi tiết hành trình AI của bạn.')
+        .toString();
+    final vehicle = detectMainVehicle(itinerary, widget.item.title);
+    final acts = activityCountOf(itinerary);
     final saveTime = _timeAgo(widget.item.savedAt);
-    final thumbnail = _getThumbnail(widget.item.title);
-    final aiScore = 88 + (days.clamp(0, 4) * 2);
-    final budget = days > 0 ? '~${(days * 1.1).toStringAsFixed(1)}tr' : '~2.5tr';
+    final thumbnail = _coverFor(itinerary, widget.item.title);
+    final aiScore = computeAiScore(itinerary);
+    final budget = formatBudgetVnd(computeBudgetVnd(itinerary));
+    final feasibility = itinerary['feasibility'];
+    final feasibilityLabel = feasibility is Map
+        ? (feasibility['status'] ?? feasibility['message'])?.toString()
+        : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -141,7 +291,7 @@ class _ItineraryCardState extends State<_ItineraryCard> {
                             top: 8,
                             left: 8,
                             child: _MetaTag(
-                              label: 'AI $aiScore',
+                              label: 'AI ${aiScore.toStringAsFixed(1)}',
                               color: const Color(0xFFECFDF5),
                               textColor: const Color(0xFF047857),
                             ),
@@ -176,13 +326,35 @@ class _ItineraryCardState extends State<_ItineraryCard> {
                             spacing: 7,
                             runSpacing: 6,
                             children: [
-                              const _MetaTag(label: 'AI generated', color: Color(0xFFF0FDF4), textColor: Color(0xFF047857)),
-                              if (days > 0) _MetaTag(label: '$days days', color: const Color(0xFFF3F4F6)),
-                              if (places > 0)
-                                _MetaTag(label: '$places stops', color: const Color(0xFFECFDF5), textColor: const Color(0xFF047857)),
-                              _MetaTag(label: vehicle, color: const Color(0xFFEFF6FF), textColor: const Color(0xFF1D4ED8)),
-                              _MetaTag(label: budget, color: const Color(0xFFFFF7ED), textColor: const Color(0xFFC2410C)),
-                              const _MetaTag(label: 'Good weather', color: Color(0xFFFFFBEB), textColor: Color(0xFFB45309)),
+                              const _MetaTag(
+                                label: 'AI tạo',
+                                color: Color(0xFFF0FDF4),
+                                textColor: Color(0xFF047857),
+                              ),
+                              if (days > 0)
+                                _MetaTag(label: '$days ngày', color: const Color(0xFFF3F4F6)),
+                              if (acts > 0)
+                                _MetaTag(
+                                  label: '$acts hoạt động',
+                                  color: const Color(0xFFECFDF5),
+                                  textColor: const Color(0xFF047857),
+                                ),
+                              _MetaTag(
+                                label: vehicle,
+                                color: const Color(0xFFEFF6FF),
+                                textColor: const Color(0xFF1D4ED8),
+                              ),
+                              _MetaTag(
+                                label: budget,
+                                color: const Color(0xFFFFF7ED),
+                                textColor: const Color(0xFFC2410C),
+                              ),
+                              if (feasibilityLabel != null && feasibilityLabel.isNotEmpty)
+                                _MetaTag(
+                                  label: feasibilityLabel,
+                                  color: const Color(0xFFEFF6FF),
+                                  textColor: const Color(0xFF1D4ED8),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -235,16 +407,16 @@ class _ItineraryCardState extends State<_ItineraryCard> {
                         }
                       },
                       itemBuilder: (context) => const [
-                        PopupMenuItem(value: 'open', child: Text('Open')),
-                        PopupMenuItem(value: 'rename', child: Text('Rename')),
-                        PopupMenuItem(value: 'clone', child: Text('Clone')),
-                        PopupMenuItem(value: 'share', child: Text('Share')),
-                        PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+                        PopupMenuItem(value: 'open', child: Text('Mở')),
+                        PopupMenuItem(value: 'rename', child: Text('Đổi tên')),
+                        PopupMenuItem(value: 'clone', child: Text('Sao chép')),
+                        PopupMenuItem(value: 'share', child: Text('Chia sẻ')),
+                        PopupMenuItem(value: 'pdf', child: Text('Xuất văn bản')),
                         PopupMenuDivider(),
                         PopupMenuItem(
                           value: 'delete',
                           child: Text(
-                            'Delete',
+                            'Xóa',
                             style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
                           ),
                         ),
