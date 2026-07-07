@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:assignment/services/api_client.dart';
@@ -20,15 +21,41 @@ class RegionBanner extends StatefulWidget {
   State<RegionBanner> createState() => _RegionBannerState();
 }
 
-class _RegionBannerState extends State<RegionBanner> {
+class _RegionBannerState extends State<RegionBanner>
+    with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
+
+  // Text entrance animations
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeIn,
+    );
+
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0.0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _animController.forward();
   }
 
   @override
@@ -38,17 +65,22 @@ class _RegionBannerState extends State<RegionBanner> {
       _timer?.cancel();
       _startTimer();
     }
+    // Re-trigger animations when region changes
+    if (oldWidget.region.id != widget.region.id) {
+      _animController.reset();
+      _animController.forward();
+    }
   }
 
   void _startTimer() {
     if (widget.banners.isNotEmpty) {
-      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _timer = Timer.periodic(const Duration(seconds: 6), (timer) {
         if (!mounted || !_pageController.hasClients) return;
         final next = (_currentPage + 1) % widget.banners.length;
         _pageController.animateToPage(
           next,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOutCubic,
         );
       });
     }
@@ -58,7 +90,16 @@ class _RegionBannerState extends State<RegionBanner> {
   void dispose() {
     _timer?.cancel();
     _pageController.dispose();
+    _animController.dispose();
     super.dispose();
+  }
+
+  String _getRegionBadge(String regionName) {
+    if (regionName.contains('Tây')) return 'Vùng đất sông nước';
+    if (regionName.contains('Bắc')) return 'Vùng đất di sản';
+    if (regionName.contains('Trung')) return 'Vùng đất di tích';
+    if (regionName.contains('Nam')) return 'Vùng đất năng động';
+    return 'Vùng đất du lịch';
   }
 
   @override
@@ -73,9 +114,9 @@ class _RegionBannerState extends State<RegionBanner> {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: SizedBox(
-        height: 240,
+        height: 280, // Premium enlarged height
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
@@ -95,49 +136,79 @@ class _RegionBannerState extends State<RegionBanner> {
                       fallback: Container(color: const Color(0xFF16A34A)),
                       source: 'banner image',
                     ),
+                    // Dark linear overlay gradient
                     Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                          colors: [Colors.transparent, Color(0xCC000000)],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black87,
+                            Colors.black38,
+                            Colors.transparent,
+                          ],
                         ),
                       ),
                     ),
+                    // Animated text and elements
                     Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: 20,
-                      top: 20,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            banner.title,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              height: 1.1,
-                            ),
-                          ),
-                          if (banner.linkUrl != null && banner.linkUrl!.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              banner.linkUrl!,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF4ADE80),
-                                fontWeight: FontWeight.w600,
+                      left: 28,
+                      right: 28,
+                      bottom: 28,
+                      child: SlideTransition(
+                        position: _slideAnim,
+                        child: FadeTransition(
+                          opacity: _fadeAnim,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Glassmorphism Badge
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(30),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    color: Colors.white.withOpacity(0.15),
+                                    child: Text(
+                                      _getRegionBadge(widget.region.name),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          _ExploreButton(onTap: widget.onExplore),
-                        ],
+                              const SizedBox(height: 12),
+                              Text(
+                                banner.title,
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  height: 1.1,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                widget.region.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white.withOpacity(0.85),
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              _ExploreButton(onTap: widget.onExplore),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -145,8 +216,8 @@ class _RegionBannerState extends State<RegionBanner> {
               },
             ),
             Positioned(
-              bottom: 16,
-              right: 20,
+              bottom: 28,
+              right: 28,
               child: _DotIndicators(
                 count: widget.banners.length,
                 activeIndex: _currentPage,
@@ -165,9 +236,9 @@ class _RegionBannerState extends State<RegionBanner> {
     required String imageUrl,
   }) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: SizedBox(
-        height: 240,
+        height: 280,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
@@ -181,59 +252,74 @@ class _RegionBannerState extends State<RegionBanner> {
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.centerRight,
-                  end: Alignment.centerLeft,
-                  colors: [Colors.transparent, Color(0xCC000000)],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black87,
+                    Colors.black26,
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
             Positioned(
-              left: 20,
-              right: 20,
-              bottom: 20,
-              top: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
+              left: 28,
+              right: 28,
+              bottom: 28,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.location_on, color: Color(0xFF4ADE80), size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF4ADE80),
-                          fontWeight: FontWeight.w600,
+                      // Glassmorphism Badge
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            color: Colors.white.withOpacity(0.15),
+                            child: Text(
+                              _getRegionBadge(title),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1.1,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.85),
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 16),
+                      _ExploreButton(onTap: widget.onExplore),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xDDFFFFFF),
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 16),
-                  _ExploreButton(onTap: widget.onExplore),
-                ],
+                ),
               ),
             ),
           ],
@@ -252,10 +338,17 @@ class _ExploreButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: const Color(0xFF1976D2), // Premium Bright Blue Button
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1976D2).withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -264,12 +357,12 @@ class _ExploreButton extends StatelessWidget {
               'Khám phá ngay',
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827),
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
-            SizedBox(width: 6),
-            Icon(Icons.arrow_forward_ios, size: 12, color: Color(0xFF111827)),
+            SizedBox(width: 8),
+            Icon(Icons.arrow_forward_rounded, size: 14, color: Colors.white),
           ],
         ),
       ),
@@ -287,9 +380,10 @@ class _DotIndicators extends StatelessWidget {
     return Row(
       children: List.generate(count, (i) {
         final isActive = i == activeIndex;
-        return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.only(left: 6),
-          width: isActive ? 20 : 6,
+          width: isActive ? 24 : 6,
           height: 6,
           decoration: BoxDecoration(
             color: isActive ? Colors.white : Colors.white38,

@@ -29,11 +29,11 @@ class DestinationSection extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 210,
+          height: 240,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: destinations.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (_, i) => DestinationCard(
               destination: destinations[i],
               onFavoriteTap: () => onFavoriteTap?.call(destinations[i].id),
@@ -77,7 +77,7 @@ class _SectionHeader extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF16A34A),
+                    color: Color(0xFF1976D2),
                   ),
                 ),
               ],
@@ -93,11 +93,11 @@ class _SectionHeader extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF16A34A),
+                  color: Color(0xFF1976D2),
                 ),
               ),
               SizedBox(width: 2),
-              Icon(Icons.arrow_forward_ios, size: 11, color: Color(0xFF16A34A)),
+              Icon(Icons.arrow_forward_ios, size: 11, color: Color(0xFF1976D2)),
             ],
           ),
         ),

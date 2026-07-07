@@ -8,97 +8,141 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(32),
-      child: SizedBox(
-        height: 260,
-        width: double.infinity,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            const SafeNetworkImage(
-              url: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1100&q=80',
-              fit: BoxFit.cover,
-              source: 'login hero image',
-              fallback: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF4338CA), Color(0xFF0EA5E9)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-            ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.transparent, Color(0x990F172A), Color(0xDD0F172A)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 10)],
-                        ),
-                        child: const Icon(
-                          Icons.travel_explore,
-                          color: Color(0xFF4338CA),
-                          size: 26,
-                        ),
-                      ),
-                      const Spacer(),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                          child: TextButton.icon(
-                            onPressed: onLanguageTap,
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: Colors.white.withValues(alpha: 0.15),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                              ),
-                            ),
-                            icon: const Icon(Icons.language, size: 18),
-                            label: const Text(
-                              'Tiếng Việt',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00B4D8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.travel_explore, color: Colors.white, size: 20),
                   ),
-                  const Spacer(),
-                  const Text('VietAI Travel', style: LoginScreenStyles.heroEyebrow),
-                  const SizedBox(height: 8),
+                  const SizedBox(width: 8),
                   const Text(
-                    'Khám phá thế giới\nvới AI thông minh.',
-                    style: LoginScreenStyles.heroTitle,
+                    'VietAI Travel',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.language, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          'Tiếng Việt',
+                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 50),
+          // Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF007BFF),
+              borderRadius: BorderRadius.circular(16),
             ),
-          ],
-        ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.white, size: 12),
+                SizedBox(width: 4),
+                Text(
+                  'Powered by AI',
+                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Title
+          const Text('Khám phá\nthế giới', style: LoginScreenStyles.heroTitle),
+          const Text('cùng AI thông minh', style: LoginScreenStyles.heroTitleAccent),
+          const SizedBox(height: 16),
+          // Subtitle
+          const Text(
+            'VietAI Travel đồng hành cùng bạn\ntrên mọi hành trình, mang đến trải nghiệm\ndu lịch thông minh, cá nhân hóa và\nđầy cảm hứng.',
+            style: LoginScreenStyles.heroSubtitle,
+          ),
+          const SizedBox(height: 32),
+          // Features
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildFeatureItem(Icons.location_on_outlined, 'Gợi ý thông minh', 'Cá nhân hóa hành trình')),
+                    Expanded(child: _buildFeatureItem(Icons.language, 'Khám phá toàn cầu', 'Hàng ngàn điểm đến')),
+                    Expanded(child: _buildFeatureItem(Icons.shield_outlined, 'An toàn & Tin cậy', 'Bảo mật tuyệt đối')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
       ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String title, String subtitle) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+          ),
+          child: Icon(icon, color: Colors.white, size: 24),
+        ),
+        const SizedBox(height: 12),
+        Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10)),
+      ],
     );
   }
 }
@@ -132,51 +176,61 @@ class _LoginPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 32,
-            offset: Offset(0, 16),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
       ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
       child: Form(
         key: formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Chào mừng trở lại', style: LoginScreenStyles.title),
-            const SizedBox(height: 6),
-            const Text(
-              'Đăng nhập để tiếp tục lưu điểm đến, tạo lịch trình và hỏi AI du lịch.',
-              style: LoginScreenStyles.subtitle,
+            // Drag handle
+            Container(
+              width: 48,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(height: 22),
-            const Text('Tên đăng nhập', style: LoginScreenStyles.inputLabel),
+            const SizedBox(height: 24),
+            const Text('Chào mừng trở lại! 👋', style: LoginScreenStyles.panelTitle, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            const Text(
+              'Đăng nhập để tiếp tục hành trình khám phá thế giới\ncùng VietAI Travel.',
+              style: LoginScreenStyles.panelSubtitle,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            // Email
+            Align(
+              alignment: Alignment.centerLeft,
+              child: const Text('Email hoặc số điện thoại', style: LoginScreenStyles.inputLabel),
+            ),
             const SizedBox(height: 8),
             TextFormField(
               controller: usernameController,
-              textInputAction: TextInputAction.next,
-              keyboardType: TextInputType.emailAddress,
               decoration: LoginScreenStyles.inputDecoration(
-                hint: 'Ví dụ: traveler',
-                prefixIcon: Icons.alternate_email,
-                helperText: 'Bạn có thể đăng nhập bằng email, số điện thoại hoặc tên đăng nhập.',
+                hint: 'Nhập email hoặc số điện thoại',
+                prefixIcon: Icons.person_outline,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Vui lòng nhập tên đăng nhập';
+                  return 'Vui lòng nhập thông tin';
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            const Text('Mật khẩu', style: LoginScreenStyles.inputLabel),
+            // Password
+            Align(
+              alignment: Alignment.centerLeft,
+              child: const Text('Mật khẩu', style: LoginScreenStyles.inputLabel),
+            ),
             const SizedBox(height: 8),
             TextFormField(
               controller: passwordController,
@@ -186,13 +240,8 @@ class _LoginPanel extends StatelessWidget {
                 hint: 'Nhập mật khẩu',
                 prefixIcon: Icons.lock_outline,
                 suffixIcon: IconButton(
+                  icon: Icon(isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: const Color(0xFF94A3B8)),
                   onPressed: onTogglePassword,
-                  icon: Icon(
-                    isPasswordVisible
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: LoginScreenStyles.muted,
-                  ),
                 ),
               ),
               validator: (value) {
@@ -202,38 +251,30 @@ class _LoginPanel extends StatelessWidget {
                 return null;
               },
             ),
+            const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: onForgotPassword,
-                child: const Text('Quên mật khẩu?', style: LoginScreenStyles.linkText),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                child: const Text('Quên mật khẩu?', style: TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.bold, fontSize: 13)),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
+            // Login Button
             Container(
               width: double.infinity,
-              height: 56,
+              height: 52,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4338CA), Color(0xFF0EA5E9)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF4338CA).withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                gradient: LoginScreenStyles.buttonGradient,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: ElevatedButton(
                 onPressed: isLoading ? null : onLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: isLoading
                     ? const SizedBox(
@@ -244,52 +285,73 @@ class _LoginPanel extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Đăng nhập', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text('Đăng nhập', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Divider
+            Row(
+              children: const [
+                Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('hoặc tiếp tục với', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                ),
+                Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Socials
+            OutlinedButton(
+              onPressed: onSocialTap,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.network('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png', height: 20),
+                  const SizedBox(width: 12),
+                  const Text('Tiếp tục với Google', style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600, fontSize: 15)),
+                ],
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: OutlinedButton.icon(
-                onPressed: isLoading ? null : onRegister,
-                icon: const Icon(Icons.person_add_alt_1_outlined),
-                label: const Text(
-                  'Tạo tài khoản mới',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF4338CA),
-                  side: const BorderSide(color: Color(0xFF4338CA), width: 1.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
+            OutlinedButton(
+              onPressed: onSocialTap,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.facebook, color: Color(0xFF1877F2), size: 24),
+                  const SizedBox(width: 12),
+                  const Text('Tiếp tục với Facebook', style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600, fontSize: 15)),
+                ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 32),
+            // Footer
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Expanded(child: Divider(color: LoginScreenStyles.line)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'hoặc tiếp tục với',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: LoginScreenStyles.muted),
-                  ),
+                const Text('Chưa có tài khoản? ', style: TextStyle(color: Color(0xFF64748B), fontSize: 14)),
+                GestureDetector(
+                  onTap: onRegister,
+                  child: const Text('Đăng ký ngay', style: TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.bold, fontSize: 14)),
                 ),
-                const Expanded(child: Divider(color: LoginScreenStyles.line)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _SocialButton(icon: Icons.g_mobiledata, label: 'Google', onTap: onSocialTap)),
-                const SizedBox(width: 10),
-                Expanded(child: _SocialButton(icon: Icons.facebook, label: 'Facebook', onTap: onSocialTap)),
               ],
             ),
           ],
@@ -299,34 +361,8 @@ class _LoginPanel extends StatelessWidget {
   }
 }
 
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 22),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: LoginScreenStyles.ink,
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        backgroundColor: const Color(0xFFF8FAFC),
-        minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      ),
-    );
-  }
-}
-
+// Dialogs remain unchanged
+// ─────────────────────────────────────────────────────────────────────────────
 class _AuthDialogShell extends StatelessWidget {
   const _AuthDialogShell({
     required this.title,
@@ -359,9 +395,7 @@ class _AuthDialogShell extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Text(title, style: LoginScreenStyles.title),
-                  ),
+                  Expanded(child: Text(title, style: LoginScreenStyles.panelTitle)),
                   IconButton(
                     tooltip: 'Đóng',
                     onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
@@ -370,38 +404,41 @@ class _AuthDialogShell extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Text(subtitle, style: LoginScreenStyles.subtitle),
+              Text(subtitle, style: LoginScreenStyles.panelSubtitle),
               const SizedBox(height: 18),
               child,
               const SizedBox(height: 20),
-              SizedBox(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 width: double.infinity,
                 height: 52,
-                child: FilledButton(
-                  onPressed: isSubmitting ? null : onSubmit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF4338CA),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                decoration: BoxDecoration(
+                  gradient: isSubmitting
+                      ? const LinearGradient(colors: [Color(0xFFB0C4DE), Color(0xFFB0C4DE)])
+                      : LoginScreenStyles.buttonGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: isSubmitting ? null : onSubmit,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Center(
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              actionLabel,
+                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
-                  child: isSubmitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          actionLabel,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
                 ),
               ),
             ],
@@ -445,42 +482,14 @@ class _AuthTextField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           obscureText: obscureText,
-          textInputAction: onFieldSubmitted == null ? TextInputAction.next : TextInputAction.done,
+          textInputAction:
+              onFieldSubmitted == null ? TextInputAction.next : TextInputAction.done,
           onFieldSubmitted: onFieldSubmitted,
           decoration: LoginScreenStyles.inputDecoration(
             hint: hint,
             prefixIcon: icon,
           ),
           validator: validator,
-        ),
-      ],
-    );
-  }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({required this.onRegister});
-
-  final VoidCallback onRegister;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'Chưa có tài khoản? ',
-          style: TextStyle(color: LoginScreenStyles.muted, fontWeight: FontWeight.w600),
-        ),
-        GestureDetector(
-          onTap: onRegister,
-          child: const Text(
-            'Đăng ký',
-            style: TextStyle(
-              color: Color(0xFF4338CA),
-              fontWeight: FontWeight.w900,
-            ),
-          ),
         ),
       ],
     );
