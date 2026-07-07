@@ -39,7 +39,7 @@ class RegionTabBar extends StatelessWidget {
                   color: isSelected ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: isSelected
-                      ? Border.all(color: const Color(0xFF16A34A), width: 1.5)
+                      ? Border.all(color: const Color(0xFF1976D2), width: 1.5)
                       : null,
                   boxShadow: isSelected
                       ? [
@@ -58,7 +58,7 @@ class RegionTabBar extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                       color: isSelected
-                          ? const Color(0xFF16A34A)
+                          ? const Color(0xFF1976D2)
                           : const Color(0xFF6B7280),
                     ),
                   ),
