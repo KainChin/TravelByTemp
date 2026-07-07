@@ -16,8 +16,10 @@ class ProfileHeader extends StatelessWidget {
     required this.role,
     required this.location,
     this.avatarUrl,
+    this.onMenuTap,
   });
 
+  final VoidCallback? onMenuTap;
   final VoidCallback onEditTap;
   final VoidCallback onShareTap;
   final VoidCallback onAvatarTap;
@@ -73,6 +75,14 @@ class ProfileHeader extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
+                      // Hamburger Menu (only visible on mobile/if provided)
+                      if (onMenuTap != null) ...[
+                        _GlassIconButton(
+                          icon: Icons.menu,
+                          onTap: onMenuTap!,
+                        ),
+                        const SizedBox(width: 12),
+                      ],
                       // VietAI Travel logo
                       Row(mainAxisSize: MainAxisSize.min, children: [
                         Container(

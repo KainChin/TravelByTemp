@@ -10,6 +10,7 @@ import 'package:assignment/screens/profile/memories_screen.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/stats_card.dart';
 import 'widgets/my_trips_section.dart';
+import 'widgets/profile_sidebar.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   var _profileLoading = false;
   String? _profileError;
   bool _profileLoaded = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void didChangeDependencies() {
@@ -446,47 +448,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final session = VietaiScope.of(context);
     final user = session.auth?.user;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1729),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // ── Header ──
-            ProfileHeader(
-              fullName: user?.fullName ?? 'Traveler',
-              username: user?.username ?? 'traveler',
-              email: user?.email ?? '',
-              bio: user?.bio,
-              role: user?.role ?? 'Traveler',
-              location: session.locationName,
-              avatarUrl: user?.avatarUrl,
-              onLogoutTap: () => _confirmLogout(context),
-              onShareTap: () => _shareProfile(context),
-              onAvatarTap: () => _openUpload(context),
-              onEditTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              ).then((_) => _refreshProfile()),
-            ),
-            // ── API status ──
-            if (_profileLoading || _profileError != null)
-              _ProfileApiStatus(
-                loading: _profileLoading,
-                error: _profileError,
-                onRetry: _refreshProfile,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideScreen = constraints.maxWidth >= 800;
+        final content = SingleChildScrollView(
+          child: Column(
+            children: [
+              // ── Header ──
+              ProfileHeader(
+                fullName: user?.fullName ?? 'Traveler',
+                username: user?.username ?? 'traveler',
+                email: user?.email ?? '',
+                bio: user?.bio,
+                role: user?.role ?? 'Traveler',
+                location: session.locationName,
+                avatarUrl: user?.avatarUrl,
+                onLogoutTap: () => _confirmLogout(context),
+                onShareTap: () => _shareProfile(context),
+                onAvatarTap: () => _openUpload(context),
+                onEditTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                ).then((_) => _refreshProfile()),
+                onMenuTap: isWideScreen
+                    ? null
+                    : () {
+                        _scaffoldKey.currentState?.openDrawer();
+                      },
               ),
-            // ── Stats ──
-            StatsCard(refreshToken: widget.refreshToken),
-            // ── Kỷ niệm ──
-            _buildMemoriesSection(context),
-            // ── Chuyến đi ──
-            MyTripsSection(refreshToken: widget.refreshToken),
-            // ── Tính năng nhanh ──
-            _buildQuickActions(context),
-            const SizedBox(height: 28),
-          ],
-        ),
-      ),
+              // ── API status ──
+              if (_profileLoading || _profileError != null)
+                _ProfileApiStatus(
+                  loading: _profileLoading,
+                  error: _profileError,
+                  onRetry: _refreshProfile,
+                ),
+              // ── Stats ──
+              StatsCard(refreshToken: widget.refreshToken),
+              // ── Kỷ niệm ──
+              _buildMemoriesSection(context),
+              // ── Chuyến đi ──
+              MyTripsSection(refreshToken: widget.refreshToken),
+              // ── Tính năng nhanh ──
+              _buildQuickActions(context),
+              const SizedBox(height: 28),
+            ],
+          ),
+        );
+
+        if (isWideScreen) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF0F1729),
+            body: Row(
+              children: [
+                ProfileSidebar(onItemSelected: (_) {}),
+                Expanded(child: content),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: const Color(0xFF0F1729),
+          drawer: Drawer(
+            width: 280,
+            backgroundColor: Colors.transparent, // Let sidebar handle color
+            child: ProfileSidebar(onItemSelected: (index) {
+              _scaffoldKey.currentState?.closeDrawer();
+            }),
+          ),
+          body: content,
+        );
+      },
     );
   }
 }
