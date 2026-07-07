@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +13,7 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return message.isAi ? _buildAiBubble(context) : _buildUserBubble();
+    return message.isAi ? _buildAiBubble(context) : _buildUserBubble(context);
   }
 
   Widget _buildAiBubble(BuildContext context) {
@@ -73,14 +74,23 @@ class ChatBubble extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (message.imageBytes != null) ...[
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: SafeMemoryImage(
-                              bytes: message.imageBytes,
-                              source: 'ChatBubble ${message.imageName ?? 'img'}',
-                              width: 220,
-                              height: 140,
-                              fit: BoxFit.cover,
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () => _viewFullScreenImage(context),
+                              child: Hero(
+                                tag: 'chat_img_${message.timestamp.millisecondsSinceEpoch}',
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: SafeMemoryImage(
+                                    bytes: message.imageBytes,
+                                    source: 'ChatBubble ${message.imageName ?? 'img'}',
+                                    width: 220,
+                                    height: 140,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -146,7 +156,7 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildUserBubble() {
+  Widget _buildUserBubble(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -180,14 +190,23 @@ class ChatBubble extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (message.imageBytes != null) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: SafeMemoryImage(
-                        bytes: message.imageBytes,
-                        source: 'UserBubble ${message.imageName ?? 'img'}',
-                        width: 220,
-                        height: 140,
-                        fit: BoxFit.cover,
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => _viewFullScreenImage(context),
+                        child: Hero(
+                          tag: 'chat_img_${message.timestamp.millisecondsSinceEpoch}',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: SafeMemoryImage(
+                              bytes: message.imageBytes,
+                              source: 'UserBubble ${message.imageName ?? 'img'}',
+                              width: 220,
+                              height: 140,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -225,6 +244,21 @@ class ChatBubble extends StatelessWidget {
   }
 
   String _formatTime(DateTime t) => DateFormat('HH:mm').format(t);
+
+  void _viewFullScreenImage(BuildContext context) {
+    if (message.imageBytes == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _FullScreenImageViewer(
+          bytes: message.imageBytes!,
+          title: message.imageName ?? 'Hình ảnh',
+          heroTag: 'chat_img_${message.timestamp.millisecondsSinceEpoch}',
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -312,6 +346,51 @@ class _PdfAttachmentCard extends StatelessWidget {
             style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 11),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FullScreenImageViewer extends StatelessWidget {
+  final Uint8List bytes;
+  final String title;
+  final String heroTag;
+
+  const _FullScreenImageViewer({
+    required this.bytes,
+    required this.title,
+    required this.heroTag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: Hero(
+          tag: heroTag,
+          child: InteractiveViewer(
+            maxScale: 4.0,
+            minScale: 1.0,
+            child: SafeMemoryImage(
+              bytes: bytes,
+              source: 'FullScreenImageViewer',
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
       ),
     );
   }
