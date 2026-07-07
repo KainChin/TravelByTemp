@@ -168,45 +168,84 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: LoginScreenStyles.background,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight - 36),
-                child: Column(
-                  children: [
-                    _HeroHeader(onLanguageTap: _showComingSoon)
-                        .animate()
-                        .fadeIn(duration: 800.ms)
-                        .scale(begin: const Offset(0.95, 0.95), duration: 800.ms, curve: Curves.easeOutQuart),
-                    const SizedBox(height: 24),
-                    _LoginPanel(
-                      formKey: _formKey,
-                      usernameController: _usernameController,
-                      passwordController: _passwordController,
-                      isPasswordVisible: _isPasswordVisible,
-                      isLoading: _isLoading,
-                      onTogglePassword: () {
-                        setState(() => _isPasswordVisible = !_isPasswordVisible);
-                      },
-                      onLogin: _handleLogin,
-                      onRegister: _showRegisterDialog,
-                      onForgotPassword: _showResetPasswordDialog,
-                      onSocialTap: _showComingSoon,
-                    ).animate().fadeIn(delay: 200.ms, duration: 800.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuart),
-                    const SizedBox(height: 24),
-                    _Footer(onRegister: _showRegisterDialog)
-                        .animate()
-                        .fadeIn(delay: 400.ms, duration: 800.ms),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Background Image (Top Half)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Image.asset(
+              'assets/images/login.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+          // Gradient Overlay
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withOpacity(0.5),
+                    Colors.black.withOpacity(0.1),
+                    Colors.black.withOpacity(0.9),
                   ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.4, 1.0],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+          // Scrollable Content
+          SafeArea(
+            bottom: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _HeroHeader(onLanguageTap: _showComingSoon)
+                            .animate()
+                            .fadeIn(duration: 700.ms),
+                        _LoginPanel(
+                          formKey: _formKey,
+                          usernameController: _usernameController,
+                          passwordController: _passwordController,
+                          isPasswordVisible: _isPasswordVisible,
+                          isLoading: _isLoading,
+                          onTogglePassword: () {
+                            setState(() => _isPasswordVisible = !_isPasswordVisible);
+                          },
+                          onLogin: _handleLogin,
+                          onRegister: _showRegisterDialog,
+                          onForgotPassword: _showResetPasswordDialog,
+                          onSocialTap: _showComingSoon,
+                        ).animate().slideY(
+                              begin: 0.1,
+                              end: 0,
+                              duration: 500.ms,
+                              curve: Curves.easeOutQuart,
+                            ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

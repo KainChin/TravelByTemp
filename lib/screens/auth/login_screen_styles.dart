@@ -3,111 +3,88 @@ import 'package:flutter/material.dart';
 class LoginScreenStyles {
   LoginScreenStyles._();
 
-  static const Color ink = Color(0xFF15221D);
-  static const Color muted = Color(0xFF6E7A74);
-  static const Color primary = Color(0xFF008F6A);
-  static const Color primaryDark = Color(0xFF006B52);
-  static const Color accent = Color(0xFFFF8A5B);
-  static const Color background = Color(0xFFF8FAFC); // Modern cool gray
-  static const Color surface = Colors.white;
-  static const Color line = Color(0xFFE2E8E4);
-  static const Color fieldFill = Color(0xFFF1F5F9); // Light slate for inputs
-
-  static const double horizontalPadding = 20;
-  static const double radius = 18;
-
-  static const TextStyle heroEyebrow = TextStyle(
-    color: Color(0xFFE9FFF5),
-    fontSize: 13,
-    fontWeight: FontWeight.w700,
+  static const Color primary = Color(0xFF007BFF); // Blue
+  static const Color accent = Color(0xFF00B4D8); // Cyan
+  static const Color textDark = Color(0xFF1E293B); // Dark slate
+  static const Color textGray = Color(0xFF64748B); // Slate
+  static const Color borderGray = Color(0xFFE2E8F0); // Light slate
+  
+  static const LinearGradient buttonGradient = LinearGradient(
+    colors: [Color(0xFF007BFF), Color(0xFF00B4D8)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
   );
 
   static const TextStyle heroTitle = TextStyle(
     color: Colors.white,
-    fontSize: 30,
-    height: 1.08,
+    fontSize: 42,
+    height: 1.1,
     fontWeight: FontWeight.w900,
+    letterSpacing: -0.5,
   );
 
-  static const TextStyle title = TextStyle(
-    color: ink,
-    fontSize: 24,
-    height: 1.15,
-    fontWeight: FontWeight.w900,
+  static const TextStyle heroTitleAccent = TextStyle(
+    color: Color(0xFF00D4AA), // Teal/cyan accent
+    fontSize: 36,
+    fontStyle: FontStyle.italic,
+    fontWeight: FontWeight.w600,
   );
 
-  static const TextStyle subtitle = TextStyle(
-    color: muted,
+  static const TextStyle heroSubtitle = TextStyle(
+    color: Colors.white,
     fontSize: 14,
-    height: 1.45,
+    height: 1.5,
     fontWeight: FontWeight.w500,
   );
 
+  static const TextStyle panelTitle = TextStyle(
+    color: textDark,
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.3,
+  );
+
+  static const TextStyle panelSubtitle = TextStyle(
+    color: textGray,
+    fontSize: 14,
+    height: 1.5,
+  );
+
   static const TextStyle inputLabel = TextStyle(
-    color: ink,
+    color: textDark,
     fontSize: 13,
-    fontWeight: FontWeight.w800,
-  );
-
-  static const TextStyle linkText = TextStyle(
-    color: primary,
-    fontSize: 13,
-    fontWeight: FontWeight.w800,
-  );
-
-  static const TextStyle primaryButtonText = TextStyle(
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: FontWeight.w900,
+    fontWeight: FontWeight.bold,
   );
 
   static InputDecoration inputDecoration({
     required String hint,
     IconData? prefixIcon,
     Widget? suffixIcon,
-    String? helperText,
   }) {
     return InputDecoration(
       hintText: hint,
-      helperText: helperText,
-      helperMaxLines: 2,
       hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-      prefixIcon: prefixIcon == null
-          ? null
-          : Icon(prefixIcon, color: const Color(0xFF64748B), size: 20),
+      prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, color: const Color(0xFF94A3B8), size: 20),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: fieldFill,
+      fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: borderGray, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFEF4444)),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
       ),
     );
   }
-
-  static final ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: primary,
-    foregroundColor: Colors.white,
-    disabledBackgroundColor: const Color(0xFFB8C7C0),
-    minimumSize: const Size(double.infinity, 54),
-    elevation: 0,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  );
 }
