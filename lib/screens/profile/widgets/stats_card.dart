@@ -133,7 +133,9 @@ class _StatsCardState extends State<StatsCard> {
   }
 
   void _refresh() {
-    setState(() => _future = _loadStats());
+    setState(() {
+      _future = _loadStats();
+    });
   }
 
   @override

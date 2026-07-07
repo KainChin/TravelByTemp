@@ -98,7 +98,7 @@ class _SavedDashboardPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SavedSidePanel(
-      title: 'Quick Statistics',
+      title: 'Số liệu nhanh',
       icon: Icons.dashboard_rounded,
       child: Column(
         children: [
@@ -108,7 +108,7 @@ class _SavedDashboardPanel extends StatelessWidget {
                 child: _DashboardMetric(
                   icon: Icons.map_rounded,
                   value: '$trips',
-                  label: 'Trips',
+                  label: 'Hành trình',
                   color: const Color(0xFF059669),
                 ),
               ),
@@ -117,30 +117,8 @@ class _SavedDashboardPanel extends StatelessWidget {
                 child: _DashboardMetric(
                   icon: Icons.favorite_rounded,
                   value: '$places',
-                  label: 'Places',
+                  label: 'Địa điểm',
                   color: const Color(0xFFE11D48),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Row(
-            children: [
-              Expanded(
-                child: _DashboardMetric(
-                  icon: Icons.savings_rounded,
-                  value: '15%',
-                  label: 'Savings',
-                  color: Color(0xFFF97316),
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _DashboardMetric(
-                  icon: Icons.star_rounded,
-                  value: '4.8',
-                  label: 'Rating',
-                  color: Color(0xFFF59E0B),
                 ),
               ),
             ],
@@ -157,29 +135,29 @@ class _SavedInsightPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _SavedSidePanel(
-      title: 'Travel Tips',
+      title: 'Gợi ý cho bạn',
       icon: Icons.tips_and_updates_rounded,
       child: Column(
         children: [
           _SavedInsightRow(
-            icon: Icons.wb_sunny_rounded,
-            title: 'Weather',
-            subtitle: 'Da Lat and Phu Quoc are in a strong travel window.',
-            color: Color(0xFFF59E0B),
+            icon: Icons.event_note_rounded,
+            title: 'Mẹo lưu trữ',
+            subtitle: 'Đặt tên hành trình theo mùa hoặc sự kiện để dễ tìm lại.',
+            color: Color(0xFF0D9488),
           ),
           SizedBox(height: 10),
           _SavedInsightRow(
-            icon: Icons.local_fire_department_rounded,
-            title: 'Trending',
-            subtitle: 'Beach trips and 3-day routes are getting more saves.',
+            icon: Icons.bookmark_added_rounded,
+            title: 'Sao chép nhanh',
+            subtitle: 'Dùng chức năng "Sao chép" trong menu để nhân bản một hành trình.',
             color: Color(0xFFF97316),
           ),
           SizedBox(height: 10),
           _SavedInsightRow(
-            icon: Icons.update_rounded,
-            title: 'Recent Activity',
-            subtitle: 'AI recalculated budgets from your saved trips.',
-            color: Color(0xFF0D9488),
+            icon: Icons.share_rounded,
+            title: 'Chia sẻ văn bản',
+            subtitle: 'Chia sẻ lộ trình và danh sách hoạt động qua tin nhắn/zalo.',
+            color: Color(0xFF059669),
           ),
         ],
       ),

@@ -1,10 +1,13 @@
 // ignore_for_file: use_string_in_part_of_directives
+
 part of saved_screen;
 
 class _SavedHeader extends StatelessWidget {
   const _SavedHeader({
     required this.savedTrips,
     required this.savedPlaces,
+    required this.totalDays,
+    required this.totalActivities,
     required this.onHomePressed,
     required this.searchController,
     required this.onQuickAction,
@@ -12,6 +15,8 @@ class _SavedHeader extends StatelessWidget {
 
   final int savedTrips;
   final int savedPlaces;
+  final int totalDays;
+  final int totalActivities;
   final VoidCallback onHomePressed;
   final TextEditingController searchController;
   final ValueChanged<String> onQuickAction;
@@ -38,7 +43,7 @@ class _SavedHeader extends StatelessWidget {
                   ],
                 ),
                 child: IconButton(
-                  tooltip: 'Back',
+                  tooltip: 'Quay lại',
                   onPressed: () => Navigator.of(context).maybePop(),
                   icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
                 ),
@@ -50,7 +55,7 @@ class _SavedHeader extends StatelessWidget {
                 children: [
                   const Flexible(
                     child: Text(
-                      'Saved',
+                      'Đã lưu',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -100,7 +105,7 @@ class _SavedHeader extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.home_rounded, size: 18),
                 label: const Text(
-                  'Home',
+                  'Trang chủ',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                 ),
               ),
@@ -108,14 +113,16 @@ class _SavedHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        const Text(
-          'Your AI trips, favorite places, and smart travel signals in one workspace.',
-          style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, height: 1.45),
+        Text(
+          savedTrips == 0 && savedPlaces == 0
+              ? 'Bạn chưa lưu gì. Tạo chuyến đi hoặc lưu địa điểm để AI gợi ý tốt hơn.'
+              : 'Tổng hợp $savedTrips hành trình AI và $savedPlaces địa điểm yêu thích của bạn.',
+          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14, height: 1.45),
         ),
         const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 760 ? 5 : 2;
+            final columns = constraints.maxWidth >= 760 ? 4 : 2;
             const gap = 10.0;
             final itemWidth =
                 (constraints.maxWidth - gap * (columns - 1)) / columns;
@@ -128,7 +135,7 @@ class _SavedHeader extends StatelessWidget {
                   child: _DashboardMetric(
                     icon: Icons.map_rounded,
                     value: '$savedTrips',
-                    label: 'Trips',
+                    label: 'Hành trình',
                     color: const Color(0xFF059669),
                   ),
                 ),
@@ -137,35 +144,26 @@ class _SavedHeader extends StatelessWidget {
                   child: _DashboardMetric(
                     icon: Icons.favorite_rounded,
                     value: '$savedPlaces',
-                    label: 'Places',
+                    label: 'Địa điểm',
                     color: const Color(0xFFE11D48),
                   ),
                 ),
                 SizedBox(
                   width: itemWidth,
-                  child: const _DashboardMetric(
-                    icon: Icons.savings_rounded,
-                    value: '15%',
-                    label: 'Savings',
-                    color: Color(0xFFF97316),
+                  child: _DashboardMetric(
+                    icon: Icons.calendar_today_rounded,
+                    value: '$totalDays',
+                    label: 'Tổng ngày',
+                    color: const Color(0xFF0D9488),
                   ),
                 ),
                 SizedBox(
                   width: itemWidth,
-                  child: const _DashboardMetric(
-                    icon: Icons.auto_awesome_rounded,
-                    value: '92',
-                    label: 'AI score',
-                    color: Color(0xFF0D9488),
-                  ),
-                ),
-                SizedBox(
-                  width: itemWidth,
-                  child: const _DashboardMetric(
-                    icon: Icons.star_rounded,
-                    value: '4.8',
-                    label: 'Rating',
-                    color: Color(0xFFF59E0B),
+                  child: _DashboardMetric(
+                    icon: Icons.event_note_rounded,
+                    value: '$totalActivities',
+                    label: 'Hoạt động',
+                    color: const Color(0xFFF59E0B),
                   ),
                 ),
               ],
@@ -189,7 +187,7 @@ class _SavedHeader extends StatelessWidget {
           child: TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: 'Search trips, destinations, AI notes...',
+              hintText: 'Tìm hành trình, địa điểm đã lưu…',
               hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
               prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF9CA3AF)),
               suffixIcon: searchController.text.isNotEmpty
@@ -210,27 +208,27 @@ class _SavedHeader extends StatelessWidget {
           child: Row(
             children: [
               _QuickActionChip(
-                label: 'AI optimize',
+                label: 'AI tối ưu',
                 icon: Icons.auto_awesome_rounded,
-                onPressed: () => onQuickAction('AI optimize'),
+                onPressed: () => onQuickAction('AI tối ưu'),
               ),
               const SizedBox(width: 8),
               _QuickActionChip(
-                label: 'New trip',
+                label: 'Tạo chuyến mới',
                 icon: Icons.add_rounded,
-                onPressed: () => onQuickAction('New trip'),
+                onPressed: () => onQuickAction('Tạo chuyến mới'),
               ),
               const SizedBox(width: 8),
               _QuickActionChip(
-                label: 'Export PDF',
+                label: 'Xuất văn bản',
                 icon: Icons.ios_share_rounded,
-                onPressed: () => onQuickAction('Export PDF'),
+                onPressed: () => onQuickAction('Xuất văn bản'),
               ),
               const SizedBox(width: 8),
               _QuickActionChip(
-                label: 'Explore',
+                label: 'Khám phá',
                 icon: Icons.explore_rounded,
-                onPressed: () => onQuickAction('Explore'),
+                onPressed: () => onQuickAction('Khám phá'),
               ),
             ],
           ),

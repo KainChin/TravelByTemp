@@ -1,8 +1,15 @@
 // ignore_for_file: use_string_in_part_of_directives
+
 part of saved_screen;
 
 class _AISuggestionCard extends StatefulWidget {
-  const _AISuggestionCard();
+  const _AISuggestionCard({
+    required this.trips,
+    required this.places,
+  });
+
+  final int trips;
+  final int places;
 
   @override
   State<_AISuggestionCard> createState() => _AISuggestionCardState();
@@ -14,6 +21,7 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isEmpty = widget.trips == 0 && widget.places == 0;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -59,7 +67,7 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'AI Recommendation',
+                          'Gợi ý từ AI',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
@@ -68,7 +76,7 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Updated from your saved trips',
+                          'Cập nhật từ các hành trình đã lưu',
                           style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
                         ),
                       ],
@@ -81,7 +89,7 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: const Text(
-                      'Save 15%',
+                      'Mới',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
@@ -92,9 +100,11 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
                 ],
               ),
               const SizedBox(height: 14),
-              const Text(
-                'You can reduce estimated cost by changing transportation and grouping nearby stops.',
-                style: TextStyle(
+              Text(
+                isEmpty
+                    ? 'Lưu vài địa điểm hoặc tạo hành trình, AI sẽ gợi ý gom nhóm gần nhau để tiết kiệm chi phí di chuyển.'
+                    : 'AI sẽ gộp các điểm lân cận và chọn phương tiện tiết kiệm nhất cho chuyến tiếp theo của bạn.',
+                style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF4B5563),
                   height: 1.45,
@@ -107,7 +117,7 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
                   setState(() => _scale = 1.0);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Optimizing trip with AI...'),
+                      content: Text('Đang tối ưu hành trình với AI...'),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -128,7 +138,7 @@ class _AISuggestionCardState extends State<_AISuggestionCard> {
                         Icon(Icons.tune_rounded, size: 14, color: Colors.white),
                         SizedBox(width: 6),
                         Text(
-                          'Optimize Trip',
+                          'Tối ưu ngay',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
