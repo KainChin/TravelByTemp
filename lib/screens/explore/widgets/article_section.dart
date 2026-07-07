@@ -41,7 +41,7 @@ class ArticleSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF16A34A),
+                        color: Color(0xFF1976D2),
                       ),
                     ),
                   ],
@@ -57,11 +57,11 @@ class ArticleSection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF16A34A),
+                      color: Color(0xFF1976D2),
                     ),
                   ),
                   SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_ios, size: 11, color: Color(0xFF16A34A)),
+                  Icon(Icons.arrow_forward_ios, size: 11, color: Color(0xFF1976D2)),
                 ],
               ),
             ),

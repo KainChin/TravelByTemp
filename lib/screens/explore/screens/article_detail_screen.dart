@@ -112,7 +112,7 @@ class _MetaRow extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: const BoxDecoration(
-            color: Color(0xFF16A34A),
+            color: Color(0xFF1976D2),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.public, size: 14, color: Colors.white),
@@ -127,7 +127,7 @@ class _MetaRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        const Icon(Icons.verified, size: 14, color: Color(0xFF16A34A)),
+        const Icon(Icons.verified, size: 14, color: Color(0xFF1976D2)),
         const SizedBox(width: 8),
         const Text('·', style: TextStyle(color: Color(0xFF9CA3AF))),
         const SizedBox(width: 8),

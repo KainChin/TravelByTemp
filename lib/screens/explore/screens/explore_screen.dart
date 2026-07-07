@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
@@ -11,7 +12,9 @@ import '../widgets/region_tab_bar.dart';
 import '../widgets/region_banner.dart';
 import '../widgets/destination_section.dart';
 import '../widgets/article_section.dart';
+import '../widgets/promo_card.dart';
 import 'article_detail_screen.dart';
+import 'all_destinations_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
@@ -67,6 +70,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
           .getRegions()
           .timeout(const Duration(seconds: 18));
       var favoriteIds = <String>{};
+      
+      // Load dynamic location on start!
+      unawaited(VietaiScope.of(context).refreshLocationAndWeather());
+
       try {
         final favorites = await api
             .fetchFavorites()
@@ -206,6 +213,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       body: SafeArea(
+        top: false, // Let background image stretch fully if wide
+        bottom: false,
         child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
       ),
     );
@@ -218,7 +227,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         SliverToBoxAdapter(child: _buildTopSection()),
         if (_isLoading)
           const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator(color: Color(0xFF16A34A))),
+            child: Center(child: CircularProgressIndicator(color: Color(0xFF1976D2))),
           )
         else if (_currentRegion != null)
           SliverToBoxAdapter(child: _buildContentSection(_currentRegion!)),
@@ -227,85 +236,206 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildWideLayout() {
-    return Row(
+    return Stack(
       children: [
-        SizedBox(width: 260, child: _buildSideTabs()),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF16A34A)))
-              : CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              SliverToBoxAdapter(child: _buildTopSection(wide: true)),
-              if (_currentRegion != null)
-                SliverToBoxAdapter(child: _buildContentSection(_currentRegion!)),
-            ],
+        // Full screen background image for the dashboard
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/chatAI.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
           ),
+        ),
+        Positioned.fill(
+          child: Container(
+            color: Colors.black.withOpacity(0.2), // Subtle dark overlay to keep contrast
+          ),
+        ),
+        // Content Row
+        Row(
+          children: [
+            // Glassmorphic Left Sidebar
+            SizedBox(
+              width: 280,
+              child: _buildSideTabs(),
+            ),
+            const VerticalDivider(width: 1, color: Colors.white24),
+            // Glassmorphic Main Panel
+            Expanded(
+              child: ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    color: Colors.white.withOpacity(0.85), // Soft white overlay to keep content highly readable
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: Color(0xFF1976D2)))
+                        : CustomScrollView(
+                            controller: _scrollController,
+                            slivers: [
+                              SliverToBoxAdapter(child: _buildTopSection(wide: true)),
+                              if (_currentRegion != null)
+                                SliverToBoxAdapter(child: _buildContentSection(_currentRegion!)),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
+  int get _selectedRegionIndex {
+    switch (_selectedRegion) {
+      case RegionType.west:
+        return 0;
+      case RegionType.north:
+        return 1;
+      case RegionType.central:
+        return 2;
+      case RegionType.south:
+        return 3;
+    }
+  }
+
   Widget _buildSideTabs() {
     const tabs = [
-      (type: RegionType.west, label: 'Miền Tây'),
-      (type: RegionType.north, label: 'Miền Bắc'),
-      (type: RegionType.central, label: 'Miền Trung'),
-      (type: RegionType.south, label: 'Miền Nam'),
+      (type: RegionType.west, label: 'Miền Tây', icon: Icons.tsunami_outlined),
+      (type: RegionType.north, label: 'Miền Bắc', icon: Icons.landscape_outlined),
+      (type: RegionType.central, label: 'Miền Trung', icon: Icons.wb_sunny_outlined),
+      (type: RegionType.south, label: 'Miền Nam', icon: Icons.sailing_outlined),
     ];
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Text('Vùng miền',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
+
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3), // Glassy translucent dark background
+            border: Border(
+              right: BorderSide(color: Colors.white.withOpacity(0.12), width: 1),
+            ),
           ),
-          ...tabs.map((tab) {
-            final isSelected = _selectedRegion == tab.type;
-            return GestureDetector(
-              onTap: () => _onTabChanged(tab.type),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFECFDF5) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isSelected ? Border.all(color: const Color(0xFF16A34A)) : null,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(tab.label,
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected ? const Color(0xFF16A34A) : const Color(0xFF374151))),
-                        ],
-                      ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // App Logo
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1976D2).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    if (isSelected) const Icon(Icons.chevron_right, color: Color(0xFF16A34A), size: 18),
-                  ],
+                    child: const Icon(Icons.travel_explore_rounded,
+                        color: Color(0xFF1976D2), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'VietAI Travel',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 36),
+              const Text(
+                'VÙNG MIỀN',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
+                  letterSpacing: 1.0,
                 ),
               ),
-            );
-          }),
-        ],
+              const SizedBox(height: 12),
+              // Vertical sliding tab marker layout
+              Stack(
+                children: [
+                  // Sliding Background Marker
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOutCubic,
+                    top: _selectedRegionIndex * 52.0,
+                    left: 0,
+                    right: 0,
+                    height: 46,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.25),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Tab Items
+                  Column(
+                    children: List.generate(tabs.length, (index) {
+                      final tab = tabs[index];
+                      final isSelected = _selectedRegion == tab.type;
+                      return Container(
+                        height: 52,
+                        alignment: Alignment.centerLeft,
+                        child: GestureDetector(
+                          onTap: () => _onTabChanged(tab.type),
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  tab.icon,
+                                  size: 20,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.white60,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  tab.label,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.white60,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              // Promo Card
+              const PromoCard(),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildTopSection({bool wide = false}) {
     return Container(
-      color: Colors.white,
+      color: Colors.transparent,
       padding: EdgeInsets.fromLTRB(20, 16, 20, wide ? 16 : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,7 +470,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
               TextSpan(
                 text: 'Việt Nam ',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF16A34A)),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF1976D2)),
               ),
               TextSpan(text: '✨', style: TextStyle(fontSize: 20)),
             ],
@@ -372,7 +502,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
             region: region,
             destinations: region.destinations,
             onFavoriteTap: _onFavoriteTap,
-            onViewAll: () {},
+            onViewAll: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AllDestinationsScreen(
+                  region: region,
+                  onFavoriteTap: _onFavoriteTap,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 28),
           ArticleSection(
@@ -384,7 +522,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             onViewAll: () {},
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 100),
         ],
       ),
     );

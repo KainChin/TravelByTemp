@@ -127,7 +127,7 @@ class _SourceChip extends StatelessWidget {
           width: 16,
           height: 16,
           decoration: const BoxDecoration(
-            color: Color(0xFF16A34A),
+            color: Color(0xFF1976D2),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.public, size: 10, color: Colors.white),
@@ -142,7 +142,7 @@ class _SourceChip extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 2),
-        const Icon(Icons.verified, size: 11, color: Color(0xFF16A34A)),
+        const Icon(Icons.verified, size: 11, color: Color(0xFF1976D2)),
       ],
     );
   }
