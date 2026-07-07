@@ -41,7 +41,7 @@ class ExploreHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                displayUserName,
+                'Xin chào, $displayUserName',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -121,7 +121,7 @@ class ExploreHeader extends StatelessWidget {
                             user == null ? 'Chưa đăng nhập' : 'Đang hoạt động - ${user.role}',
                             style: const TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF16A34A),
+                              color: Color(0xFF1976D2),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -188,7 +188,14 @@ class _Avatar extends StatelessWidget {
           height: 52,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF16A34A), width: 2),
+            border: Border.all(color: const Color(0xFF1976D2), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: ClipOval(
             child: url?.trim().isNotEmpty == true
@@ -219,11 +226,11 @@ class _DefaultAvatar extends StatelessWidget {
       color: const Color(0xFFE8F5EF),
       alignment: Alignment.center,
       child: initial == null
-          ? const Icon(Icons.person, color: Color(0xFF16A34A), size: 28)
+          ? const Icon(Icons.person, color: Color(0xFF1976D2), size: 28)
           : Text(
               initial,
               style: const TextStyle(
-                color: Color(0xFF16A34A),
+                color: Color(0xFF1976D2),
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
               ),
@@ -266,7 +273,7 @@ class _AccountAction extends StatelessWidget {
                   color: destructive ? const Color(0xFFFEE2E2) : const Color(0xFFE8F5EF),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: destructive ? color : const Color(0xFF16A34A)),
+                child: Icon(icon, color: destructive ? color : const Color(0xFF1976D2)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -328,7 +335,7 @@ class _NotificationButton extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF16A34A),
+                  color: Color(0xFF1976D2),
                   shape: BoxShape.circle,
                 ),
               ),

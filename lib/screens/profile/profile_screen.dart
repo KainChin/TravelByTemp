@@ -10,7 +10,7 @@ import 'package:assignment/screens/profile/memories_screen.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/stats_card.dart';
 import 'widgets/my_trips_section.dart';
-import 'widgets/cta_card.dart';
+import 'widgets/profile_sidebar.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -29,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   var _profileLoading = false;
   String? _profileError;
   bool _profileLoaded = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void didChangeDependencies() {
@@ -76,16 +77,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Log out'),
-        content: const Text('Do you want to log out of this account?'),
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có muốn đăng xuất khỏi tài khoản này không?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Hủy'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log out'),
+            child: const Text('Đăng xuất'),
           ),
         ],
       ),
@@ -116,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Profile info copied.'),
+        content: Text('Đã sao chép thông tin hồ sơ.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -140,10 +141,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // -- Hiện bottom sheet chọn trip để tạo video --
   void _showSelectTripDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: const Color(0xFF1A2540),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -153,8 +154,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Chọn chuyến đi',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const Text(
+              'Chọn chuyến đi',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
+            ),
             const SizedBox(height: 12),
             StreamBuilder<QuerySnapshot>(
               stream: FirestoreService.getTrips(),
@@ -165,9 +168,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
-                        'Chưa có chuyến đi nào!\nHãy upload ảnh trước.',
+                        'Chưa có chuyến đi nào!\nHãy tải ảnh lên trước.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Colors.white54),
                       ),
                     ),
                   );
@@ -178,10 +181,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   itemBuilder: (_, i) {
                     final data = docs[i].data() as Map<String, dynamic>;
                     return ListTile(
-                      leading: const Icon(Icons.luggage_outlined,
-                          color: Color(0xFF3A7D5A)),
-                      title: Text(data['name'] ?? ''),
-                      subtitle: Text('${data['photoCount'] ?? 0} ảnh'),
+                      leading: const Icon(Icons.luggage_outlined, color: Color(0xFF4CAF7A)),
+                      title: Text(data['name'] ?? '', style: const TextStyle(color: Colors.white)),
+                      subtitle: Text('${data['photoCount'] ?? 0} ảnh', style: const TextStyle(color: Colors.white54)),
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -205,86 +207,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // -- Section My Memories (dạng story tròn) --
+  // ── Kỷ niệm của tôi (Story) ──
   Widget _buildMemoriesSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 5)),
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5, offset: const Offset(0, 2)),
-        ],
+        color: const Color(0xFF1A2540),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF243050), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // -- Header --
+          // Header
           Row(
             children: [
-              const Icon(Icons.auto_stories_outlined,
-                  color: Color(0xFF3A7D5A), size: 20),
+              const Icon(Icons.auto_stories_outlined, color: Color(0xFF4CAF7A), size: 20),
               const SizedBox(width: 6),
-              const Text('My Memories',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              const Text(
+                'Kỷ niệm của tôi (Story)',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
               const Spacer(),
               GestureDetector(
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const MemoriesScreen())),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MemoriesScreen()),
+                ),
                 child: const Row(children: [
-                  Text('View all',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF3A7D5A),
-                          fontWeight: FontWeight.w600)),
-                  Icon(Icons.chevron_right, size: 16, color: Color(0xFF3A7D5A)),
+                  Text(
+                    'Xem tất cả',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF4CAF7A), fontWeight: FontWeight.w600),
+                  ),
+                  Icon(Icons.chevron_right, size: 16, color: Color(0xFF4CAF7A)),
                 ]),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // -- Story circles --
+          const SizedBox(height: 14),
+          // Story circles
           StreamBuilder<QuerySnapshot>(
             stream: FirestoreService.getVideos(),
             builder: (context, snapshot) {
               final docs = snapshot.data?.docs ?? [];
-              if (docs.isEmpty) {
-                return const Text('Chưa có kỉ niệm nào',
-                    style: TextStyle(color: Colors.grey, fontSize: 13));
-              }
               return SizedBox(
-                height: 90,
+                height: 98,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: docs.length,
+                  itemCount: docs.isEmpty ? 1 : docs.length + 1,
                   itemBuilder: (_, i) {
-                    final data = docs[i].data() as Map<String, dynamic>;
+                    // First item: "Thêm mới"
+                    if (i == 0) {
+                      return GestureDetector(
+                        onTap: () => _openUpload(context),
+                        child: Container(
+                          width: 68,
+                          margin: const EdgeInsets.only(right: 14),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 62,
+                                height: 62,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF243050),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF3A7D5A),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: const Icon(Icons.add, color: Color(0xFF4CAF7A), size: 26),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Thêm mới',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 11, color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Story items
+                    final data = docs[i - 1].data() as Map<String, dynamic>;
                     final thumbnail = data['thumbnail'] as String? ?? '';
                     final name = data['videoName'] as String? ?? '';
+
                     return GestureDetector(
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => const MemoriesScreen())),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MemoriesScreen()),
+                      ),
                       child: Container(
-                        width: 70,
+                        width: 72,
                         margin: const EdgeInsets.only(right: 12),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // -- Story ring --
+                            // Story ring
                             Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
+                              padding: const EdgeInsets.all(2.5),
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                   colors: [Color(0xFF3A7D5A), Color(0xFF4CAF7A)],
                                 ),
                               ),
                               child: Container(
                                 padding: const EdgeInsets.all(2),
                                 decoration: const BoxDecoration(
-                                    color: Colors.white, shape: BoxShape.circle),
+                                  color: Color(0xFF1A2540),
+                                  shape: BoxShape.circle,
+                                ),
                                 child: ClipOval(
                                   child: thumbnail.isNotEmpty
                                       ? SafeBase64Image(
@@ -295,21 +335,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           fit: BoxFit.cover,
                                         )
                                       : Container(
-                                    width: 54, height: 54,
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.photo,
-                                        color: Colors.grey),
-                                  ),
+                                          width: 54,
+                                          height: 54,
+                                          color: const Color(0xFF243050),
+                                          child: const Icon(Icons.photo, color: Colors.white38),
+                                        ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            // ── Tên --
-                            Text(name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 11)),
+                            const SizedBox(height: 6),
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 11, color: Colors.white70),
+                            ),
                           ],
                         ),
                       ),
@@ -324,77 +365,162 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ── Tính năng nhanh ──
+  Widget _buildQuickActions(BuildContext context) {
+    final actions = [
+      (Icons.auto_stories_outlined, 'Tạo story\nmới', const Color(0xFF4CAF7A)),
+      (Icons.cloud_upload_outlined, 'Tải ảnh\nlên', const Color(0xFF9C88FF)),
+      (Icons.video_library_outlined, 'Tạo video\ndu lịch', const Color(0xFFEF5350)),
+      (Icons.add_location_alt_outlined, 'Thêm\nchuyến đi', const Color(0xFF4CAF7A)),
+      (Icons.star_border_rounded, 'Đánh giá\nđiểm đến', const Color(0xFFFFB74D)),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2540),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF243050), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Tính năng nhanh',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: actions.map((a) {
+              final (icon, label, color) = a;
+              return GestureDetector(
+                onTap: () {
+                  if (label.contains('Tải ảnh')) {
+                    _openUpload(context);
+                  } else if (label.contains('video')) {
+                    _showSelectTripDialog(context);
+                  } else if (label.contains('story')) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoriesScreen()));
+                  }
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+                      ),
+                      child: Icon(icon, color: color, size: 24),
+                    ),
+                    const SizedBox(height: 7),
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: Colors.white60,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = VietaiScope.of(context);
     final user = session.auth?.user;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // -- Header --
-            ProfileHeader(
-              fullName: user?.fullName ?? 'Traveler',
-              username: user?.username ?? 'traveler',
-              email: user?.email ?? '',
-              bio: user?.bio,
-              role: user?.role ?? 'Traveler',
-              location: session.locationName,
-              avatarUrl: user?.avatarUrl,
-              onLogoutTap: () => _confirmLogout(context),
-              onShareTap: () => _shareProfile(context),
-              onAvatarTap: () => _openUpload(context),
-              onEditTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              ).then((_) => _refreshProfile()),
-            ),
-            if (_profileLoading || _profileError != null)
-              _ProfileApiStatus(
-                loading: _profileLoading,
-                error: _profileError,
-                onRetry: _refreshProfile,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideScreen = constraints.maxWidth >= 800;
+        final content = SingleChildScrollView(
+          child: Column(
+            children: [
+              // ── Header ──
+              ProfileHeader(
+                fullName: user?.fullName ?? 'Traveler',
+                username: user?.username ?? 'traveler',
+                email: user?.email ?? '',
+                bio: user?.bio,
+                role: user?.role ?? 'Traveler',
+                location: session.locationName,
+                avatarUrl: user?.avatarUrl,
+                onLogoutTap: () => _confirmLogout(context),
+                onShareTap: () => _shareProfile(context),
+                onAvatarTap: () => _openUpload(context),
+                onEditTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                ).then((_) => _refreshProfile()),
+                onMenuTap: isWideScreen
+                    ? null
+                    : () {
+                        _scaffoldKey.currentState?.openDrawer();
+                      },
               ),
-            // -- Stats --
-            StatsCard(refreshToken: widget.refreshToken),
-            // -- My Trips --
-            MyTripsSection(refreshToken: widget.refreshToken),
-            // -- My Memories --
-            _buildMemoriesSection(context),
-            // -- Create Travel Video --
-            CtaCard(
-              icon: Icons.video_library_outlined,
-              title: 'Create Travel Video',
-              description: 'Turn your memories into short videos in just a few taps.',
-              buttonLabel: 'Create New Video ✨',
-              imageUrls: const [
-                'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200',
-                'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=200',
-                'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=200',
+              // ── API status ──
+              if (_profileLoading || _profileError != null)
+                _ProfileApiStatus(
+                  loading: _profileLoading,
+                  error: _profileError,
+                  onRetry: _refreshProfile,
+                ),
+              // ── Stats ──
+              StatsCard(refreshToken: widget.refreshToken),
+              // ── Kỷ niệm ──
+              _buildMemoriesSection(context),
+              // ── Chuyến đi ──
+              MyTripsSection(refreshToken: widget.refreshToken),
+              // ── Tính năng nhanh ──
+              _buildQuickActions(context),
+              const SizedBox(height: 28),
+            ],
+          ),
+        );
+
+        if (isWideScreen) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF0F1729),
+            body: Row(
+              children: [
+                ProfileSidebar(onItemSelected: (_) {}),
+                Expanded(child: content),
               ],
-              showPlayButton: true,
-              onPressed: () => _showSelectTripDialog(context),
             ),
-            // -- Upload Photos --
-            CtaCard(
-              icon: Icons.cloud_upload_outlined,
-              title: 'Upload Photos',
-              description: 'Save your favorite moments from your trips.',
-              buttonLabel: '↑  Upload Now',
-              isOutlined: true,
-              imageUrls: const [
-                'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=200',
-                'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=200',
-                'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200',
-              ],
-              onPressed: () => _openUpload(context),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+          );
+        }
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: const Color(0xFF0F1729),
+          drawer: Drawer(
+            width: 280,
+            backgroundColor: Colors.transparent, // Let sidebar handle color
+            child: ProfileSidebar(onItemSelected: (index) {
+              _scaffoldKey.currentState?.closeDrawer();
+            }),
+          ),
+          body: content,
+        );
+      },
     );
   }
 }
@@ -415,7 +541,11 @@ class _ProfileApiStatus extends StatelessWidget {
     if (loading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: LinearProgressIndicator(minHeight: 2),
+        child: LinearProgressIndicator(
+          minHeight: 2,
+          color: Color(0xFF4CAF7A),
+          backgroundColor: Color(0xFF243050),
+        ),
       );
     }
 
@@ -426,19 +556,19 @@ class _ProfileApiStatus extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
+        color: const Color(0xFF3D2800),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFDE68A)),
+        border: Border.all(color: const Color(0xFFFFB74D).withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_off_rounded, size: 18, color: Color(0xFFD97706)),
+          const Icon(Icons.cloud_off_rounded, size: 18, color: Color(0xFFFFB74D)),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Could not refresh profile from API.',
+              'Không thể làm mới hồ sơ từ server.',
               style: TextStyle(
-                color: Color(0xFF92400E),
+                color: Color(0xFFFFCC80),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -446,11 +576,10 @@ class _ProfileApiStatus extends StatelessWidget {
           ),
           TextButton(
             onPressed: onRetry,
-            child: const Text('Retry'),
+            child: const Text('Thử lại', style: TextStyle(color: Color(0xFFFFB74D))),
           ),
         ],
       ),
     );
   }
 }
-

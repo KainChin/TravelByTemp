@@ -20,6 +20,15 @@ class _MyTripsSectionState extends State<MyTripsSection> {
   Future<List<TripItineraryHistoryItem>>? _future;
   String? _token;
 
+  static const List<List<Color>> _cardGradients = [
+    [Color(0xFF1A4870), Color(0xFF2D6EA0)],
+    [Color(0xFF1A5E30), Color(0xFF2E8B50)],
+    [Color(0xFF4A1060), Color(0xFF7B2E9A)],
+    [Color(0xFF7A3000), Color(0xFFA84500)],
+    [Color(0xFF005070), Color(0xFF007A90)],
+    [Color(0xFF3A1A50), Color(0xFF6030A0)],
+  ];
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -76,41 +85,34 @@ class _MyTripsSectionState extends State<MyTripsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFF1A2540),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF243050), width: 1),
       ),
       child: Column(
         children: [
           _SectionHeader(onViewAll: _openHistory, onRefresh: _refresh),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           FutureBuilder<List<TripItineraryHistoryItem>>(
             future: _future,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(
                   height: 128,
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: CircularProgressIndicator(color: Color(0xFF4CAF7A))),
                 );
               }
 
               if (snapshot.hasError) {
                 return _StateMessage(
                   icon: Icons.cloud_off_outlined,
-                  title: 'Khong tai duoc hanh trinh',
-                  message: 'Kiem tra ket noi backend roi thu lai.',
-                  actionLabel: 'Thu lai',
+                  title: 'Không tải được hành trình',
+                  message: 'Kiểm tra kết nối rồi thử lại.',
+                  actionLabel: 'Thử lại',
                   onAction: _refresh,
                 );
               }
@@ -119,48 +121,27 @@ class _MyTripsSectionState extends State<MyTripsSection> {
               if (trips.isEmpty) {
                 return const _StateMessage(
                   icon: Icons.route_outlined,
-                  title: 'Chua co hanh trinh',
-                  message: 'Nhung chuyen di da luu se hien o day.',
+                  title: 'Chưa có hành trình',
+                  message: 'Những chuyến đi đã lưu sẽ hiện ở đây.',
                 );
               }
 
-              final visibleTrips = trips.take(6).toList();
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth >= 680) {
-                    final cardWidth = constraints.maxWidth >= 980 ? 210.0 : 190.0;
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        for (final trip in visibleTrips)
-                          SizedBox(
-                            width: cardWidth,
-                            child: _TripCard(
-                              trip: trip,
-                              onTap: () => _openTrip(trip),
-                            ),
-                          ),
-                      ],
-                    );
-                  }
-
-                  return SizedBox(
-                    height: 172,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: visibleTrips.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 10),
-                      itemBuilder: (_, index) => SizedBox(
-                        width: 176,
-                        child: _TripCard(
-                          trip: visibleTrips[index],
-                          onTap: () => _openTrip(visibleTrips[index]),
-                        ),
-                      ),
+              final visibleTrips = trips.take(4).toList();
+              return SizedBox(
+                height: 172,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: visibleTrips.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (_, index) => SizedBox(
+                    width: 180,
+                    child: _TripCard(
+                      trip: visibleTrips[index],
+                      gradientColors: _cardGradients[index % _cardGradients.length],
+                      onTap: () => _openTrip(visibleTrips[index]),
                     ),
-                  );
-                },
+                  ),
+                ),
               );
             },
           ),
@@ -169,6 +150,8 @@ class _MyTripsSectionState extends State<MyTripsSection> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
@@ -181,32 +164,29 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(Icons.map_outlined, color: colors.primary, size: 20),
+        const Icon(Icons.map_outlined, color: Color(0xFF4CAF7A), size: 20),
         const SizedBox(width: 6),
         const Text(
-          'Hanh trinh cua toi',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          'Chuyến đi của tôi',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
         ),
         const Spacer(),
-        IconButton(
-          tooltip: 'Tai lai',
-          visualDensity: VisualDensity.compact,
-          onPressed: onRefresh,
-          icon: Icon(Icons.refresh_rounded, color: colors.primary, size: 18),
+        GestureDetector(
+          onTap: onRefresh,
+          child: const Icon(Icons.refresh_rounded, color: Color(0xFF4CAF7A), size: 18),
         ),
-        TextButton.icon(
-          onPressed: onViewAll,
-          iconAlignment: IconAlignment.end,
-          icon: const Icon(Icons.chevron_right, size: 16),
-          label: const Text('Xem tat ca'),
-          style: TextButton.styleFrom(
-            foregroundColor: colors.primary,
-            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            visualDensity: VisualDensity.compact,
-          ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: onViewAll,
+          child: const Row(children: [
+            Text(
+              'Xem tất cả',
+              style: TextStyle(fontSize: 13, color: Color(0xFF4CAF7A), fontWeight: FontWeight.w600),
+            ),
+            Icon(Icons.chevron_right, size: 16, color: Color(0xFF4CAF7A)),
+          ]),
         ),
       ],
     );
@@ -216,81 +196,123 @@ class _SectionHeader extends StatelessWidget {
 class _TripCard extends StatelessWidget {
   const _TripCard({
     required this.trip,
+    required this.gradientColors,
     required this.onTap,
   });
 
   final TripItineraryHistoryItem trip;
+  final List<Color> gradientColors;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final days = _dayCount(trip.itinerary);
     final activities = _activityCount(trip.itinerary);
     final date = _formatDate(trip.createdAt);
 
-    return Material(
-      color: colors.primaryContainer.withValues(alpha: 0.38),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.route_rounded, color: colors.primary, size: 19),
-                  ),
-                  const Spacer(),
-                  Flexible(
-                    child: Text(
-                      date,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                trip.title,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.onSurface,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Gradient background
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
+            ),
+            // Dark bottom overlay
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 100,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.75),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _MiniChip(label: '$days ngay', icon: Icons.calendar_today_outlined),
-                  _MiniChip(label: '$activities hoat dong', icon: Icons.explore_outlined),
+                  // Top: date + bookmark
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          date,
+                          style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.bookmark_border_rounded, color: Colors.white, size: 15),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Trip name
+                  Text(
+                    trip.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Stats row
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, size: 12, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$days ngày',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.explore_outlined, size: 12, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$activities HĐ',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -322,39 +344,7 @@ class _TripCard extends StatelessWidget {
   }
 }
 
-class _MiniChip extends StatelessWidget {
-  const _MiniChip({required this.label, required this.icon});
-
-  final String label;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: colors.surface.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: colors.primary),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ─────────────────────────────────────────────────────────────────
 
 class _StateMessage extends StatelessWidget {
   const _StateMessage({
@@ -373,34 +363,39 @@ class _StateMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: const Color(0xFF243050),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: const Color(0xFF304060)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: colors.primary),
+          Icon(icon, color: const Color(0xFF4CAF7A)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                ),
                 const SizedBox(height: 3),
                 Text(
                   message,
-                  style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ],
             ),
           ),
           if (actionLabel != null && onAction != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            TextButton(
+              onPressed: onAction,
+              child: Text(actionLabel!, style: const TextStyle(color: Color(0xFF4CAF7A))),
+            ),
         ],
       ),
     );
