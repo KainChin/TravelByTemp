@@ -1,14 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../messages_styles.dart';
-
-/// Floating, pill-shaped input bar: "+" attachment button, text field,
-/// emoji button and a mic / send button.
 class ChatInput extends StatefulWidget {
   final ValueChanged<String> onSend;
   final Future<void> Function(String text, XFile image)? onImageSend;
-  final VoidCallback? onAttachmentTap;
   final VoidCallback? onEmojiTap;
   final VoidCallback? onMicTap;
   final String hintText;
@@ -17,7 +13,6 @@ class ChatInput extends StatefulWidget {
     super.key,
     required this.onSend,
     this.onImageSend,
-    this.onAttachmentTap,
     this.onEmojiTap,
     this.onMicTap,
     this.hintText = 'Nhắn tin với AI Travel Assistant...',
@@ -31,6 +26,7 @@ class _ChatInputState extends State<ChatInput> {
   final TextEditingController _controller = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   bool _isSendingImage = false;
 
   @override
@@ -40,18 +36,17 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   Future<void> _handleAttachmentTap() async {
-    if (widget.onAttachmentTap != null) {
-      widget.onAttachmentTap!();
-      return;
-    }
-
     final image = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 75,
       maxWidth: 1600,
     );
     if (image == null || !mounted) return;
-    setState(() => _selectedImage = image);
+    final bytes = await image.readAsBytes();
+    setState(() {
+      _selectedImage = image;
+      _selectedImageBytes = bytes;
+    });
   }
 
   Future<void> _handleSend() async {
@@ -65,7 +60,10 @@ class _ChatInputState extends State<ChatInput> {
         await widget.onImageSend!(text, image);
         if (!mounted) return;
         _controller.clear();
-        setState(() => _selectedImage = null);
+        setState(() {
+          _selectedImage = null;
+          _selectedImageBytes = null;
+        });
       } finally {
         if (mounted) setState(() => _isSendingImage = false);
       }
@@ -75,63 +73,139 @@ class _ChatInputState extends State<ChatInput> {
     if (text.isEmpty) return;
     widget.onSend(text);
     _controller.clear();
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final canSend = _controller.text.trim().isNotEmpty || _selectedImage != null;
+    final canSend =
+        _controller.text.trim().isNotEmpty || _selectedImage != null;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MessageSpacing.md,
-        vertical: MessageSpacing.sm,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        color: MessageColors.inputBackground,
-        borderRadius: BorderRadius.circular(MessageRadius.input),
-        boxShadow: MessageShadows.floating,
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_selectedImage != null) ...[
+          if (_selectedImage != null && _selectedImageBytes != null) ...[
             _SelectedImagePreview(
               name: _selectedImage!.name,
-              onRemove: () => setState(() => _selectedImage = null),
+              imageBytes: _selectedImageBytes!,
+              onRemove: () => setState(() {
+                _selectedImage = null;
+                _selectedImageBytes = null;
+              }),
             ),
-            const SizedBox(height: MessageSpacing.sm),
+            const SizedBox(height: 6),
           ],
           Row(
             children: [
-              _RoundButton(icon: Icons.add_photo_alternate_outlined, onTap: _handleAttachmentTap),
-              const SizedBox(width: MessageSpacing.sm),
+              // Sparkle / AI icon
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Color(0xFF1976D2),
+                  size: 20,
+                ),
+              ),
+              // Image Attachment
+              IconButton(
+                icon: const Icon(Icons.image_outlined,
+                    color: Color(0xFF1976D2), size: 22),
+                onPressed: _handleAttachmentTap,
+                visualDensity: VisualDensity.compact,
+              ),
+              const SizedBox(width: 4),
+              // Text field
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  style: MessageTextStyles.bubbleText,
+                  style: const TextStyle(
+                      fontSize: 14, color: Color(0xFF1A2340)),
                   textInputAction: TextInputAction.send,
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (_) => _handleSend(),
                   decoration: InputDecoration(
                     hintText: widget.hintText,
-                    hintStyle: MessageTextStyles.inputHint,
+                    hintStyle: const TextStyle(
+                        color: Color(0xFF90A4AE), fontSize: 14),
                     border: InputBorder.none,
                     isCollapsed: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
+              // Emoji icon
               IconButton(
-                icon: const Icon(Icons.emoji_emotions_outlined, color: MessageColors.textGrey),
+                icon: const Icon(Icons.emoji_emotions_outlined,
+                    color: Color(0xFF90A4AE), size: 22),
                 onPressed: widget.onEmojiTap,
+                visualDensity: VisualDensity.compact,
               ),
-              _RoundButton(
-                icon: _isSendingImage
-                    ? Icons.hourglass_empty_rounded
-                    : canSend
-                        ? Icons.send_rounded
-                        : Icons.mic_none_rounded,
-                iconColor: MessageColors.primaryGreen,
-                onTap: _isSendingImage ? null : (canSend ? _handleSend : widget.onMicTap),
+              // Mic icon (shown when nothing to send)
+              if (!canSend)
+                IconButton(
+                  icon: const Icon(Icons.mic_none_rounded,
+                      color: Color(0xFF90A4AE), size: 22),
+                  onPressed: widget.onMicTap,
+                  visualDensity: VisualDensity.compact,
+                ),
+              // Send button (blue circle)
+              GestureDetector(
+                onTap: _isSendingImage
+                    ? null
+                    : (canSend ? _handleSend : null),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 42,
+                  height: 42,
+                  margin: const EdgeInsets.only(right: 2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: canSend
+                        ? const LinearGradient(
+                            colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : LinearGradient(
+                            colors: [
+                              const Color(0xFFB0BEC5),
+                              const Color(0xFFCFD8DC),
+                            ],
+                          ),
+                    boxShadow: canSend
+                        ? [
+                            BoxShadow(
+                              color:
+                                  const Color(0xFF1565C0).withOpacity(0.4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: _isSendingImage
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.send_rounded,
+                          color: Colors.white, size: 18),
+                ),
               ),
             ],
           ),
@@ -143,59 +217,79 @@ class _ChatInputState extends State<ChatInput> {
 
 class _SelectedImagePreview extends StatelessWidget {
   final String name;
+  final Uint8List imageBytes;
   final VoidCallback onRemove;
 
   const _SelectedImagePreview({
     required this.name,
+    required this.imageBytes,
     required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.image_outlined, size: 18, color: MessageColors.primaryGreen),
-        const SizedBox(width: MessageSpacing.sm),
-        Expanded(
-          child: Text(
-            name.isEmpty ? 'Ảnh đã chọn' : name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: MessageTextStyles.inputHint,
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
         ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.close, size: 18, color: MessageColors.textGrey),
-          onPressed: onRemove,
-        ),
-      ],
-    );
-  }
-}
-
-class _RoundButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  final Color iconColor;
-
-  const _RoundButton({
-    required this.icon,
-    this.onTap,
-    this.iconColor = MessageColors.textDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: MessageColors.backgroundMint,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 20, color: iconColor),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                imageBytes,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ảnh đính kèm',
+                    style: TextStyle(
+                      color: Color(0xFF1976D2),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF78909C),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEEEEEE),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: Color(0xFF78909C),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

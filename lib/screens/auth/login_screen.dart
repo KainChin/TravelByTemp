@@ -1,6 +1,7 @@
 // ignore_for_file: unnecessary_library_name
 library login_screen;
 
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:assignment/core/widgets/safe_network_image.dart';
@@ -28,10 +29,30 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
+  String? _notificationMessage;
+  bool _isSuccessNotification = false;
+  Timer? _notificationTimer;
+
+  void _showNotification(String message, bool isSuccess) {
+    _notificationTimer?.cancel();
+    setState(() {
+      _notificationMessage = message;
+      _isSuccessNotification = isSuccess;
+    });
+    _notificationTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() {
+          _notificationMessage = null;
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _notificationTimer?.cancel();
     super.dispose();
   }
 
@@ -43,12 +64,15 @@ class _LoginScreenState extends State<LoginScreen> {
       await VietaiScope.of(context).login(
         _usernameController.text.trim(),
         _passwordController.text,
+        delayNotify: true,
       );
+      _showNotification('Đăng nhập thành công!', true);
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      VietaiScope.of(context).applyPendingLogin();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đăng nhập thất bại.\n$e')),
-      );
+      _showNotification('Đăng nhập thất bại: $e', false);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -63,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (pending == null || !mounted) return;
 
     final session = VietaiScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
     try {
       await WidgetsBinding.instance.endOfFrame;
@@ -80,12 +103,15 @@ class _LoginScreenState extends State<LoginScreen> {
       await session.verifyRegister(
         verificationId: request.verificationId,
         code: code.trim(),
+        delayNotify: true,
       );
+      _showNotification('Đăng ký tài khoản thành công!', true);
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      session.applyPendingLogin();
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Đăng ký thất bại.\n$e')),
-      );
+      _showNotification('Đăng ký thất bại: $e', false);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -111,7 +137,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (pending == null || !mounted) return;
 
     final session = VietaiScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await WidgetsBinding.instance.endOfFrame;
       await session.resetPassword(
@@ -119,14 +144,10 @@ class _LoginScreenState extends State<LoginScreen> {
         newPassword: pending.password,
       );
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Đã đổi mật khẩu. Bạn có thể đăng nhập bằng mật khẩu mới.')),
-      );
+      _showNotification('Đổi mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.', true);
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Không đổi được mật khẩu.\n$e')),
-      );
+      _showNotification('Không đổi được mật khẩu: $e', false);
     }
   }
 
@@ -245,6 +266,77 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
           ),
+          // Floating Notification
+          if (_notificationMessage != null)
+            Positioned(
+              top: 24,
+              left: 20,
+              right: 20,
+              child: SafeArea(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: _isSuccessNotification ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _isSuccessNotification ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _isSuccessNotification ? Icons.check_circle_rounded : Icons.error_rounded,
+                          color: _isSuccessNotification ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _notificationMessage!,
+                            style: TextStyle(
+                              color: _isSuccessNotification ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            _notificationTimer?.cancel();
+                            setState(() {
+                              _notificationMessage = null;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: _isSuccessNotification ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: _isSuccessNotification ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().slideY(begin: -0.3, end: 0, duration: 400.ms, curve: Curves.easeOutBack).fadeIn(duration: 250.ms),
+                ),
+              ),
+            ),
         ],
       ),
     );
