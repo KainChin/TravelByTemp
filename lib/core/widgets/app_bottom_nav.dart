@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:assignment/core/theme/app_colors.dart';
 
-enum NavTab { explore, saved, trips, messages, profile }
+enum NavTab { explore, trips, saved, messages, profile }
 
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
@@ -36,35 +36,35 @@ class AppBottomNav extends StatelessWidget {
               _NavItem(
                 icon: Icons.explore_outlined,
                 activeIcon: Icons.explore,
-                label: 'Explore',
+                label: 'Khám phá',
                 active: current == NavTab.explore,
                 onTap: () => onTap(NavTab.explore),
               ),
               _NavItem(
-                icon: Icons.favorite_border,
-                activeIcon: Icons.favorite,
-                label: 'Saved',
-                active: current == NavTab.saved,
-                onTap: () => onTap(NavTab.saved),
-              ),
-              _NavItem(
                 icon: Icons.luggage_outlined,
                 activeIcon: Icons.luggage,
-                label: 'Trips',
+                label: 'Chuyến đi',
                 active: current == NavTab.trips,
                 onTap: () => onTap(NavTab.trips),
               ),
               _NavItem(
+                icon: Icons.favorite_border,
+                activeIcon: Icons.favorite,
+                label: 'Đã lưu',
+                active: current == NavTab.saved,
+                onTap: () => onTap(NavTab.saved),
+              ),
+              _NavItem(
                 icon: Icons.chat_bubble_outline,
                 activeIcon: Icons.chat_bubble,
-                label: 'Messages',
+                label: 'Tin nhắn',
                 active: current == NavTab.messages,
                 onTap: () => onTap(NavTab.messages),
               ),
               _NavItem(
                 icon: Icons.person_outline,
                 activeIcon: Icons.person,
-                label: 'Profile',
+                label: 'Tài khoản',
                 active: current == NavTab.profile,
                 onTap: () => onTap(NavTab.profile),
               ),
