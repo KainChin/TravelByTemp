@@ -251,7 +251,7 @@ class ChatBubble extends StatelessWidget {
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => _FullScreenImageViewer(
+        builder: (_) => FullScreenImageViewer(
           bytes: message.imageBytes!,
           title: message.imageName ?? 'Hình ảnh',
           heroTag: 'chat_img_${message.timestamp.millisecondsSinceEpoch}',
@@ -351,12 +351,13 @@ class _PdfAttachmentCard extends StatelessWidget {
   }
 }
 
-class _FullScreenImageViewer extends StatelessWidget {
+class FullScreenImageViewer extends StatelessWidget {
   final Uint8List bytes;
   final String title;
   final String heroTag;
 
-  const _FullScreenImageViewer({
+  const FullScreenImageViewer({
+    super.key,
     required this.bytes,
     required this.title,
     required this.heroTag,
