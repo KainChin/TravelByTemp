@@ -241,7 +241,7 @@ class _MessagesViewState extends State<_MessagesView> {
           ),
         // Input
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 100), // Pushes the input bar up above the 72px dock
           child: ChatInput(
             onSend: (text) => context.read<ChatProvider>().sendMessage(text),
             onImageSend: (text, image) => context
