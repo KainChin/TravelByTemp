@@ -21,17 +21,17 @@ class _StatsCardState extends State<StatsCard> {
   String? _token;
 
   static const _iconColors = [
-    Color(0xFF3A7D5A),
-    Color(0xFF7B68EE),
-    Color(0xFFE8624A),
-    Color(0xFFF5A623),
+    Color(0xFF4CAF7A),
+    Color(0xFF9C88FF),
+    Color(0xFFEF5350),
+    Color(0xFFFFB74D),
   ];
 
   static const _bgColors = [
-    Color(0xFFE8F5E9),
-    Color(0xFFEDE7F6),
-    Color(0xFFFFEBEE),
-    Color(0xFFFFF3E0),
+    Color(0xFF1B3D2A),
+    Color(0xFF2D2660),
+    Color(0xFF3D1A1A),
+    Color(0xFF3D2800),
   ];
 
   @override
@@ -138,55 +138,46 @@ class _StatsCardState extends State<StatsCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: FutureBuilder<_ProfileStats>(
         future: _future,
         builder: (context, snapshot) {
           final loading = snapshot.connectionState == ConnectionState.waiting;
           final stats = snapshot.data ?? _ProfileStats.zero;
           final items = [
-            _StatConfig(Icons.luggage_outlined, loading ? '--' : '${stats.trips}', 'Trips'),
-            _StatConfig(Icons.image_outlined, loading ? '--' : '${stats.photos}', 'Photos'),
-            _StatConfig(Icons.video_library_outlined, loading ? '--' : '${stats.videos}', 'Videos'),
-            _StatConfig(Icons.bookmark_outline, loading ? '--' : '${stats.places}', 'Places'),
+            _StatConfig(Icons.luggage_outlined, loading ? '--' : '${stats.trips}', 'Chuyến đi', _iconColors[0], _bgColors[0]),
+            _StatConfig(Icons.image_outlined, loading ? '--' : '${stats.photos}', 'Ảnh đã lưu', _iconColors[1], _bgColors[1]),
+            _StatConfig(Icons.video_library_outlined, loading ? '--' : '${stats.videos}', 'Video đã lưu', _iconColors[2], _bgColors[2]),
+            _StatConfig(Icons.location_on_outlined, loading ? '--' : '${stats.places}', 'Địa điểm đã đến', _iconColors[3], _bgColors[3]),
           ];
 
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(
-              items.length,
-              (index) => Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: snapshot.hasError ? _refresh : null,
-                  child: _StatItem(
-                    icon: items[index].icon,
-                    value: items[index].value,
-                    label: items[index].label,
-                    iconColor: _iconColors[index],
-                    bgColor: _bgColors[index],
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(item: items[0], onTap: snapshot.hasError ? _refresh : null),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatItem(item: items[1], onTap: snapshot.hasError ? _refresh : null),
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(item: items[2], onTap: snapshot.hasError ? _refresh : null),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatItem(item: items[3], onTap: snapshot.hasError ? _refresh : null),
+                  ),
+                ],
+              ),
+            ],
           );
         },
       ),
@@ -194,12 +185,10 @@ class _StatsCardState extends State<StatsCard> {
   }
 }
 
-class _FirestoreTripCount {
-  const _FirestoreTripCount({
-    required this.trips,
-    required this.photos,
-  });
+// ─────────────────────────────────────────────────────────────────
 
+class _FirestoreTripCount {
+  const _FirestoreTripCount({required this.trips, required this.photos});
   final int trips;
   final int photos;
 }
@@ -221,59 +210,76 @@ class _ProfileStats {
 }
 
 class _StatConfig {
-  const _StatConfig(this.icon, this.value, this.label);
-
-  final IconData icon;
-  final String value;
-  final String label;
-}
-
-class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.iconColor,
-    required this.bgColor,
-  });
-
+  const _StatConfig(this.icon, this.value, this.label, this.iconColor, this.bgColor);
   final IconData icon;
   final String value;
   final String label;
   final Color iconColor;
   final Color bgColor;
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({required this.item, this.onTap});
+  final _StatConfig item;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
+    return Material(
+      color: const Color(0xFF1A2540),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           decoration: BoxDecoration(
-            color: bgColor,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF243050), width: 1),
           ),
-          child: Icon(icon, size: 24, color: iconColor),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF1A1A1A),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: item.bgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(item.icon, size: 22, color: item.iconColor),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.value,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: Colors.white54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white24, size: 18),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF888888),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
