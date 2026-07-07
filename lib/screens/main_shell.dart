@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/screens/explore/screens/explore_screen.dart';
@@ -47,64 +48,127 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      extendBody: true, // Let stack flow transparently if needed
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 84), // Avoid content cutoff by floating dock
+            child: IndexedStack(
+              index: _currentIndex,
+              children: _screens,
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: SafeArea(
+              child: _buildFloatingDock(),
+            ),
+          ),
+        ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  // ── Material 3 Bottom Navigation ──────────────────────────────────────────
-  Widget _buildBottomNav() {
-    const activeColor = Color(0xFF1976D2);
-    const inactiveColor = Color(0xFF9CA3AF);
+  // ── Apple-Style Floating Dock ──────────────────────────────────────────
+  Widget _buildFloatingDock() {
+    const activeColor = Color(0xFF0A84FF); // Bright iOS Blue
+    final inactiveColor = Colors.white.withOpacity(0.55);
 
-    return NavigationBar(
-      height: 68,
-      elevation: 0,
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      shadowColor: Colors.black26,
-      indicatorColor: activeColor.withValues(alpha: 0.2),
-      indicatorShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+    final items = [
+      _NavDockItem(
+        icon: Icons.explore_outlined,
+        activeIcon: Icons.explore,
+        label: 'Khám phá',
       ),
-      animationDuration: const Duration(milliseconds: 400),
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      selectedIndex: _currentIndex,
-      onDestinationSelected: (index) => setState(() {
-        _currentIndex = index;
-        if (index == 2) _savedRefreshToken++;
-        if (index == 4) _profileRefreshToken++;
-      }),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.explore_outlined, color: inactiveColor, size: 22),
-          selectedIcon: Icon(Icons.explore, color: activeColor, size: 22),
-          label: 'Khám phá',
+      _NavDockItem(
+        icon: Icons.luggage_outlined,
+        activeIcon: Icons.luggage,
+        label: 'Chuyến đi',
+      ),
+      _NavDockItem(
+        icon: Icons.favorite_outline,
+        activeIcon: Icons.favorite,
+        label: 'Đã lưu',
+      ),
+      _NavDockItem(
+        icon: Icons.chat_bubble_outline,
+        activeIcon: Icons.chat_bubble,
+        label: 'Tin nhắn',
+      ),
+      _NavDockItem(
+        icon: Icons.person_outline,
+        activeIcon: Icons.person,
+        label: 'Tài khoản',
+      ),
+    ];
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(36),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          height: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(36),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.15),
+              width: 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(items.length, (index) {
+              final isSelected = _currentIndex == index;
+              final item = items[index];
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _currentIndex = index;
+                    if (index == 2) _savedRefreshToken++;
+                    if (index == 4) _profileRefreshToken++;
+                  }),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? activeColor.withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isSelected ? item.activeIcon : item.icon,
+                          color: isSelected ? activeColor : inactiveColor,
+                          size: 22,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? activeColor : inactiveColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
         ),
-        NavigationDestination(
-          icon: Icon(Icons.luggage_outlined, color: inactiveColor, size: 22),
-          selectedIcon: Icon(Icons.luggage, color: activeColor, size: 22),
-          label: 'Chuyến đi',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.favorite_outline, color: inactiveColor, size: 22),
-          selectedIcon: Icon(Icons.favorite, color: activeColor, size: 22),
-          label: 'Đã lưu',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.chat_bubble_outline, color: inactiveColor, size: 22),
-          selectedIcon: Icon(Icons.chat_bubble, color: activeColor, size: 22),
-          label: 'Tin nhắn',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline, color: inactiveColor, size: 22),
-          selectedIcon: Icon(Icons.person, color: activeColor, size: 22),
-          label: 'Tài khoản',
-        ),
-      ],
+      ),
     );
   }
 
@@ -151,4 +215,16 @@ class _MainShellState extends State<MainShell> {
     if (!mounted) return;
     await session.logout();
   }
+}
+
+class _NavDockItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  _NavDockItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
 }
