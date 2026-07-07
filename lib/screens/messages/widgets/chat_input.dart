@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'chat_bubble.dart';
 
 class ChatInput extends StatefulWidget {
   final ValueChanged<String> onSend;
@@ -239,13 +240,34 @@ class _SelectedImagePreview extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(
-                imageBytes,
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      fullscreenDialog: true,
+                      builder: (_) => FullScreenImageViewer(
+                        bytes: imageBytes,
+                        title: name,
+                        heroTag: 'preview_attached_img',
+                      ),
+                    ),
+                  );
+                },
+                child: Hero(
+                  tag: 'preview_attached_img',
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                      imageBytes,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
