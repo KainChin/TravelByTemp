@@ -368,11 +368,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── Tính năng nhanh ──
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
-      (Icons.auto_stories_outlined, 'Tạo story\nmới', const Color(0xFF4CAF7A)),
-      (Icons.cloud_upload_outlined, 'Tải ảnh\nlên', const Color(0xFF9C88FF)),
-      (Icons.video_library_outlined, 'Tạo video\ndu lịch', const Color(0xFFEF5350)),
-      (Icons.add_location_alt_outlined, 'Thêm\nchuyến đi', const Color(0xFF4CAF7A)),
-      (Icons.star_border_rounded, 'Đánh giá\nđiểm đến', const Color(0xFFFFB74D)),
+      (Icons.auto_stories_outlined, 'Story\ncủa tôi', const Color(0xFF4CAF7A), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoriesScreen()));
+      }),
+      (Icons.cloud_upload_outlined, 'Tải ảnh\nlên', const Color(0xFF9C88FF), () {
+        _openUpload(context);
+      }),
+      (Icons.video_library_outlined, 'Tạo video\ndu lịch', const Color(0xFFEF5350), () {
+        _showSelectTripDialog(context);
+      }),
+      (Icons.add_location_alt_outlined, 'Tạo\nchuyến đi', const Color(0xFF4CAF7A), () {
+        Navigator.popUntil(context, (route) => route.isFirst);
+        // User sẽ chuyển sang tab Trips ở MainShell
+      }),
+      (Icons.star_border_rounded, 'Đánh giá\nđiểm đến', const Color(0xFFFFB74D), () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tính năng đang phát triển.')),
+        );
+      }),
     ];
 
     return Container(
@@ -394,17 +407,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: actions.map((a) {
-              final (icon, label, color) = a;
+              final (icon, label, color, onTap) = a;
               return GestureDetector(
-                onTap: () {
-                  if (label.contains('Tải ảnh')) {
-                    _openUpload(context);
-                  } else if (label.contains('video')) {
-                    _showSelectTripDialog(context);
-                  } else if (label.contains('story')) {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoriesScreen()));
-                  }
-                },
+                onTap: onTap,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

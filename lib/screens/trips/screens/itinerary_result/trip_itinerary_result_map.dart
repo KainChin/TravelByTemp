@@ -2,7 +2,7 @@
 
 part of trip_itinerary_result_screen;
 
-class TripMapSection extends StatelessWidget {
+class TripMapSection extends StatefulWidget {
   const TripMapSection({
     super.key,
     required this.day,
@@ -13,7 +13,19 @@ class TripMapSection extends StatelessWidget {
   final double height;
 
   @override
+  State<TripMapSection> createState() => _TripMapSectionState();
+}
+
+class _TripMapSectionState extends State<TripMapSection> {
+  // Mặc định thu gọn — ưu tiên không gian cho lịch trình. User bấm
+  // "Mở rộng" để xem bản đồ chi tiết.
+  bool _collapsed = true;
+
+  @override
   Widget build(BuildContext context) {
+    final day = widget.day;
+    final fullHeight = widget.height;
+    final height = _collapsed ? 64.0 : fullHeight;
     final stops = _stopsFor(day);
     final points = stops.map((s) => s.point).toList();
     final center = points.isEmpty ? const LatLng(16.0544, 108.2022) : points.first;
@@ -39,127 +51,170 @@ class TripMapSection extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: FlutterMap(
-              key: mapKey,
-              options: MapOptions(
-                initialCenter: center,
-                initialZoom: points.length <= 1 ? 12 : 11,
-                onTap: (tapPosition, point) => _showRatedPlacesSheet(context, day),
-                initialCameraFit: points.length > 1
-                    ? CameraFit.bounds(
-                        bounds: LatLngBounds.fromPoints(points),
-                        padding: const EdgeInsets.all(42),
-                      )
-                    : null,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.vietai.travel',
-                ),
-                if (points.length > 1)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(points: points, color: scheme.primary, strokeWidth: 5),
-                    ],
-                  ),
-                MarkerLayer(
-                  markers: stops.asMap().entries.map((entry) {
-                    final index = entry.key + 1;
-                    final stop = entry.value;
-                    return Marker(
-                      point: stop.point,
-                      width: 104,
-                      height: 62,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: index == 1
-                                  ? const Color(0xFF0B7D4B)
-                                  : _TripItineraryResultScreenState._accent,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              '$index',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(999),
-                              boxShadow: const [
-                                BoxShadow(color: Color(0x1A000000), blurRadius: 6),
-                              ],
-                            ),
-                            child: Text(
-                              stop.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-                RichAttributionWidget(
-                  attributions: [
-                    TextSourceAttribution(
-                      'OpenStreetMap',
-                      onTap: () => launchUrl(
-                        Uri.parse('https://www.openstreetmap.org/copyright'),
-                        mode: LaunchMode.externalApplication,
+          if (_collapsed)
+            // Compact strip: tên + số stops + nút expand.
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.map_outlined, color: _TripItineraryResultScreenState._primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Bản đồ — ${_mapCollapsedTitle(stops)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
+            )
+          else
+            Positioned.fill(
+              child: FlutterMap(
+                key: mapKey,
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: points.length <= 1 ? 12 : 11,
+                  onTap: (tapPosition, point) => _showRatedPlacesSheet(context, day),
+                  initialCameraFit: points.length > 1
+                      ? CameraFit.bounds(
+                          bounds: LatLngBounds.fromPoints(points),
+                          padding: const EdgeInsets.all(42),
+                        )
+                      : null,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.vietai.travel',
+                  ),
+                  if (points.length > 1)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(points: points, color: scheme.primary, strokeWidth: 5),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: stops.asMap().entries.map((entry) {
+                      final index = entry.key + 1;
+                      final stop = entry.value;
+                      return Marker(
+                        point: stop.point,
+                        width: 132,
+                        height: 62,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: index == 1
+                                    ? const Color(0xFF0B7D4B)
+                                    : _TripItineraryResultScreenState._accent,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x33000000),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                '$index',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Tooltip(
+                              message: stop.label,
+                              waitDuration: const Duration(milliseconds: 250),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: const [
+                                    BoxShadow(color: Color(0x1A000000), blurRadius: 6),
+                                  ],
+                                ),
+                                child: Text(
+                                  stop.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution(
+                        'OpenStreetMap',
+                        onTap: () => launchUrl(
+                          Uri.parse('https://www.openstreetmap.org/copyright'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
+          // Các overlay chỉ hiện khi map đang mở rộng.
+          if (!_collapsed) ...[
+            Positioned(
+              left: 14,
+              top: 14,
+              child: _MapBadge(stopsCount: stops.length),
+            ),
+            Positioned(
+              left: 14,
+              bottom: 14,
+              child: _RatedPlacesHint(day: day, count: _ratedPlacesFor(day).length),
+            ),
+            const Positioned(
+              right: 14,
+              top: 14,
+              child: _MapControls(),
+            ),
+          ],
+          // Nút toggle collapse/expand — góc phải dưới, không đè lên map controls.
           Positioned(
-            left: 14,
-            top: 14,
-            child: _MapBadge(stopsCount: stops.length),
-          ),
-          Positioned(
-            left: 14,
-            bottom: 14,
-            child: _RatedPlacesHint(day: day, count: _ratedPlacesFor(day).length),
-          ),
-          const Positioned(
             right: 14,
-            top: 14,
-            child: _MapControls(),
+            bottom: 14,
+            child: _MapCollapseButton(
+              collapsed: _collapsed,
+              onTap: () => setState(() => _collapsed = !_collapsed),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+String _mapCollapsedTitle(List<dynamic> stops) {
+  if (stops.isEmpty) return 'hành trình';
+  return '${stops.length} điểm';
 }
 
 String _dayFingerprint(Object? day) {
@@ -595,6 +650,48 @@ class _MapControlButton extends StatelessWidget {
             width: 38,
             height: 38,
             child: Icon(icon, size: 19, color: _TripItineraryResultScreenState._ink),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MapCollapseButton extends StatelessWidget {
+  const _MapCollapseButton({required this.collapsed, required this.onTap});
+
+  final bool collapsed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: const StadiumBorder(),
+      elevation: 3,
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                collapsed ? Icons.expand_more : Icons.expand_less,
+                size: 18,
+                color: _TripItineraryResultScreenState._primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                collapsed ? 'Mở rộng' : 'Thu gọn',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: _TripItineraryResultScreenState._primary,
+                ),
+              ),
+            ],
           ),
         ),
       ),

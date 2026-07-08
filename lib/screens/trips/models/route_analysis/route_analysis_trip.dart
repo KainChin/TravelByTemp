@@ -33,10 +33,72 @@ class TripRouteAnalysis {
   bool get hasFerryLeg =>
       legs.any((leg) => leg.recommendedMode == TransportMode.ferry);
   bool get isConstraintOptimalRoute => legs.isNotEmpty;
-  double get totalDistanceKm => legs.fold(0, (sum, leg) => sum + leg.distanceKm);
-  double get optimizedHours => legs.fold(0, (sum, leg) => sum + leg.recommendedHours);
-  double get estimatedRouteCostVnd =>
-      legs.fold(0, (sum, leg) => sum + leg.estimatedCostVnd);
+
+  /// Cached list các [MultiLegJourney] thực tế của mỗi leg, dùng cho cả
+  /// UI breakdown và thống kê tổng quan. Đây là single source of truth.
+  /// Lưu ý: chỉ chứa journey cho các leg có toạ độ origin hợp lệ.
+  List<MultiLegJourney> get effectiveJourneys =>
+      legs.map(effectiveJourneyForLeg).whereType<MultiLegJourney>().toList();
+
+  /// Tổng khoảng cách BAO GỒM cả taxi ra/vào sân bay/cảng (dùng breakdown).
+  /// Fallback về RouteLeg.distanceKm nếu leg không có journey.
+  double get totalDistanceKm {
+    final journeys = effectiveJourneys;
+    if (journeys.isEmpty) {
+      return legs.fold(0, (sum, leg) => sum + leg.distanceKm);
+    }
+    return journeys.fold(0.0,
+        (sum, j) => sum + j.legs.fold(0.0, (s, l) => s + l.distanceKm));
+  }
+
+  /// Tổng thời gian BAO GỒM check-in, taxi, chờ boarding.
+  double get optimizedHours {
+    final journeys = effectiveJourneys;
+    if (journeys.isEmpty) {
+      return legs.fold(0, (sum, leg) => sum + leg.recommendedHours);
+    }
+    return journeys.fold(0.0,
+        (sum, j) => sum + j.totalDurationHours);
+  }
+
+  /// Tổng chi phí BAO GỒM taxi ra/vào hub (dùng breakdown).
+  double get estimatedRouteCostVnd {
+    final journeys = effectiveJourneys;
+    if (journeys.isEmpty) {
+      return legs.fold(0, (sum, leg) => sum + leg.estimatedCostVnd);
+    }
+    return journeys.fold(0.0, (sum, j) => sum + j.totalCostVnd);
+  }
+
+  /// Tổng chi phí di chuyển cho cả nhóm, đã tính đúng theo từng mode:
+  /// - flight/ferry/motorbike/train: nhân theo số người (mỗi người mua 1 vé)
+  /// - car/coach: giữ nguyên (giá thuê nguyên phương tiện)
+  ///
+  /// Đã bao gồm taxi ra/vào hub (multi-leg breakdown).
+  double totalTransportCostForGroup(int peopleCount) {
+    final clamped = peopleCount <= 0 ? 1 : peopleCount;
+    final journeys = effectiveJourneys;
+    if (journeys.isEmpty) {
+      // Fallback: dùng leg.estimatedCostVnd như cũ
+      return legs.fold(0.0, (sum, leg) {
+        final mode = leg.recommendedMode;
+        final isPerTicket = mode == TransportMode.flight ||
+            mode == TransportMode.ferry ||
+            mode == TransportMode.motorbike ||
+            mode == TransportMode.train;
+        return sum + (isPerTicket ? leg.estimatedCostVnd * clamped : leg.estimatedCostVnd);
+      });
+    }
+    return journeys.fold(0.0, (sum, j) {
+      return sum + j.legs.fold(0.0, (s, l) {
+        final isPerTicket = l.mode == TransportMode.flight ||
+            l.mode == TransportMode.ferry ||
+            l.mode == TransportMode.motorbike ||
+            l.mode == TransportMode.train;
+        return s + (isPerTicket ? l.costVnd * clamped : l.costVnd);
+      });
+    });
+  }
 
   double budgetUsagePercent(double budgetVnd) {
     if (budgetVnd <= 0) return 0;
@@ -44,7 +106,21 @@ class TripRouteAnalysis {
   }
 
   int get transferCount {
-    var count = legs.fold(0, (sum, leg) => sum + leg.segmentTransferCount);
+    // Đếm cả đổi mode trong mỗi sub-leg (taxi → bay → taxi). Nếu leg
+    // có journey breakdown (flight/ferry) → dùng journey; nếu chỉ là
+    // road-based thì tính theo inter-leg changes như cũ.
+    var count = 0;
+    for (final leg in legs) {
+      final journey = effectiveJourneyForLeg(leg);
+      if (journey != null && journey.isMultiLeg) {
+        // Số lần đổi mode trong journey = số sub-leg - 1
+        count += journey.legs.length - 1;
+      } else {
+        // Road-based: không có đổi mode trong leg
+      }
+    }
+    // Cộng thêm số lần đổi mode giữa các leg (vd leg[0] xe khách,
+    // leg[1] máy bay → +1)
     for (var i = 1; i < legs.length; i++) {
       if (legs[i].recommendedMode != legs[i - 1].recommendedMode) count++;
     }
@@ -138,6 +214,7 @@ class TripRouteAnalysis {
           region: '',
           latitude: 0,
           longitude: 0,
+          landmassId: Destination.defaultLandmassFor(departurePoint),
         );
 
     final legs = <RouteLeg>[];
@@ -159,6 +236,7 @@ class TripRouteAnalysis {
           distanceKm: distance,
           recommendedMode: TransportMode.car,
           reason: 'Dang cho backend phan tich phuong tien kha dung.',
+          from: current,
         ),
       );
       current = to;
@@ -172,7 +250,7 @@ class TripRouteAnalysis {
     );
   }
 
-  factory TripRouteAnalysis.fromApi(
+factory TripRouteAnalysis.fromApi(
     Map<String, dynamic> json, {
     double? budgetPerPerson,
   }) {
@@ -184,15 +262,20 @@ class TripRouteAnalysis {
         .whereType<Map<String, dynamic>>()
         .map(_placeFromJson)
         .toList();
-    final legs = legJson.whereType<Map<String, dynamic>>().map((item) {
+    final legsRaw = legJson.whereType<Map<String, dynamic>>().toList();
+    final legs = <RouteLeg>[];
+    var previous = departure;
+    for (var i = 0; i < legsRaw.length; i++) {
+      final item = legsRaw[i];
       final transportOptionsJson = item['transportOptions'] as List? ??
           item['TransportOptions'] as List? ??
           item['options'] as List? ??
           const [];
-      return RouteLeg(
-        order: item['order'] as int? ?? 1,
-        fromName: item['fromName'] as String? ?? '',
-        to: _placeFromJson(item['to'] as Map<String, dynamic>),
+      final to = _placeFromJson(item['to'] as Map<String, dynamic>);
+      legs.add(RouteLeg(
+        order: item['order'] as int? ?? (i + 1),
+        fromName: item['fromName'] as String? ?? previous.name,
+        to: to,
         distanceKm: (item['distanceKm'] as num?)?.toDouble() ?? 0,
         recommendedMode: _modeFromApi(item['recommendedMode'] as String?),
         reason: item['reason'] as String? ?? '',
@@ -201,13 +284,15 @@ class TripRouteAnalysis {
             (item['estimatedDuration'] as num?)?.toDouble(),
         estimatedCostVndOverride:
             (item['estimatedCostVnd'] as num?)?.toDouble() ??
-            (item['estimatedCost'] as num?)?.toDouble(),
+                (item['estimatedCost'] as num?)?.toDouble(),
         transportOptions: transportOptionsJson
             .whereType<Map<String, dynamic>>()
             .map(TransportOption.fromJson)
             .toList(),
-      );
-    }).toList();
+        from: previous,
+      ));
+      previous = to;
+    }
 
     return TripRouteAnalysis(
       routeId: json['routeId'] as String?,
@@ -225,12 +310,15 @@ class TripRouteAnalysis {
   }
 
   static Destination _placeFromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String? ?? '';
     return Destination(
       id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
+      name: name,
       region: json['region'] as String? ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+      landmassId: (json['landmassId'] as String?) ??
+          Destination.defaultLandmassFor(name),
     );
   }
 

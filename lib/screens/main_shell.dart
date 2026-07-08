@@ -17,6 +17,39 @@ class MainShell extends StatefulWidget {
   /// ));`
   final String currentUserName;
 
+  /// Global key để các screen con có thể switch tab (ví dụ: nhảy sang tab Saved
+  /// sau khi người dùng bấm Lưu chuyến đi).
+  static final GlobalKey<State<MainShell>> shellKey = GlobalKey<State<MainShell>>();
+
+  /// Chuyển sang tab "Đã lưu" và refresh nội dung. Có thể gọi từ bất kỳ đâu.
+  static void goToSavedTab() {
+    final state = shellKey.currentState;
+    if (state == null) return;
+    try {
+      (state as dynamic).goToSavedTab();
+    } catch (_) {
+      // State không impl method này — bỏ qua.
+    }
+  }
+
+  /// Chuyển sang tab "Khám phá" (home). Có thể gọi từ bất kỳ đâu.
+  static void goToExploreTab() {
+    final state = shellKey.currentState;
+    if (state == null) return;
+    try {
+      (state as dynamic).goToExploreTab();
+    } catch (_) {}
+  }
+
+  /// Chuyển sang tab "Tài khoản". Có thể gọi từ bất kỳ đâu.
+  static void goToProfileTab() {
+    final state = shellKey.currentState;
+    if (state == null) return;
+    try {
+      (state as dynamic).goToProfileTab();
+    } catch (_) {}
+  }
+
   const MainShell({super.key, required this.currentUserName});
 
   @override
@@ -28,6 +61,28 @@ class _MainShellState extends State<MainShell> {
   int _savedRefreshToken = 0;
   int _profileRefreshToken = 0;
   late List<_NavDockItem> _dockItems;
+
+  /// Switch sang tab "Đã lưu" và refresh nội dung. Được gọi thông qua
+  /// `MainShell.goToSavedTab()` (cast dynamic).
+  void goToSavedTab() {
+    setState(() {
+      _currentIndex = 2;
+      _savedRefreshToken++;
+    });
+  }
+
+  /// Switch sang tab "Khám phá" (home).
+  void goToExploreTab() {
+    setState(() => _currentIndex = 0);
+  }
+
+  /// Switch sang tab "Tài khoản".
+  void goToProfileTab() {
+    setState(() {
+      _currentIndex = 4;
+      _profileRefreshToken++;
+    });
+  }
 
   @override
   void initState() {

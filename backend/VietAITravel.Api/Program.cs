@@ -224,44 +224,15 @@ app.MapPost("/api/chat-ai", async (
 app.MapPost("/api/trip/generate-itinerary", async (
     GenerateItineraryRequest request,
     TravelChatService service,
-    AppDbContext db,
-    OllamaOptions ollamaOptions,
-    ILoggerFactory loggerFactory,
-    HttpContext httpContext,
     CancellationToken ct) =>
 {
     try
     {
         var result = await service.GenerateItineraryAsync(request, ct);
-        Guid? itineraryId = null;
-        try
-        {
-            itineraryId = Guid.NewGuid();
-            var userIdValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            Guid? userId = Guid.TryParse(userIdValue, out var parsedUserId) ? parsedUserId : null;
-
-            var itineraryJson = JsonSerializer.Serialize(result.Itinerary);
-            var title = TryReadTitle(itineraryJson);
-            db.AiItineraries.Add(new AiItinerary
-            {
-                Id = itineraryId.Value,
-                UserId = userId,
-                Title = title,
-                RequestJson = JsonSerializer.Serialize(request),
-                ItineraryJson = itineraryJson,
-                AiModel = ollamaOptions.ChatModel,
-                CreatedAt = DateTime.UtcNow
-            });
-            await db.SaveChangesAsync(ct);
-        }
-        catch (Exception ex)
-        {
-            var logger = loggerFactory.CreateLogger("TripItineraryEndpoint");
-            logger.LogWarning(ex, "Generated itinerary but failed to save itinerary history.");
-            itineraryId = null;
-        }
-
-        return Results.Ok(result with { ItineraryId = itineraryId });
+        // KHÔNG tự lưu vào database khi generate — để user xem lịch trình trước
+        // rồi chủ động bấm "Lưu chuyến đi". Việc lưu sẽ được thực hiện qua
+        // endpoint `POST /api/trip/itineraries` ở phía frontend.
+        return Results.Ok(result with { ItineraryId = (Guid?)null });
     }
     catch (TravelAiException ex)
     {
@@ -476,8 +447,6 @@ app.MapDelete("/api/trip/itineraries/{id:guid}", async (
     return Results.NoContent();
 });
 
-await AppStartup.EnsureDatabaseReadyAsync(app.Services);
-await AuthSchemaInitializer.EnsureAsync(app.Services);
 await DbSeeder.SeedAsync(app.Services, builder.Configuration);
 
 app.Run();

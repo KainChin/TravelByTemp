@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/budget_tier.dart';
+import '../models/destination.dart';
 import '../models/route_analysis.dart';
 import '../services/trip_itinerary_service.dart';
 import '../../../core/widgets/vietai_scope.dart';

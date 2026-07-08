@@ -1,3 +1,4 @@
+import 'package:assignment/core/keys/app_keys.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/firebase_options.dart';
 import 'package:assignment/screens/auth/login_screen.dart';
@@ -34,9 +35,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'VietAI Travel',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       home: user == null
           ? const LoginScreen()
-          : MainShell(currentUserName: user.fullName),
+          : MainShell(key: MainShell.shellKey, currentUserName: user.fullName),
     );
   }
 }

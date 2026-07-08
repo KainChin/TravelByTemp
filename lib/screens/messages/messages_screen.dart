@@ -35,6 +35,7 @@ class _MessagesView extends StatefulWidget {
 class _MessagesViewState extends State<_MessagesView> {
   final ScrollController _scrollController = ScrollController();
   String? _lastShownError;
+  int _errorCounter = 0;
   int _selectedChatIndex = 0;
 
   void _scrollToBottom() {
@@ -61,10 +62,21 @@ class _MessagesViewState extends State<_MessagesView> {
     final error = chatProvider.errorMessage;
     if (error != null && error != _lastShownError) {
       _lastShownError = error;
+      _errorCounter++;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
       });
+    } else if (error == null) {
+      _lastShownError = null;
     }
 
     _scrollToBottom();
@@ -218,7 +230,7 @@ class _MessagesViewState extends State<_MessagesView> {
             controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             itemCount: chatProvider.messages.length +
-                (chatProvider.isTyping ? 2 : 1),
+                (chatProvider.isTyping ? 1 : 0),
             itemBuilder: (context, index) {
               if (index == 0) {
                 return const _DatePill(label: 'Hôm nay');
@@ -232,6 +244,16 @@ class _MessagesViewState extends State<_MessagesView> {
             },
           ),
         ),
+        if (chatProvider.isLoading)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                _StatusPill(text: 'Đang xử lý, vui lòng đợi...'),
+              ],
+            ),
+          ),
         // Quick chip suggestions shown only when greeting exists alone
         if (chatProvider.messages.length == 1 &&
             chatProvider.messages.first.isAi)
@@ -243,6 +265,8 @@ class _MessagesViewState extends State<_MessagesView> {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 100), // Pushes the input bar up above the 72px dock
           child: ChatInput(
+            isLoading: chatProvider.isLoading,
+            onCancel: () => context.read<ChatProvider>().cancelPending(),
             onSend: (text) => context.read<ChatProvider>().sendMessage(text),
             onImageSend: (text, image) => context
                 .read<ChatProvider>()
@@ -455,6 +479,45 @@ class _DatePill extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w500),
         ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String text;
+  const _StatusPill({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

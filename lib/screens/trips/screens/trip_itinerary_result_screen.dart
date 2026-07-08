@@ -3,17 +3,18 @@
 library trip_itinerary_result_screen;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:assignment/core/keys/app_keys.dart';
+import 'package:assignment/core/strings/itinerary_strings.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../saved/saved_screen.dart';
 import '../services/saved_itinerary_store.dart';
 import '../services/trip_itinerary_service.dart';
+import '../../main_shell.dart';
 
 part 'itinerary_result/trip_itinerary_result_overview.dart';
 part 'itinerary_result/trip_itinerary_result_map.dart';
@@ -55,27 +56,49 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
 
   late List<Map<String, dynamic>> _days;
   int _selectedDayIndex = 0;
+  // Mặc định chưa lưu. Chỉ set true khi user bấm nút "Lưu hành trình".
+  // (Không dựa vào itineraryId từ response, vì backend có thể trả ID cho
+  // trip draft chưa user save chính thức.)
+  bool _isSaved = false;
+  bool _isSaving = false;
+  String? _remoteItineraryId;
 
   @override
   void initState() {
     super.initState();
     _days = _normalizeDays(widget.itinerary['days']);
+    // Không tự set _isSaved = true ở đây. Nếu user mở từ tab "Đã lưu" thì
+    // widget caller (saved_screen / history_screen) nên pass cờ rõ ràng.
+    // Hiện tại để đơn giản và nhất quán, mọi trip đều bắt đầu ở trạng thái
+    // chưa lưu — user phải bấm nút để chuyển sang "Đã lưu".
+    _remoteItineraryId = widget.itineraryId;
   }
 
   String get _title {
     final title = '${widget.itinerary['title'] ?? ''}'.trim();
     if (title.isNotEmpty) return title;
-    return _days.isEmpty ? 'Hành trình đề xuất' : 'Hành trình theo ngày';
+    return _days.isEmpty ? ItineraryStrings.titleFallback : ItineraryStrings.titleByDay;
   }
 
   String get _summary {
     final summary = '${widget.itinerary['summary'] ?? widget.response}'.trim();
-    return summary.isEmpty
-        ? 'Lịch trình đã có bản đồ, chi phí từng hoạt động và có thể chỉnh sửa.'
-        : summary;
+    return summary.isEmpty ? ItineraryStrings.defaultSummary : summary;
   }
 
-  Map<String, num> get _costBreakdown {
+  /// Cost breakdown cho cả chuyến đi.
+///
+/// Lưu ý về quy ước cost:
+/// - Activities lưu **giá cho 1 người** (per-person) để user dễ edit sau.
+/// - Khi mua vé tàu/xe/ferry/flight thực tế phải nhân với số người; UI hiển thị
+///   ở [TripInsightsSection] sẽ tự động nhân với `_peopleCount` cho hạng mục
+///   'di chuyển' thuộc nhóm per-ticket (flight/ferry/train/motorbike).
+/// - Activities 'di chuyển' loại per-group (car thuê nguyên, coach thuê nguyên)
+///   nên đánh dấu `transportMode: 'car'` hoặc `'coach'` trong map, hệ thống
+///   sẽ không nhân.
+Map<String, num> get _costBreakdown {
+    // Activities lưu per-person. Transport per-ticket (flight/ferry/train/
+    // motorbike) nhân theo số người; car/coach giữ nguyên (per-group).
+    final people = _peopleCount;
     var transport = 0;
     var food = 0;
     var stay = 0;
@@ -84,17 +107,27 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
       for (final item in _activitiesFor(day)) {
         final cost = _activityCost(item);
         final category = _activityCategory(item);
+        final mode = '${item['transportMode'] ?? ''}'.toLowerCase();
+        final isPerTicketTransport = mode == 'flight' ||
+            mode == 'ferry' ||
+            mode == 'train' ||
+            mode == 'motorbike';
         if (category == 'ăn uống') {
-          food += cost;
+          food += cost * people;
         } else if (category == 'khách sạn') {
-          stay += cost;
+          stay += cost * people;
         } else if (category == 'di chuyển') {
-          transport += cost;
+          transport += isPerTicketTransport ? cost * people : cost;
         } else {
-          activities += cost;
+          activities += cost * people;
         }
       }
     }
+    // Nếu module AI không trả cost cho 'di chuyển' nhưng module route analysis
+    // đã có sẵn (cùng 1 chuyến), dùng cost từ route analysis để đảm bảo số
+    // liệu đồng bộ giữa 2 màn hình và khớp với thực tế người dùng đã chọn.
+    final override = _routeAnalysisTransportCost;
+    if (override > transport) transport = override.round();
     final total = transport + food + stay + activities;
     return {
       'transport': transport,
@@ -105,7 +138,69 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
     };
   }
 
+  /// Tổng tiền di chuyển (VND, cho cả nhóm) được dựng từ dữ liệu route analysis
+  /// đã lưu trong itinerary. Ưu tiên:
+  /// 1. `itinerary['transportCost']` — server/service có thể đính kèm sẵn.
+  /// 2. `itinerary['routeAnalysis']['totalTransportCost']` — tổng tiền cả tuyến.
+  /// 3. Tự tính lại từ `itinerary['routeAnalysis']['legs']` nếu có.
+  /// Trả về 0 nếu không tìm được nguồn nào.
+  num get _routeAnalysisTransportCost {
+    final itinerary = widget.itinerary;
+    final direct = _readBudgetMap(itinerary, const ['transportCost', 'totalTransportCost']);
+    if (direct > 0) return direct;
+
+    final analysis = itinerary['routeAnalysis'];
+    if (analysis is Map) {
+      final analysisCost = _readBudgetMap(Map<String, dynamic>.from(analysis), const [
+        'totalTransportCost',
+        'estimatedRouteCostVnd',
+        'totalCost',
+      ]);
+      if (analysisCost > 0) return analysisCost;
+
+      // Tự cộng dồn cost từ các legs (per-group nếu có sẵn).
+      final legs = analysis['legs'];
+      if (legs is List) {
+        num sum = 0;
+        for (final leg in legs.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(leg);
+          sum += _readBudgetMap(m, const [
+            'selectedCost',
+            'cost',
+            'totalCost',
+            'price',
+          ]);
+        }
+        if (sum > 0) return sum;
+      }
+    }
+    return 0;
+  }
+
+  /// Helper: đọc 1 key (có fallback list) từ map, hỗ trợ num/String.
+  num _readBudgetMap(Map<String, dynamic> source, List<String> keys) {
+    for (final key in keys) {
+      final value = source[key];
+      if (value is num && value > 0) return value;
+      if (value is String) {
+        final parsed = num.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+    return 0;
+  }
+
   num? get _userBudget => _readBudget(widget.itinerary);
+
+  int get _peopleCount {
+    final raw = widget.itinerary['peopleCount'] ?? widget.itinerary['people'];
+    if (raw is num && raw > 0) return raw.round();
+    if (raw is String) {
+      final parsed = int.tryParse(raw);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return 1;
+  }
 
   int get _totalActivities => _days.fold(0, (sum, day) => sum + _activitiesFor(day).length);
 
@@ -120,37 +215,117 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
     return names.length;
   }
 
-  double get _aiScore {
-    var score = 8.2;
-    if (_totalActivities >= _days.length * 5) score += 0.4;
-    if ((_costBreakdown['total'] ?? 0) > 0) score += 0.3;
-    if (_days.any((day) => _activitiesFor(day).any((item) => _activityCategory(item) == 'di chuyển'))) {
-      score += 0.2;
+  /// AI score (0–10) đánh giá chất lượng lịch trình thật, dựa trên:
+/// - **Hoạt động mỗi ngày**: 3–6 = tốt, <2 hoặc >8 = chưa tối ưu.
+/// - **Phân bổ ngân sách**: cost ≈ budget là điểm tốt; vượt quá nhiều bị trừ.
+/// - **Khoảng cách trung bình giữa các hoạt động** trong ngày (nếu có lat/lng):
+///   1–15 km là hợp lý; >50 km gợi ý chuyển động nhiều.
+/// - **Category coverage**: có đủ ăn uống + lưu trú + tham quan.
+/// - **Trùng giờ**: nếu có nhiều cặp activity trùng giờ → trừ điểm.
+double get _aiScore {
+    if (_days.isEmpty) return 0;
+
+    var score = 5.5;
+
+    // 1) Mật độ hoạt động mỗi ngày
+    final avgPerDay = _totalActivities / _days.length;
+    if (avgPerDay >= 3 && avgPerDay <= 6) {
+      score += 1.0;
+    } else if (avgPerDay >= 2 && avgPerDay <= 8) {
+      score += 0.5;
+    } else if (avgPerDay > 8) {
+      score -= 0.3;
     }
-    return score.clamp(7.5, 9.6).toDouble();
+
+    // 2) Category coverage
+    final hasFood = _days.any((d) => _activitiesFor(d).any((a) => _activityCategory(a) == 'ăn uống'));
+    final hasStay = _days.any((d) => _activitiesFor(d).any((a) => _activityCategory(a) == 'khách sạn'));
+    final hasActivity = _days.any((d) => _activitiesFor(d).any((a) => _activityCategory(a) == 'tham quan'));
+    final coverage = (hasFood ? 1 : 0) + (hasStay ? 1 : 0) + (hasActivity ? 1 : 0);
+    if (coverage == 3) {
+      score += 0.9;
+    } else if (coverage == 2) {
+      score += 0.4;
+    } else if (coverage <= 1) {
+      score -= 0.4;
+    }
+
+    // 3) Khoảng cách trung bình giữa các hoạt động có lat/lng
+    final distances = <double>[];
+    for (final day in _days) {
+      final activities = _activitiesFor(day);
+      for (var i = 0; i < activities.length - 1; i++) {
+        final a = activities[i];
+        final b = activities[i + 1];
+        final aLat = _numValue(a['latitude'] ?? a['lat']);
+        final aLng = _numValue(a['longitude'] ?? a['lng']);
+        final bLat = _numValue(b['latitude'] ?? b['lat']);
+        final bLng = _numValue(b['longitude'] ?? b['lng']);
+        if (aLat != null && aLng != null && bLat != null && bLng != null) {
+          distances.add(const Distance().as(
+            LengthUnit.Kilometer,
+            LatLng(aLat, aLng),
+            LatLng(bLat, bLng),
+          ));
+        }
+      }
+    }
+    if (distances.isNotEmpty) {
+      final avgKm = distances.reduce((a, b) => a + b) / distances.length;
+      if (avgKm >= 1 && avgKm <= 15) {
+        score += 0.5;
+      } else if (avgKm > 50) {
+        score -= 0.4;
+      } else if (avgKm > 30) {
+        score -= 0.2;
+      }
+    }
+
+    // 4) Budget fit
+    final total = _costBreakdown['total'] ?? 0;
+    final budget = _userBudget;
+    if (total > 0 && budget != null && budget > 0) {
+      final ratio = total / budget;
+      if (ratio >= 0.6 && ratio <= 1.0) {
+        score += 0.6;
+      } else if (ratio > 1.2) {
+        score -= 0.5;
+      } else if (ratio < 0.3) {
+        score -= 0.2;
+      }
+    } else if (total > 0) {
+      score += 0.3;
+    }
+
+    return score.clamp(0.0, 10.0).toDouble();
   }
 
-  String get _tripStatus {
-    if (_days.any((day) => _activitiesFor(day).any((item) => '${item['optimized'] ?? ''}' == 'true'))) {
-      return 'Đã tối ưu';
-    }
-    if (_days.isNotEmpty && _days.every((day) => _activitiesFor(day).isNotEmpty)) {
-      return 'Đang lên kế hoạch';
-    }
-    return 'Đã hoàn thành';
+  double? _numValue(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Future<void> _saveItinerary() async {
+    if (_isSaving) return;
     final itinerary = Map<String, dynamic>.from(widget.itinerary);
-    if (widget.itineraryId != null) itinerary['itineraryId'] = widget.itineraryId;
+    final existingId = _remoteItineraryId ??
+        (widget.itinerary['id'] != null ? '${widget.itinerary['id']}' : null) ??
+        (widget.itineraryId);
+    if (existingId != null && existingId.isNotEmpty) {
+      itinerary['id'] = existingId;
+      itinerary['itineraryId'] = existingId;
+    }
     itinerary['days'] = _days;
     var savedToDatabase = false;
     final token = VietaiScope.of(context).auth?.accessToken;
+    setState(() => _isSaving = true);
     try {
       final remote = await TripItineraryService(authToken: token).saveItinerary(
-        itineraryId: widget.itineraryId,
+        itineraryId: existingId,
         itinerary: itinerary,
       );
+      _remoteItineraryId = remote.id;
       itinerary['id'] = remote.id;
       itinerary['itineraryId'] = remote.id;
       savedToDatabase = true;
@@ -159,20 +334,26 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Chưa lưu được lên database, app sẽ lưu tạm local. $e')),
       );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
     await SavedItineraryStore.save(itinerary);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    setState(() {
+      _isSaved = true;
+    });
+    final savedToDatabaseFinal = savedToDatabase;
+    rootScaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
-        content: Text(savedToDatabase ? 'Đã lưu hành trình lên database.' : 'Đã lưu tạm hành trình trên máy.'),
+        content: Text(savedToDatabaseFinal ? ItineraryStrings.snackSavedToDatabase : ItineraryStrings.snackSavedLocally),
       ),
     );
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SavedScreen(refreshToken: DateTime.now().millisecondsSinceEpoch),
-      ),
-    );
+    // Pop về MainShell rồi chuyển sang tab "Đã lưu" để user thấy ngay item vừa lưu.
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.popUntil((route) => route.isFirst);
+    }
+    MainShell.goToSavedTab();
   }
 
   void _openChat({String? initialPrompt}) {
@@ -204,6 +385,10 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
     if (_days.isEmpty || changes.isEmpty) return;
     final selected = _days[_selectedDayIndex];
     final items = _activitiesFor(selected).toList();
+    final seen = <String>{
+      for (final item in items)
+        _activityKey(item['time'], item['destination'] ?? item['title'] ?? item['name']),
+    };
     setState(() {
       for (final change in changes) {
         if (change.kind == _AiChangeKind.reduceCost) {
@@ -211,22 +396,38 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
             final current = _activityCost(item);
             item['estimatedCost'] = (current * 0.88).round();
           }
-        } else if (change.kind == _AiChangeKind.addFood) {
-          items.add(_newActivity('restaurant'));
-        } else if (change.kind == _AiChangeKind.addHotel) {
-          items.add(_newActivity('hotel'));
-        } else if (change.kind == _AiChangeKind.addPlace) {
-          items.add(_newActivity('place'));
-        } else if (change.kind == _AiChangeKind.transport) {
-          items.add(_newActivity('transport'));
+        } else {
+          final newItem = _newActivity(_kindFor(change.kind));
+          final key = _activityKey(newItem['time'], newItem['destination'] ?? newItem['title'] ?? newItem['name']);
+          if (seen.add(key)) {
+            items.add(newItem);
+          }
         }
       }
       selected['activities'] = items;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã áp dụng thay đổi AI vào lịch trình.')),
+    rootScaffoldMessengerKey.currentState?.showSnackBar(
+      const SnackBar(content: Text(ItineraryStrings.snackAiApplied)),
     );
   }
+
+  String _kindFor(_AiChangeKind kind) {
+    switch (kind) {
+      case _AiChangeKind.addFood:
+        return 'restaurant';
+      case _AiChangeKind.addHotel:
+        return 'hotel';
+      case _AiChangeKind.addPlace:
+        return 'place';
+      case _AiChangeKind.transport:
+        return 'transport';
+      case _AiChangeKind.reduceCost:
+        return 'activity';
+    }
+  }
+
+  String _activityKey(dynamic time, dynamic name) =>
+      '${(time ?? '').toString().trim()}|${(name ?? '').toString().trim()}';
 
   void _showActivityEditor({Map<String, dynamic>? activity, int? index, String kind = 'activity'}) {
     final current = activity ?? <String, dynamic>{};
@@ -238,6 +439,23 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
     final address = TextEditingController(text: '${current['address'] ?? ''}');
     final duration = TextEditingController(text: '${current['duration'] ?? current['durationMinutes'] ?? ''}');
     var category = '${current['category'] ?? current['type'] ?? _categoryFromAddKind(kind)}';
+
+    final errors = ValueNotifier<_ActivityValidationErrors>(const _ActivityValidationErrors());
+    var disposed = false;
+
+    void recomputeErrors() {
+      if (disposed) return;
+      final currentDay = _days.isEmpty ? null : _days[_selectedDayIndex];
+      final existing = currentDay == null ? <Map<String, dynamic>>[] : _activitiesFor(currentDay).toList();
+      errors.value = _validateActivityFields(
+        time: time.text,
+        destination: destination.text,
+        costText: cost.text,
+        durationText: duration.text,
+        existingActivities: existing,
+        editingIndex: index,
+      );
+    }
 
     showModalBottomSheet<void>(
       context: context,
@@ -265,45 +483,89 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      SizedBox(width: 92, child: _EditField(controller: time, label: 'Giờ')),
-                      const SizedBox(width: 10),
-                      Expanded(child: _EditField(controller: cost, label: 'Chi phí')),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    initialValue: category,
-                    items: const [
-                      DropdownMenuItem(value: 'tham quan', child: Text('Tham quan')),
-                      DropdownMenuItem(value: 'ăn uống', child: Text('Ăn uống')),
-                      DropdownMenuItem(value: 'khách sạn', child: Text('Khách sạn')),
-                      DropdownMenuItem(value: 'di chuyển', child: Text('Di chuyển')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) setModalState(() => category = value);
+                  ValueListenableBuilder<_ActivityValidationErrors>(
+                    valueListenable: errors,
+                    builder: (context, e, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 92,
+                                child: _EditField(
+                                  controller: time,
+                                  label: 'Giờ',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                                  errorText: e.time ?? e.timeConflict,
+                                  onChanged: (_) => recomputeErrors(),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _EditField(
+                                  controller: cost,
+                                  label: 'Chi phí (VNĐ)',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                                  errorText: e.cost,
+                                  onChanged: (_) => recomputeErrors(),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            initialValue: category,
+                            items: const [
+                              DropdownMenuItem(value: 'tham quan', child: Text('Tham quan')),
+                              DropdownMenuItem(value: 'ăn uống', child: Text('Ăn uống')),
+                              DropdownMenuItem(value: 'khách sạn', child: Text('Khách sạn')),
+                              DropdownMenuItem(value: 'di chuyển', child: Text('Di chuyển')),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) setModalState(() => category = value);
+                            },
+                            decoration: InputDecoration(
+                              labelText: 'Danh mục',
+                              filled: true,
+                              fillColor: _bg,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _EditField(
+                            controller: title,
+                            label: 'Hoạt động',
+                            onChanged: (_) => recomputeErrors(),
+                          ),
+                          const SizedBox(height: 10),
+                          _EditField(
+                            controller: destination,
+                            label: 'Địa điểm',
+                            errorText: e.destination,
+                            onChanged: (_) => recomputeErrors(),
+                          ),
+                          const SizedBox(height: 10),
+                          _EditField(controller: address, label: 'Địa chỉ'),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _EditField(
+                                  controller: duration,
+                                  label: 'Thời lượng (phút)',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                                  errorText: e.duration,
+                                  onChanged: (_) => recomputeErrors(),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: _EditField(controller: note, label: 'Ghi chú')),
+                            ],
+                          ),
+                        ],
+                      );
                     },
-                    decoration: InputDecoration(
-                      labelText: 'Danh mục',
-                      filled: true,
-                      fillColor: _bg,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _EditField(controller: title, label: 'Hoạt động'),
-                  const SizedBox(height: 10),
-                  _EditField(controller: destination, label: 'Địa điểm'),
-                  const SizedBox(height: 10),
-                  _EditField(controller: address, label: 'Địa chỉ'),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: _EditField(controller: duration, label: 'Thời lượng')),
-                      const SizedBox(width: 10),
-                      Expanded(child: _EditField(controller: note, label: 'Ghi chú')),
-                    ],
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
@@ -311,6 +573,13 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                     height: 48,
                     child: ElevatedButton(
                       onPressed: () {
+                        recomputeErrors();
+                        if (errors.value.hasError) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errors.value.first ?? 'Vui lòng kiểm tra lại thông tin.')),
+                          );
+                          return;
+                        }
                         final selected = _days[_selectedDayIndex];
                         final items = _activitiesFor(selected).toList();
                         final next = {
@@ -339,7 +608,7 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Text('Lưu thay đổi'),
+                      child: const Text(ItineraryStrings.editorSaveButton),
                     ),
                   ),
                 ],
@@ -349,6 +618,8 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
         });
       },
     ).whenComplete(() {
+      disposed = true;
+      errors.dispose();
       time.dispose();
       title.dispose();
       destination.dispose();
@@ -363,23 +634,39 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Thêm vào lịch trình', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              _AddMenuItem(icon: Icons.place_outlined, label: 'Thêm địa điểm', onTap: () => _openAddKind(context, 'place')),
-              _AddMenuItem(icon: Icons.restaurant_outlined, label: 'Thêm nhà hàng', onTap: () => _openAddKind(context, 'restaurant')),
-              _AddMenuItem(icon: Icons.hotel_outlined, label: 'Thêm khách sạn', onTap: () => _openAddKind(context, 'hotel')),
-              _AddMenuItem(icon: Icons.local_activity_outlined, label: 'Thêm hoạt động', onTap: () => _openAddKind(context, 'activity')),
-              _AddMenuItem(icon: Icons.directions_bus_outlined, label: 'Thêm phương tiện di chuyển', onTap: () => _openAddKind(context, 'transport')),
+              const Text(
+                ItineraryStrings.addMenuTitle,
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                ItineraryStrings.addMenuSubtitle,
+                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _AddMenuTile(icon: Icons.place_outlined, label: 'Địa điểm', color: const Color(0xFF0EA5E9), onTap: () => _openAddKind(context, 'place')),
+                  _AddMenuTile(icon: Icons.restaurant_outlined, label: 'Ăn uống', color: const Color(0xFFF59E0B), onTap: () => _openAddKind(context, 'restaurant')),
+                  _AddMenuTile(icon: Icons.hotel_outlined, label: 'Khách sạn', color: const Color(0xFF8B5CF6), onTap: () => _openAddKind(context, 'hotel')),
+                  _AddMenuTile(icon: Icons.local_activity_outlined, label: 'Hoạt động', color: const Color(0xFFEF4444), onTap: () => _openAddKind(context, 'activity')),
+                  _AddMenuTile(icon: Icons.directions_bus_outlined, label: 'Di chuyển', color: const Color(0xFF10B981), onTap: () => _openAddKind(context, 'transport')),
+                ],
+              ),
             ],
           ),
         ),
@@ -390,29 +677,6 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
   void _openAddKind(BuildContext sheetContext, String kind) {
     Navigator.pop(sheetContext);
     _showActivityEditor(kind: kind);
-  }
-
-  void _navigateSelectedDay() {
-    if (_days.isEmpty) {
-      _showSnack('Chưa có ngày nào để điều hướng.');
-      return;
-    }
-    final activities = _activitiesFor(_days[_selectedDayIndex]);
-    if (activities.isEmpty) {
-      _showSnack('Ngày này chưa có địa điểm để điều hướng.');
-      return;
-    }
-    _openMaps(Map<String, dynamic>.from(activities.first));
-  }
-
-  Future<void> _shareTrip() async {
-    await Clipboard.setData(ClipboardData(text: '$_title\n$_summary'));
-    if (!mounted) return;
-    _showSnack('Đã sao chép thông tin chuyến đi để chia sẻ.');
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -426,12 +690,15 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
         surfaceTintColor: _bg,
         foregroundColor: _ink,
         elevation: 0,
-        title: const Text('Chi tiết chuyến đi', style: TextStyle(fontWeight: FontWeight.w900)),
+        // leading = nút back mặc định của AppBar (đã có sẵn khi push).
+        title: const Text(ItineraryStrings.pageTitle, style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
-            tooltip: 'Luu hành trình',
-            onPressed: _saveItinerary,
-            icon: const Icon(Icons.bookmark_add_outlined),
+            tooltip: _isSaved ? ItineraryStrings.tooltipSaved : ItineraryStrings.tooltipSave,
+            onPressed: _isSaving ? null : _saveItinerary,
+            icon: Icon(_isSaved
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_add_outlined),
           ),
         ],
       ),
@@ -446,6 +713,11 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                 final mapHeight = (MediaQuery.sizeOf(context).height * (isWide ? 0.38 : 0.36)).clamp(320.0, 460.0);
                 final timeline = TimelineSection(
                   day: selectedDay,
+                  dayIndex: _selectedDayIndex,
+                  totalDays: _days.length,
+                  days: _days,
+                  onDayChanged: (index) =>
+                      setState(() => _selectedDayIndex = index),
                   onAdd: _showAddMenu,
                   onEdit: (activity, index) => _showActivityEditor(activity: activity, index: index),
                   onOptimize: (activity, index) => _openChat(
@@ -473,7 +745,7 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                 );
 
                 return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 94),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
                   children: [
                     TripHeroHeader(
                       title: _title,
@@ -483,15 +755,6 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                       activitiesCount: _totalActivities,
                       totalCost: _costBreakdown['total'] ?? 0,
                       aiScore: _aiScore,
-                      status: _tripStatus,
-                    ),
-                    const SizedBox(height: 12),
-                    QuickActions(
-                      onNavigate: _navigateSelectedDay,
-                      onEdit: () => _showActivityEditor(),
-                      onOptimize: () => _openChat(initialPrompt: 'Tối ưu lịch trình chuyến đi'),
-                      onShare: _shareTrip,
-                      onSave: _saveItinerary,
                     ),
                     const SizedBox(height: 14),
                     if (_days.isNotEmpty)
@@ -524,14 +787,14 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openChat,
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.chat_bubble_outline_rounded),
+      floatingActionButton: null,
+      bottomNavigationBar: _BottomSaveBar(
+        isSaved: _isSaved,
+        isSaving: _isSaving,
+        onSave: _saveItinerary,
+        onEdit: () => _showActivityEditor(),
+        onChat: _openChat,
       ),
-      bottomNavigationBar: const _InlineMenuBar(),
     );
   }
 }

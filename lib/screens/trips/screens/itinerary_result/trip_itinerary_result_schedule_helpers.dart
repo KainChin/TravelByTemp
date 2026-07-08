@@ -8,7 +8,7 @@ List<Map<String, dynamic>> _normalizeDays(Object? raw) {
     final map = Map<String, dynamic>.from(entry.value is Map ? entry.value as Map : const {});
     map['day'] ??= entry.key + 1;
     final activities = _activitiesFor(map).map((item) => Map<String, dynamic>.from(item)).toList();
-    map['activities'] = _expandActivities(activities, map['day'] as int);
+    map['activities'] = _expandActivities(_dedupeActivities(activities), map['day'] as int);
     return map;
   }).toList();
   return days.isEmpty
@@ -18,30 +18,52 @@ List<Map<String, dynamic>> _normalizeDays(Object? raw) {
       : days;
 }
 
-List<Map<String, dynamic>> _expandActivities(List<Map<String, dynamic>> input, int day) {
-  final base = input.toList();
-  final destination = base.isEmpty ? 'Điểm đến' : '${base.first['destination'] ?? 'Điểm đến'}';
-  final templates = [
-    ('07:30', 'Ăn sáng địa phương', 'Thử món ăn nổi bật gần nơi lưu trú', 68000),
-    ('09:00', 'Tham quan điểm chính', 'Di chuyển sớm để tránh đông và chụp ảnh đẹp', 145000),
-    ('11:30', 'Nghỉ và ăn trưa', 'Chọn quán có đánh giá tốt quanh khu vực', 132000),
-    ('14:00', 'Khám phá điểm gần kề', 'Tối ưu tuyến đường để không quay đầu nhiều', 118000),
-    ('16:30', 'Cafe hoặc check-in', 'Khoảng nghỉ nhẹ trước buổi tối', 76000),
-    ('19:00', 'Ăn tối và đi dạo', 'Kết thúc ngày với khu trung tâm hoặc chợ đêm', 184000),
-  ];
-  for (var i = base.length; i < templates.length; i++) {
-    final t = templates[i];
-    base.add({
-      'time': t.$1,
-      'destination': destination,
-      'activity': t.$2,
-      'note': t.$3,
-      'duration': i == 0 || i == 2 || i == 5 ? '60 phút' : '2 giờ',
-      'category': i == 0 || i == 2 || i == 5 ? 'ăn uống' : 'tham quan',
-      'estimatedCost': t.$4 + day * 7000 + i * 3000,
-    });
+/// Loại bỏ activity trùng lặp trong cùng 1 ngày. Key = time + destination
+/// (lowercase + trim). Giữ bản xuất hiện đầu tiên, bỏ các bản sau.
+///
+/// Lý do cần:
+/// - AI đôi khi lặp cùng 1 địa điểm ở nhiều mốc khác nhau (vd 1 quán ăn
+///   xuất hiện 2 lần trong ngày), gây khó chịu và sai lệch thống kê.
+/// - User edit/save lại cũng có thể tạo duplicate.
+///
+/// Nếu user cố ý thêm lại cùng địa điểm (vd muốn ghé 2 lần trong ngày),
+/// họ có thể bấm "Thêm" lại – key được tính lại từ form.
+List<Map<String, dynamic>> _dedupeActivities(List<Map<String, dynamic>> input) {
+  if (input.length < 2) return input;
+  final seen = <String>{};
+  final out = <Map<String, dynamic>>[];
+  for (final item in input) {
+    final time = '${item['time'] ?? ''}'.trim();
+    final destination = '${item['destination'] ?? _activityTitle(item)}'
+        .trim()
+        .toLowerCase();
+    // Bỏ qua nếu time rỗng VÀ destination rỗng (entry placeholder)
+    if (time.isEmpty && destination.isEmpty) continue;
+    final key = '$time|$destination';
+    if (seen.add(key)) {
+      out.add(item);
+    }
   }
-  return base;
+  return out;
+}
+
+/// Nếu dữ liệu từ backend/AI đã có activities thì giữ nguyên.
+/// Nếu rỗng thì KHÔNG tự fill template giống nhau cho mọi ngày — để trống và
+/// hiển thị empty state để user tự thêm hoạt động, tránh các ngày bị trùng.
+List<Map<String, dynamic>> _expandActivities(List<Map<String, dynamic>> input, int day) {
+  if (input.isNotEmpty) return input;
+  // Chỉ thêm 1 dòng "khởi đầu ngày" tối thiểu để user không thấy trang trống trơn.
+  return [
+    {
+      'time': '08:00',
+      'destination': 'Điểm đến ngày $day',
+      'activity': 'Bắt đầu hành trình ngày $day',
+      'note': 'Bấm "Thêm" để bổ sung hoạt động cho ngày này.',
+      'duration': '30 phút',
+      'category': 'tham quan',
+      'estimatedCost': 0,
+    },
+  ];
 }
 
 List<Map<String, dynamic>> _activitiesFor(Object? day) {
@@ -66,13 +88,12 @@ String _firstNonEmpty(List<Object?> values) {
 
 int _activityCost(Map<String, dynamic> activity) {
   final value = activity['estimatedCost'] ?? activity['cost'] ?? activity['price'];
-  final seed = _activityTitle(activity).codeUnits.fold<int>(0, (sum, code) => sum + code);
-  if (value is num) return _humanizeCost(value.round(), seed);
+  if (value is num) return value.round();
   if (value is String) {
     final parsed = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
-    if (parsed != null) return _humanizeCost(parsed, seed);
+    if (parsed != null) return parsed;
   }
-  return _humanizeCost(63000 + (seed % 17) * 11000, seed);
+  return 0;
 }
 
 num _dayCost(Object? day) {
@@ -81,12 +102,19 @@ num _dayCost(Object? day) {
 
 
 
+_Coordinate _coordinateOf(Map<String, dynamic> activity, String label) {
+  final lat = _numValue(activity['latitude'] ?? activity['lat']);
+  final lng = _numValue(activity['longitude'] ?? activity['lng']);
+  if (lat != null && lng != null) return _Coordinate(lat, lng);
+  return _coordinateFor(label);
+}
+
 String _distanceToNextLabel(Map<String, dynamic> current, Map<String, dynamic>? next) {
   if (next == null) return '';
   final currentLabel = '${current['destination'] ?? _activityTitle(current)}';
   final nextLabel = '${next['destination'] ?? _activityTitle(next)}';
-  final currentCoordinate = _coordinateFor(currentLabel);
-  final nextCoordinate = _coordinateFor(nextLabel);
+  final currentCoordinate = _coordinateOf(current, currentLabel);
+  final nextCoordinate = _coordinateOf(next, nextLabel);
   final km = const Distance().as(
     LengthUnit.Kilometer,
     LatLng(currentCoordinate.latitude, currentCoordinate.longitude),
@@ -106,6 +134,64 @@ String _activityCategory(Map<String, dynamic> activity) {
   if (title.contains('khach san') || title.contains('check in') || title.contains('homestay')) return 'khách sạn';
   if (title.contains('di chuyen') || title.contains('don xe') || title.contains('san bay')) return 'di chuyển';
   return 'tham quan';
+}
+
+/// Visual metadata cho mỗi category — dùng để phân cấp thị giác trong timeline:
+/// mỗi loại hoạt động có icon + màu riêng, kích thước card và line dọc khác nhau.
+class _CategoryVisual {
+  const _CategoryVisual({
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+    required this.lineColor,
+    required this.isMajor,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final Color lineColor;
+
+  /// true = card to (tham quan — điểm nhấn), false = card gọn.
+  final bool isMajor;
+}
+
+_CategoryVisual _visualForCategory(String category) {
+  switch (category) {
+    case 'di chuyển':
+      return const _CategoryVisual(
+        icon: Icons.directions_bus_outlined,
+        color: Color(0xFF64748B),
+        bgColor: Color(0xFFF1F5F9),
+        lineColor: Color(0xFF94A3B8),
+        isMajor: false,
+      );
+    case 'ăn uống':
+      return const _CategoryVisual(
+        icon: Icons.restaurant_outlined,
+        color: Color(0xFFF59E0B),
+        bgColor: Color(0xFFFFF7ED),
+        lineColor: Color(0xFFFB923C),
+        isMajor: false,
+      );
+    case 'khách sạn':
+      return const _CategoryVisual(
+        icon: Icons.hotel_outlined,
+        color: Color(0xFF8B5CF6),
+        bgColor: Color(0xFFF5F3FF),
+        lineColor: Color(0xFFA78BFA),
+        isMajor: false,
+      );
+    case 'tham quan':
+    default:
+      return const _CategoryVisual(
+        icon: Icons.explore_outlined,
+        color: Color(0xFF008F6A),
+        bgColor: Color(0xFFE6F6F0),
+        lineColor: Color(0xFF34D399),
+        isMajor: true,
+      );
+  }
 }
 
 String _activityDuration(Map<String, dynamic> activity) {

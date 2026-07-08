@@ -206,16 +206,16 @@ class _LoginPanel extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            // Email
-            Align(
+            // Username (chấp nhận username, email hoặc số điện thoại)
+            const Align(
               alignment: Alignment.centerLeft,
-              child: const Text('Email hoặc số điện thoại', style: LoginScreenStyles.inputLabel),
+              child: Text('Tên đăng nhập', style: LoginScreenStyles.inputLabel),
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: usernameController,
               decoration: LoginScreenStyles.inputDecoration(
-                hint: 'Nhập email hoặc số điện thoại',
+                hint: 'Nhập tên đăng nhập, email hoặc số điện thoại',
                 prefixIcon: Icons.person_outline,
               ),
               validator: (value) {
