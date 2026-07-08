@@ -23,9 +23,9 @@ public sealed class SemanticKernelTravelOrchestrator(
         CancellationToken ct)
     {
         var systemPrompt = """
-            Ban la AI Travel Companion. Hay giai thich ngan gon bang tieng Viet.
-            Ban phai dua tren du lieu tool context: destinations, weather, route, memory.
-            Khong noi chung chung. Tap trung vao ly do chon lich trinh, ngan sach, thoi tiet va tuyen duong.
+            Bạn là một trợ lý du lịch AI (Travel Companion). Hãy giải thích ngắn gọn bằng tiếng Việt (có dấu đầy đủ).
+            Bạn phải dựa trên dữ liệu công cụ (tool context): điểm đến (destinations), thời tiết (weather), tuyến đường (route), và sở thích (memory).
+            Không nói chung chung. Tập trung vào lý do chọn lịch trình, ngân sách, thời tiết và tuyến đường đã được thiết lập.
             """;
 
         var payload = new

@@ -54,12 +54,12 @@ class TripRouteAnalysis {
   bool get needsTransportChange => transferCount > 0;
 
   String get convenienceLevel {
-    if (legs.length >= 4 || transferCount >= 3) return 'Phuc tap';
-    if (legs.length == 3 || transferCount == 2) return 'Trung binh';
-    return 'Thuan tien';
+    if (legs.length >= 4 || transferCount >= 3) return 'Phức tạp';
+    if (legs.length == 3 || transferCount == 2) return 'Trung bình';
+    return 'Thuận tiện';
   }
 
-  String get convenienceBadge => 'Do thuan tien: $convenienceLevel';
+  String get convenienceBadge => 'Độ thuận tiện: $convenienceLevel';
 
   String get routeStrategy {
     final hasLongFlight = legs.any(
@@ -71,47 +71,47 @@ class TripRouteAnalysis {
           leg.recommendedMode == TransportMode.car ||
           leg.recommendedMode == TransportMode.coach,
     );
-    if (hasLongFlight && optimizedHours <= 8) return 'Nhanh nhat';
-    if (roadOnly && estimatedRouteCostVnd < 900000) return 'Tiet kiem nhat';
-    return 'Can bang thoi gian va chi phi';
+    if (hasLongFlight && optimizedHours <= 8) return 'Nhanh nhất';
+    if (roadOnly && estimatedRouteCostVnd < 900000) return 'Tiết kiệm nhất';
+    return 'Cân bằng thời gian và chi phí';
   }
 
   List<String> get aiBadges => [
-        if (isConstraintOptimalRoute) 'AI de xuat',
+        if (isConstraintOptimalRoute) 'AI đề xuất',
         routeStrategy,
         convenienceBadge,
       ];
 
   List<String> get importantNotes {
     final notes = <String>[];
-    if (hasFlightLeg) notes.add('Nen dat ve may bay truoc 7-14 ngay.');
+    if (hasFlightLeg) notes.add('Nên đặt vé máy bay trước 7-14 ngày.');
     if (hasFerryLeg) {
-      notes.add('Can kiem tra lich tau/pha truoc khi khoi hanh.');
+      notes.add('Cần kiểm tra lịch tàu/phà trước khi khởi hành.');
     }
     if (optimizedHours >= 8) {
-      notes.add('Chuyen di dai, nen co thoi gian nghi giua duong.');
+      notes.add('Chuyến đi dài, nên có thời gian nghỉ giữa đường.');
     }
     if (legs.any((leg) => leg.recommendedMode == TransportMode.coach && leg.distanceKm > 250)) {
-      notes.add('Chang duong bo dai co the bi anh huong boi un tac.');
+      notes.add('Chặng đường bộ dài có thể bị ảnh hưởng bởi ùn tắc.');
     }
     return notes.take(3).toList();
   }
 
   String get aiRecommendation {
     final sentences = <String>[
-      'Phuong tien kha dung duoc backend xac dinh tu du lieu transport hub va route.',
+      'Phương tiện đã được AI tính toán tự động dựa trên khoảng cách và các nhà ga/sân bay.',
     ];
     if (hasFlightLeg) {
-      sentences.add('Chang bay giup rut ngan thoi gian cho tuyen dai.');
+      sentences.add('Chặng bay giúp rút ngắn thời gian cho tuyến dài.');
     } else if (hasFerryLeg) {
-      sentences.add('Chang pha/tau cao toc can theo lich van hanh thuc te.');
-    } else if (convenienceLevel == 'Thuan tien') {
-      sentences.add('Lo trinh it trung chuyen va de thuc hien.');
+      sentences.add('Chặng phà/tàu cao tốc cần theo lịch vận hành thực tế.');
+    } else if (convenienceLevel == 'Thuận tiện') {
+      sentences.add('Lộ trình ít trung chuyển và dễ thực hiện.');
     } else {
-      sentences.add('Lo trinh can can bang giua thoi gian, chi phi va trung chuyen.');
+      sentences.add('Lộ trình cần cân bằng giữa thời gian, chi phí và trung chuyển.');
     }
     if (needsTransportChange) {
-      sentences.add('Nen chua thoi gian noi chuyen giua cac chang.');
+      sentences.add('Nên chừa thời gian nối chuyến giữa các chặng.');
     }
     return sentences.take(3).join(' ');
   }
@@ -154,7 +154,7 @@ class TripRouteAnalysis {
           to: to,
           distanceKm: distance,
           recommendedMode: TransportMode.car,
-          reason: 'Dang cho backend phan tich phuong tien kha dung.',
+          reason: 'Đang chờ AI phân tích phương tiện khả dụng.',
         ),
       );
       current = to;

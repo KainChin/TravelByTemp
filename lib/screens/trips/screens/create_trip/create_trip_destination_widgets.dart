@@ -14,22 +14,23 @@ class _EmptyDestinationAnswer extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF7FAF8),
+          color: _AiInterviewViewState._primarySoft.withOpacity(0.4),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _AiInterviewViewState._line),
+          border: Border.all(color: _AiInterviewViewState._primary.withOpacity(0.2)),
         ),
         child: const Row(
           children: [
-            Icon(Icons.travel_explore, color: _AiInterviewViewState._primary, size: 30),
-            SizedBox(width: 12),
+            Icon(Icons.travel_explore, color: _AiInterviewViewState._primary, size: 28),
+            SizedBox(width: 14),
             Expanded(
               child: Text(
                 'Chọn điểm đến hoặc thêm nhiều chặng để tối ưu tuyến đường.',
                 style: TextStyle(
                   color: _AiInterviewViewState._ink,
-                  height: 1.35,
+                  fontSize: 13,
+                  height: 1.4,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -62,15 +63,26 @@ class _DestinationAnswerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasError = error != null;
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: error == null ? _AiInterviewViewState._line : const Color(0xFFFFC9B8),
+          color: hasError
+              ? _AiInterviewViewState._accent.withOpacity(0.6)
+              : _AiInterviewViewState._line.withOpacity(0.6),
+          width: hasError ? 1.5 : 1,
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x051A1F36),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,18 +90,19 @@ class _DestinationAnswerCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _AiInterviewViewState._primarySoft,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '${index + 1}',
                   style: const TextStyle(
                     color: _AiInterviewViewState._primary,
                     fontWeight: FontWeight.w900,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -105,15 +118,17 @@ class _DestinationAnswerCard extends StatelessWidget {
                       style: const TextStyle(
                         color: _AiInterviewViewState._ink,
                         fontWeight: FontWeight.w900,
+                        fontSize: 15,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       item.destination.region,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _AiInterviewViewState._muted,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -122,11 +137,17 @@ class _DestinationAnswerCard extends StatelessWidget {
               ),
               IconButton(
                 onPressed: onRemove,
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(Icons.close_rounded, size: 20),
+                color: _AiInterviewViewState._muted,
+                style: IconButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(36, 36),
+                  backgroundColor: _AiInterviewViewState._line.withOpacity(0.2),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _DestinationDateStrip(
             start: item.startDate,
             end: item.endDate,
@@ -134,25 +155,36 @@ class _DestinationAnswerCard extends StatelessWidget {
             onPickStart: onPickStartDate,
             onPickEnd: onPickEndDate,
           ),
-          if (error != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.info_outline, size: 16, color: _AiInterviewViewState._accent),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    error!,
-                    style: const TextStyle(
-                      color: _AiInterviewViewState._accent,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w800,
+          if (hasError) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: _AiInterviewViewState._accent.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: _AiInterviewViewState._accent,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      error!,
+                      style: const TextStyle(
+                        color: _AiInterviewViewState._accent,
+                        fontSize: 11,
+                        height: 1.4,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ],
@@ -179,11 +211,11 @@ class _DestinationDateStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FAF8),
+        color: _AiInterviewViewState._line.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _AiInterviewViewState._line),
+        border: Border.all(color: _AiInterviewViewState._line.withOpacity(0.4)),
       ),
       child: Row(
         children: [
@@ -198,7 +230,7 @@ class _DestinationDateStrip extends StatelessWidget {
             alignment: Alignment.center,
             child: const Icon(
               Icons.arrow_forward_rounded,
-              size: 18,
+              size: 16,
               color: _AiInterviewViewState._muted,
             ),
           ),
@@ -212,11 +244,15 @@ class _DestinationDateStrip extends StatelessWidget {
           IconButton(
             onPressed: onPickRange,
             tooltip: 'Chọn khoảng ngày',
-            icon: const Icon(Icons.edit_calendar_outlined),
+            icon: const Icon(Icons.edit_calendar_outlined, size: 20),
             color: _AiInterviewViewState._primary,
             style: IconButton.styleFrom(
               backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(40, 40),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shadowColor: Colors.black.withOpacity(0.04),
+              elevation: 1,
             ),
           ),
         ],
@@ -224,7 +260,6 @@ class _DestinationDateStrip extends StatelessWidget {
     );
   }
 }
-
 
 class _DateMiniCard extends StatelessWidget {
   const _DateMiniCard({
@@ -244,17 +279,24 @@ class _DateMiniCard extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _AiInterviewViewState._line),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _AiInterviewViewState._line.withOpacity(0.4)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x02000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Icon(icon, size: 17, color: _AiInterviewViewState._primary),
+              Icon(icon, size: 15, color: _AiInterviewViewState._primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -266,18 +308,18 @@ class _DateMiniCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _AiInterviewViewState._muted,
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       value,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _AiInterviewViewState._ink,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w900,
                       ),
                     ),

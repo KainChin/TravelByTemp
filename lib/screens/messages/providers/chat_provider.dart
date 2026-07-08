@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/chat_message.dart';
 import '../models/chat_history_item.dart';
@@ -10,7 +12,9 @@ import '../services/chat_service.dart';
 /// typing flags, and the [sendMessage] use case. Backed by [ChatService],
 /// which is the only class allowed to perform network calls.
 class ChatProvider extends ChangeNotifier {
-  ChatProvider({ChatService? chatService}) : _chatService = chatService ?? ChatService();
+  ChatProvider({ChatService? chatService}) : _chatService = chatService ?? ChatService() {
+    _loadFromStorage();
+  }
 
   final ChatService _chatService;
 
@@ -33,6 +37,33 @@ class ChatProvider extends ChangeNotifier {
 
   final List<ChatHistoryItem> _history = [];
   List<ChatHistoryItem> get history => List.unmodifiable(_history);
+
+  Future<void> _loadFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('chat_history_v2'); // use v2 to avoid conflicts
+      if (jsonStr != null) {
+        final List<dynamic> jsonList = jsonDecode(jsonStr);
+        _history.clear();
+        for (var itemJson in jsonList) {
+          _history.add(ChatHistoryItem.fromJson(itemJson));
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading chat history: $e');
+    }
+  }
+
+  Future<void> _saveToStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = _history.map((h) => h.toJson()).toList();
+      await prefs.setString('chat_history_v2', jsonEncode(jsonList));
+    } catch (e) {
+      debugPrint('Error saving chat history: $e');
+    }
+  }
 
   /// Adds the initial AI greeting using the logged-in user's name.
   /// Call once, right after the provider is created — does nothing if the
@@ -79,6 +110,8 @@ class ChatProvider extends ChangeNotifier {
       } else {
         _history.insert(0, item);
       }
+      
+      _saveToStorage();
     }
   }
 
@@ -155,6 +188,7 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _isTyping = false;
+      _saveCurrentSession(); // Save after message is sent
       notifyListeners();
     }
   }
@@ -202,6 +236,7 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _isTyping = false;
+      _saveCurrentSession(); // Save after image message is sent
       notifyListeners();
     }
   }

@@ -17,7 +17,7 @@ class _AiBubble extends StatelessWidget {
           height: 36,
           decoration: BoxDecoration(
             color: _AiInterviewViewState._primarySoft,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(
             Icons.auto_awesome,
@@ -28,23 +28,31 @@ class _AiBubble extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
-              border: Border.all(color: _AiInterviewViewState._line),
+              border: Border.all(color: _AiInterviewViewState._line.withOpacity(0.5)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x041A1F36),
+                  blurRadius: 12,
+                  offset: Offset(0, 6),
+                ),
+              ],
             ),
             child: Text(
               text,
               style: const TextStyle(
                 color: _AiInterviewViewState._ink,
-                height: 1.4,
-                fontWeight: FontWeight.w700,
+                height: 1.45,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -61,6 +69,7 @@ class _QuestionBlock extends StatelessWidget {
     required this.subtitle,
     required this.child,
     this.trailing,
+    this.imagePath,
   });
 
   final String step;
@@ -68,71 +77,101 @@ class _QuestionBlock extends StatelessWidget {
   final String subtitle;
   final Widget child;
   final String? trailing;
+  final String? imagePath;
 
   @override
   Widget build(BuildContext context) {
     return _Surface(
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _AiInterviewViewState._primarySoft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  step,
-                  style: const TextStyle(
-                    color: _AiInterviewViewState._primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            flex: 7, // 70% width for the content
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._ink,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
+                    Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _AiInterviewViewState._primarySoft,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        step,
+                        style: const TextStyle(
+                          color: _AiInterviewViewState._primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: _AiInterviewViewState._muted,
-                        fontSize: 12,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          color: _AiInterviewViewState._ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
+                    if (trailing != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _AiInterviewViewState._primarySoft,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          trailing!,
+                          style: const TextStyle(
+                            color: _AiInterviewViewState._primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-              if (trailing != null)
+                const SizedBox(height: 8),
                 Text(
-                  trailing!,
+                  subtitle,
                   style: const TextStyle(
-                    color: _AiInterviewViewState._primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    color: _AiInterviewViewState._muted,
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-            ],
+                const SizedBox(height: 20),
+                child,
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          child,
+          if (imagePath != null) ...[
+            const SizedBox(width: 32),
+            Expanded(
+              flex: 3, // 30% width for the image
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 180), // Prevent image from getting too tall on very wide screens
+                alignment: Alignment.topRight,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    imagePath!,
+                    fit: BoxFit.contain, // Shows the full image without cropping
+                  ),
+                ),
+              ),
+            ),
+          ]
         ],
       ),
     );
@@ -167,18 +206,24 @@ class _ChoiceWrap extends StatelessWidget {
           showCheckmark: multi,
           selectedColor: _AiInterviewViewState._primarySoft,
           backgroundColor: Colors.white,
+          elevation: isSelected ? 1 : 0,
+          pressElevation: 2,
+          shadowColor: _AiInterviewViewState._primary.withOpacity(0.1),
           side: BorderSide(
             color: isSelected
                 ? _AiInterviewViewState._primary
-                : _AiInterviewViewState._line,
+                : _AiInterviewViewState._line.withOpacity(0.8),
+            width: isSelected ? 1.5 : 1,
           ),
           labelStyle: TextStyle(
             color: isSelected
                 ? _AiInterviewViewState._primary
                 : _AiInterviewViewState._ink,
-            fontWeight: FontWeight.w900,
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           onSelected: (_) => onSelected(value),
         );
       }).toList(),
@@ -195,11 +240,19 @@ class _Surface extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _AiInterviewViewState._line),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 24,
+            offset: Offset(0, 12),
+          ),
+        ],
       ),
       child: child,
     );

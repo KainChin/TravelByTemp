@@ -4,6 +4,7 @@ library create_trip_screen;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:assignment/core/widgets/safe_network_image.dart';
 
 import '../models/destination.dart';
@@ -13,6 +14,7 @@ import '../widgets/destination_picker_sheet.dart';
 import '../widgets/people_counter.dart';
 import 'trip_itinerary_history_screen.dart';
 import 'trip_route_analysis_screen.dart';
+import 'trip_planning/trip_tokens.dart';
 
 part 'create_trip/create_trip_hero.dart';
 part 'create_trip/create_trip_question_widgets.dart';
@@ -33,22 +35,20 @@ class CreateTripScreen extends StatelessWidget {
 class _AiInterviewView extends StatefulWidget {
   const _AiInterviewView();
 
-  @override
   State<_AiInterviewView> createState() => _AiInterviewViewState();
 }
 
 class _AiInterviewViewState extends State<_AiInterviewView> {
-  static const _bg = Color(0xFFF5F7F4);
-  static const _ink = Color(0xFF15221D);
-  static const _muted = Color(0xFF6E7A74);
-  static const _primary = Color(0xFF008F6A);
-  static const _primarySoft = Color(0xFFE6F6F0);
-  static const _line = Color(0xFFE2E8E4);
-  static const _accent = Color(0xFFFF8A5B);
+  static const _bg = Colors.white;
+  static const _ink = Color(0xFF1A1F36); // Dark color for text
+  static const _muted = Color(0xFF6B7280); // Gray color for subtitles
+  static const _primary = kTripPrimary;
+  static const _primarySoft = Color(0xFFE8F5EF);
+  static const _line = kTripLine;
+  static const _accent = kTripCoral;
 
   String _travelGroup = 'friends';
   final Set<String> _interests = {'Thiên nhiên', 'Ẩm thực'};
-  final TextEditingController _specialRequestController = TextEditingController();
 
   @override
   void initState() {
@@ -60,7 +60,6 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
 
   @override
   void dispose() {
-    _specialRequestController.dispose();
     super.dispose();
   }
 
@@ -227,7 +226,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
           budgetPerPerson: form.budgetPerPerson,
           travelGroup: _travelGroupLabel,
           interests: _interests.toList(),
-          specialRequest: _specialRequestController.text.trim(),
+          specialRequest: '',
         ),
       ),
     );
@@ -275,7 +274,10 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 118),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _HeroInterviewCard(progress: progress),
+                  _HeroInterviewCard(progress: progress)
+                      .animate()
+                      .fade(duration: 400.ms)
+                      .slideY(begin: 0.15, end: 0, curve: Curves.easeOutQuad),
                   const SizedBox(height: 18),
                   if (DateTime.now().millisecondsSinceEpoch < 0) _AiBubble(
                     text:
@@ -286,6 +288,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                     step: '01',
                     title: 'Bạn đã có điểm đến chưa?',
                     subtitle: 'Chọn một hoặc nhiều điểm đến cho chuyến đi.',
+                    imagePath: 'assets/images/1.jpg',
                     child: Column(
                       children: [
                         if (form.selectedDestinations.isEmpty)
@@ -326,11 +329,16 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                         ),
                       ],
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fade(delay: 100.ms, duration: 400.ms)
+                      .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+                  const SizedBox(height: 14),
                   _QuestionBlock(
                     step: '02',
                     title: 'Bạn đi với ai?',
                     subtitle: 'Lịch trình sẽ được điều chỉnh theo nhịp đi của nhóm.',
+                    imagePath: 'assets/images/2.jpg',
                     child: _ChoiceWrap(
                       values: const ['solo', 'couple', 'family', 'friends'],
                       selected: {_travelGroup},
@@ -348,12 +356,16 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                       },
                       onSelected: _setTravelGroup,
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fade(delay: 200.ms, duration: 400.ms)
+                      .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
                   const SizedBox(height: 14),
                   _QuestionBlock(
                     step: '03',
                     title: 'Bạn thích kiểu du lịch nào?',
                     subtitle: 'Có thể chọn nhiều sở thích.',
+                    imagePath: 'assets/images/3.jpg',
                     child: _ChoiceWrap(
                       values: const [
                         'Biển',
@@ -377,20 +389,27 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                         });
                       },
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fade(delay: 300.ms, duration: 400.ms)
+                      .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
                   const SizedBox(height: 14),
                   _QuestionBlock(
                     step: '04',
                     title: 'Tổng ngân sách chuyến đi',
                     subtitle: 'Đây là ngân sách tổng cho cả nhóm, không phải mỗi người.',
                     trailing: form.budgetLabel,
+                    imagePath: 'assets/images/4.jpg',
                     child: BudgetSlider(
                       amount: form.budgetPerPerson,
                       onChanged: (amount) {
                         context.read<TripFormProvider>().setBudgetPerPerson(amount);
                       },
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fade(delay: 400.ms, duration: 400.ms)
+                      .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
                   const SizedBox(height: 14),
                   if (_showsPeoplePicker) ...[
                     _QuestionBlock(
@@ -408,32 +427,12 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
                           },
                         ),
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fade(delay: 500.ms, duration: 400.ms)
+                        .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
                     const SizedBox(height: 14),
                   ],
-                  _QuestionBlock(
-                    step: _showsPeoplePicker ? '06' : '05',
-                    title: 'Yêu cầu đặc biệt',
-                    subtitle: 'Ví dụ: tránh đi bộ nhiều, có trẻ em, ăn chay, tránh mưa.',
-                    child: TextField(
-                      controller: _specialRequestController,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Ghi chú thêm cho chuyến đi...',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(18),
-                          borderSide: const BorderSide(color: _line),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(18),
-                          borderSide: const BorderSide(color: _line),
-                        ),
-                      ),
-                    ),
-                  ),
                 ]),
               ),
             ),
@@ -441,9 +440,20 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
         ),
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-        child: SizedBox(
-          height: 56,
+        minimum: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              if (form.canAnalyze)
+                BoxShadow(
+                  color: _primary.withValues(alpha: 0.4),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+            ],
+          ),
           child: ElevatedButton.icon(
             onPressed: form.canAnalyze ? _onAnalyzeTrip : null,
             icon: form.isAnalyzing
@@ -469,7 +479,7 @@ class _AiInterviewViewState extends State<_AiInterviewView> {
               disabledBackgroundColor: const Color(0xFFB8C7C0),
               elevation: 0,
               textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
             ),
           ),
         ),
