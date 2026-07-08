@@ -2,22 +2,52 @@
 part of saved_trip_detail_screen;
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
-const _bg          = Color(0xFFF8F9FA);
-const _ink         = Color(0xFF1A1F36);
-const _muted       = Color(0xFF6B7280);
-const _line        = Color(0xFFE5E7EB);
-const _indigo      = Color(0xFF4338CA);
-const _indigoLight = Color(0xFF818CF8);
-const _teal        = Color(0xFF0D9488);
-const _tealLight   = Color(0xFF5EEAD4);
-const _coral       = Color(0xFFF97316);
-const _green       = Color(0xFF10B981);
+// Brand: đồng bộ với saved_screen.dart (#16A34A xanh lá)
+const Color _bg          = Color(0xFFF7FBF8);
+const Color _ink         = Color(0xFF1A1F36);
+const Color _muted       = Color(0xFF6B7280);
+const Color _line        = Color(0xFFE5E7EB);
+const Color _primary     = Color(0xFF16A34A);
+const Color _primaryDark = Color(0xFF059669);
+const Color _primarySoft = Color(0xFFECFDF5);
+const Color _indigo      = Color(0xFF16A34A); // legacy alias → primary
+const Color _indigoLight = Color(0xFF34D399);
+const Color _teal        = Color(0xFF0D9488);
+const Color _tealLight   = Color(0xFF5EEAD4);
+const Color _coral       = Color(0xFFF97316);
+const Color _green       = Color(0xFF10B981);
+const Color _danger      = Color(0xFFE11D48);
 
-const _gradIndigo = LinearGradient(colors: [Color(0xFF4338CA), Color(0xFF6D28D9)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-const _gradTeal   = LinearGradient(colors: [Color(0xFF0D9488), Color(0xFF0891B2)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-const _gradBlue   = LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-const _gradRed    = LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFEF4444)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-const _gradHero   = LinearGradient(colors: [Color(0xFF0F172A), Color(0x881E293B), Color(0x00000000)], begin: Alignment.bottomCenter, end: Alignment.topCenter);
+const _gradPrimary = LinearGradient(
+  colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const _gradHero = LinearGradient(
+  colors: [Color(0xFF16A34A), Color(0xFF22C55E), Color(0xFF0891B2)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const _gradTeal = LinearGradient(
+  colors: [Color(0xFF0D9488), Color(0xFF0891B2)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const _gradBlue = LinearGradient(
+  colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const _gradRed = LinearGradient(
+  colors: [Color(0xFFE11D48), Color(0xFFE11D48)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const _gradOrange = LinearGradient(
+  colors: [Color(0xFFEA580C), Color(0xFFF59E0B)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
 
 // ─── Category helpers (used by State & part files) ────────────────────────────
 int _parseCost(Map<String, dynamic> a) {

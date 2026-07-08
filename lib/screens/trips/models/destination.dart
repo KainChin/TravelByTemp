@@ -7,6 +7,7 @@ class Destination {
     required this.longitude,
     this.highlight = '',
     this.distanceFromPreviousKm = 0,
+    this.landmassId,
   });
 
   final String id;
@@ -16,6 +17,13 @@ class Destination {
   final double longitude;
   final String highlight;
   final double distanceFromPreviousKm;
+  /// Vùng đất của điểm này. Nếu null sẽ tự detect qua [name] (xem
+  /// [landmassIdOrDefault]).
+  final String? landmassId;
+
+  /// Landmass resolve từ field hoặc tự detect theo tên.
+  String get landmassIdOrDefault =>
+      landmassId ?? Destination.defaultLandmassFor(name);
 
   Destination copyWith({
     String? id,
@@ -25,6 +33,7 @@ class Destination {
     double? longitude,
     String? highlight,
     double? distanceFromPreviousKm,
+    String? landmassId,
   }) {
     return Destination(
       id: id ?? this.id,
@@ -35,10 +44,40 @@ class Destination {
       highlight: highlight ?? this.highlight,
       distanceFromPreviousKm:
           distanceFromPreviousKm ?? this.distanceFromPreviousKm,
+      landmassId: landmassId ?? this.landmassId,
     );
   }
 
   Destination copyWithName(String value) => copyWith(name: value);
+
+  /// Heuristic landmass detection theo tên. Kết quả dùng được cho
+  /// route analysis – nếu cần độ chính xác cao hơn, đặt [landmassId] từ API.
+  static String defaultLandmassFor(String name) {
+    final lower = name.toLowerCase().trim();
+    if (lower.isEmpty) return 'mainland';
+    if (lower.contains('phú quốc') || lower.contains('phu quoc')) {
+      return 'phuQuoc';
+    }
+    if (lower.contains('côn đảo') || lower.contains('con dao')) {
+      return 'conDao';
+    }
+    const smallIslands = [
+      'lý sơn', 'ly son',
+      'phú quý', 'phu quy',
+      'nam du',
+      'cù lao chàm', 'cu lao cham',
+      'bình hưng', 'binh hung',
+      'bình ba', 'binh ba',
+      'cô tô', 'co to',
+      'quan lạn', 'quan lan',
+      'minh châu', 'minh chau',
+      'ngọc vừng', 'ngoc vung',
+    ];
+    for (final s in smallIslands) {
+      if (lower.contains(s)) return 'smallIsland';
+    }
+    return 'mainland';
+  }
 
   /// Whether this destination is an island that can only be reached by
   /// ferry or flight (no road connection to the mainland).
@@ -56,6 +95,17 @@ class Destination {
     return _islandNames.contains(lower);
   }
 
+  /// Whether this destination is a coastal city with ferry/port access.
+  bool get isCoastalCity => Destination.isCoastalCityName(name);
+
+  /// Heuristic coastal city detection based on the place name.
+  /// Covers major Vietnamese coastal cities and port cities.
+  static bool isCoastalCityName(String name) {
+    final lower = name.toLowerCase().trim();
+    if (lower.isEmpty) return false;
+    return _coastalCityNames.contains(lower);
+  }
+
   static const Set<String> _islandNames = {
     'phú quốc', 'phu quoc',
     'côn đảo', 'con dao',
@@ -70,6 +120,44 @@ class Destination {
     'quan lạn', 'quan lan',
     'minh châu', 'minh chau',
     'ngọc vừng', 'ngoc vung',
+  };
+
+  static const Set<String> _coastalCityNames = {
+    // Bắc Bộ
+    'hải phòng', 'hai phong',
+    'hạ long', 'ha long', 'quảng ninh', 'quang ninh',
+    // Bắc Trung Bộ
+    'thanh hóa', 'thanh hoa',
+    'nghệ an', 'nghe an', 'vinh',
+    'hà tĩnh', 'ha tinh',
+    'quảng bình', 'quang binh', 'đồng hới', 'dong hoi',
+    'quảng trị', 'quang tri', 'đông hà', 'dong ha',
+    'thừa thiên huế', 'thua thien hue', 'huế', 'hue',
+    'đà nẵng', 'da nang',
+    // Nam Trung Bộ
+    'quảng nam', 'quang nam', 'hội an', 'hoi an',
+    'quảng ngãi', 'quang ngai',
+    'bình định', 'binh dinh', 'quy nhơn', 'quy nhon',
+    'phú yên', 'phu yen', 'tuy hòa', 'tuy hoa',
+    'khánh hòa', 'khanh hoa', 'nha trang', 'cam ranh',
+    // Tây Nguyên (không ven biển - skip)
+    // Nam Bộ
+    'bình thuận', 'binh thuan', 'phan thiết', 'phan thiet',
+    'bà rịa vũng tàu', 'ba ria vung tau', 'vũng tàu', 'vung tau',
+    'hồ chí minh', 'ho chi minh', 'tp.hcm', 'tp hcm', 'sài gòn', 'sai gon',
+    // Đồng bằng sông Cửu Long
+    'cần thơ', 'can tho',
+    'sóc trăng', 'soc trang',
+    'bạc liêu', 'bac lieu',
+    'cà mau', 'ca mau',
+    'tiền giang', 'tien giang', 'mỹ tho', 'my tho',
+    'bến tre', 'ben tre',
+    'trà vinh', 'tra vinh',
+    'vĩnh long', 'vinh long',
+    'đồng tháp', 'dong thap', 'cao lãnh', 'cao lanh',
+    'an giang', 'long xuyên', 'long xuyen',
+    'kiên giang', 'kien giang', 'rạch giá', 'rach gia',
+    'hậu giang', 'hau giang',
   };
 }
 

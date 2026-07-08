@@ -2,6 +2,18 @@
 
 part of trip_route_analysis_screen;
 
+double _totalTransportCostPerGroup(TripRouteAnalysis analysis, int peopleCount) {
+  return analysis.legs.fold(0.0, (sum, leg) {
+    final mode = leg.recommendedMode;
+    if (mode == TransportMode.flight ||
+        mode == TransportMode.ferry ||
+        mode == TransportMode.motorbike) {
+      return sum + leg.estimatedCostVnd * peopleCount;
+    }
+    return sum + leg.estimatedCostVnd;
+  });
+}
+
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.analysis,
@@ -15,7 +27,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalTransportCost = analysis.estimatedRouteCostVnd * peopleCount;
+    final totalTransportCost = _totalTransportCostPerGroup(analysis, peopleCount);
     final budgetUsage = budgetTotal <= 0 ? 0.0 : totalTransportCost / budgetTotal * 100;
 
     return _Panel(

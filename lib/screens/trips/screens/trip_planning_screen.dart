@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
+import 'package:assignment/core/widgets/vietai_scope.dart';
+import 'package:assignment/models/auth_session.dart';
 
 import 'create_trip_screen.dart';
 import 'trip_itinerary_history_screen.dart';
-import 'trip_planning/trip_tokens.dart';
-import 'trip_planning/trip_shared_widgets.dart';
-import 'trip_planning/trip_hero_card.dart';
-import 'trip_planning/trip_search_bar.dart';
-import 'trip_planning/trip_quick_actions.dart';
-import 'trip_planning/trip_ai_insight_card.dart';
 import 'trip_planning/trip_recent_section.dart';
-import 'trip_planning/trip_inspiration_card.dart';
 
+/// Trang chính "Tạo chuyến đi" trong app. Đồng bộ style với
+/// `CreateTripScreen` (cùng `_bg`, `_ink`, `_primary`) — tối ưu cho mobile,
+/// có tỉ lệ rõ ràng trên desktop.
 class TripPlanningScreen extends StatelessWidget {
   const TripPlanningScreen({super.key});
+
+  // ─── Palette — đồng bộ với create_trip_screen / result screen ────────────────
+  static const _bg = Color(0xFFF5F7F4);
+  static const _ink = Color(0xFF15221D);
+  static const _muted = Color(0xFF6E7A74);
+  static const _primary = Color(0xFF008F6A);
+  static const _primarySoft = Color(0xFFE6F6F0);
 
   void _goCreate(BuildContext ctx) => Navigator.push(
         ctx,
@@ -25,451 +32,330 @@ class TripPlanningScreen extends StatelessWidget {
         MaterialPageRoute(builder: (_) => const TripItineraryHistoryScreen()),
       );
 
+  AuthUser? _currentUser(BuildContext context) {
+    return VietaiScope.of(context).auth?.user;
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 5) return 'Chúc bạn ngủ ngon';
+    if (hour < 11) return 'Chào buổi sáng';
+    if (hour < 14) return 'Chào buổi trưa';
+    if (hour < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hPad = tripHPadding(context);
+    final user = _currentUser(context);
+    final displayName = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName.trim()
+        : (user?.username ?? 'bạn');
 
     return Scaffold(
-      backgroundColor: kTripBg,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          _buildAppBar(context),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 32),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _responsive(
-                  context,
-                  child: tripIsDesktop(context)
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _HomeMainContent(
-                                onCreate: () => _goCreate(context),
-                                onHistory: () => _goHistory(context),
-                              ),
-                            ),
-                            const SizedBox(width: 28),
-                            SizedBox(
-                              width: 360,
-                              child: _HomeSidebar(
-                                onCreate: () => _goCreate(context),
-                              ),
-                            ),
-                          ],
-                        )
-                      : _HomeMainContent(
-                          onCreate: () => _goCreate(context),
-                          onHistory: () => _goHistory(context),
-                        ),
+      backgroundColor: _bg,
+      body: SafeArea(
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            _buildAppBar(context, user),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate.fixed([
+                  _HeroGreeting(
+                    greeting: _greeting(),
+                    name: displayName,
+                    onCreate: () => _goCreate(context),
+                    onHistory: () => _goHistory(context),
+                  )
+                      .animate()
+                      .fadeIn(duration: 500.ms)
+                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOut),
+                  const SizedBox(height: 18),
+                  const _StatsRow()
+                      .animate()
+                      .fadeIn(delay: 80.ms, duration: 500.ms)
+                      .slideY(begin: 0.06, end: 0, curve: Curves.easeOut),
+                  const SizedBox(height: 22),
+                  const _SectionTitle('Khám phá nhanh'),
+                  SizedBox(height: 12),
+                  _QuickGrid(
+                    onCreate: () => _goCreate(context),
+                    onHistory: () => _goHistory(context),
+                  )
+                      .animate()
+                      .fadeIn(delay: 160.ms, duration: 500.ms)
+                      .slideY(begin: 0.06, end: 0, curve: Curves.easeOut),
+                  const SizedBox(height: 26),
+                  _SectionTitle(
+                    'Hành trình gần đây',
+                    action: 'Xem tất cả',
+                    onAction: () => _goHistory(context),
+                  ),
+                  const SizedBox(height: 12),
+                  TripRecentSection(onCreate: () => _goCreate(context))
+                      .animate()
+                      .fadeIn(delay: 240.ms, duration: 500.ms)
+                      .slideY(begin: 0.06, end: 0, curve: Curves.easeOut),
+                  const SizedBox(height: 24),
+                  const _TravelTipsCard()
+                      .animate()
+                      .fadeIn(delay: 320.ms, duration: 500.ms)
+                      .slideY(begin: 0.06, end: 0, curve: Curves.easeOut),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  SliverAppBar _buildAppBar(BuildContext context, AuthUser? user) {
+    final firstChar =
+        ((user?.fullName.isNotEmpty == true ? user!.fullName : (user?.username ?? '?'))
+                .trim()
+                .characters
+                .firstOrNull ?? 'T')
+            .toUpperCase();
+    return SliverAppBar(
+      pinned: true,
+      backgroundColor: _bg,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+      titleSpacing: 18,
+      title: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [_primary, Color(0xFF05B581)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(13),
+              boxShadow: [
+                BoxShadow(
+                  color: _primary.withValues(alpha: 0.28),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
                 ),
-              ]),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              firstChar,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Travel byTemp',
+            style: TextStyle(
+              color: _ink,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+              letterSpacing: -0.3,
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _responsive(BuildContext context, {required Widget child}) {
-    final maxW = tripMaxWidth(context);
-    if (maxW == double.infinity) return child;
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxW),
-        child: child,
-      ),
-    );
-  }
-
-  SliverAppBar _buildAppBar(BuildContext context) {
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: kTripBg,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      title: const Text(
-        'Trips',
-        style: TextStyle(
-          color: kTripInk,
-          fontWeight: FontWeight.w900,
-          fontSize: 22,
-        ),
-      ),
       actions: [
-        TripGradIconBtn(
-          icon: Icons.history_rounded,
-          gradient: kGradPrimary,
-          onTap: () => _goHistory(context),
+        IconButton(
+          tooltip: 'Lịch sử chuyến đi',
+          onPressed: () => _goHistory(context),
+          icon: const Icon(Icons.history_rounded, color: _ink),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 4),
       ],
     );
   }
 }
 
-class _HomeMainContent extends StatelessWidget {
-  const _HomeMainContent({
+// ─── Hero greeting with primary CTA ──────────────────────────────────────────
+class _HeroGreeting extends StatelessWidget {
+  const _HeroGreeting({
+    required this.greeting,
+    required this.name,
     required this.onCreate,
     required this.onHistory,
   });
 
+  final String greeting;
+  final String name;
   final VoidCallback onCreate;
   final VoidCallback onHistory;
 
+  static const _primary = TripPlanningScreen._primary;
+
   @override
   Widget build(BuildContext context) {
-    final showInlineInsight = !tripIsDesktop(context);
-    return Column(
+    return Stack(
       children: [
-        TripHeroCard(onCreate: onCreate)
-            .animate()
-            .fadeIn(duration: 600.ms)
-            .scale(begin: const Offset(0.97, 0.97), curve: Curves.easeOutBack),
-        const SizedBox(height: 16),
-        TripSearchBar(onTap: onCreate)
-            .animate()
-            .fadeIn(delay: 100.ms, duration: 500.ms)
-            .slideY(begin: 0.08, end: 0, curve: Curves.easeOut),
-        const SizedBox(height: 20),
-        TripQuickActions(onCreate: onCreate, onHistory: onHistory)
-            .animate()
-            .fadeIn(delay: 180.ms, duration: 500.ms)
-            .slideY(begin: 0.08, end: 0, curve: Curves.easeOut),
-        if (showInlineInsight) ...[
-          const SizedBox(height: 24),
-          TripAiInsightCard(onCreate: onCreate)
-              .animate()
-              .fadeIn(delay: 260.ms, duration: 600.ms)
-              .slideY(begin: 0.08, end: 0, curve: Curves.easeOut),
-        ],
-        const SizedBox(height: 28),
-        TripSectionHeader(
-          title: 'Gan day',
-          action: 'Xem tat ca',
-          onAction: onHistory,
-        ).animate().fadeIn(delay: 340.ms),
-        const SizedBox(height: 14),
-        TripRecentSection(onCreate: onCreate)
-            .animate()
-            .fadeIn(delay: 400.ms, duration: 600.ms)
-            .slideY(begin: 0.08, end: 0, curve: Curves.easeOut),
-        const SizedBox(height: 28),
-        const TripSectionHeader(title: 'AI Recommendation')
-            .animate()
-            .fadeIn(delay: 460.ms),
-        const SizedBox(height: 14),
-        TripInspirationCard(onCreate: onCreate)
-            .animate()
-            .fadeIn(delay: 520.ms, duration: 600.ms)
-            .slideY(begin: 0.08, end: 0, curve: Curves.easeOut),
-      ],
-    );
-  }
-}
-
-class _HomeSidebar extends StatelessWidget {
-  const _HomeSidebar({required this.onCreate});
-
-  final VoidCallback onCreate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TripAiInsightCard(onCreate: onCreate)
-            .animate()
-            .fadeIn(delay: 220.ms, duration: 500.ms)
-            .slideX(begin: 0.04, end: 0, curve: Curves.easeOut),
-        const SizedBox(height: 16),
-        const _SidebarStatsCard(),
-        const SizedBox(height: 16),
-        const _SidebarWeatherCard(),
-        const SizedBox(height: 16),
-        const _SidebarListCard(
-          title: 'Trending Destinations',
-          icon: Icons.local_fire_department_rounded,
-          items: [
-            _SidebarListItem(
-              'Da Lat',
-              'Cool weather, +28% searches',
-              Icons.trending_up_rounded,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF008F6A), Color(0xFF05B581), Color(0xFF34D399)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            _SidebarListItem(
-              'Phu Quoc',
-              'Beach season, 4.8 rating',
-              Icons.beach_access_rounded,
-            ),
-            _SidebarListItem(
-              'Ha Giang',
-              'Popular 3-day routes',
-              Icons.terrain_rounded,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const _SidebarListCard(
-          title: 'Recent Activity',
-          icon: Icons.history_rounded,
-          items: [
-            _SidebarListItem(
-              'AI route checked',
-              '2 minutes ago',
-              Icons.auto_awesome_rounded,
-            ),
-            _SidebarListItem(
-              'Budget updated',
-              'Estimated saving 12%',
-              Icons.savings_rounded,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const _TravelTipCard(),
-      ],
-    );
-  }
-}
-
-class _SidebarStatsCard extends StatelessWidget {
-  const _SidebarStatsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SidebarCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _SidebarTitle(icon: Icons.insights_rounded, title: 'Quick Statistics'),
-          SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(child: _MetricTile(value: '92', label: 'AI score')),
-              SizedBox(width: 10),
-              Expanded(child: _MetricTile(value: '15%', label: 'Savings')),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF008F6A).withValues(alpha: 0.28),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
             ],
           ),
-          SizedBox(height: 10),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(child: _MetricTile(value: '4.8', label: 'Rating')),
-              SizedBox(width: 10),
-              Expanded(child: _MetricTile(value: '3N2D', label: 'Top trip')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarWeatherCard extends StatelessWidget {
-  const _SidebarWeatherCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SidebarCard(
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: kTripAmber.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFF59E0B)),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Weather Window',
-                  style: TextStyle(
-                    color: kTripInk,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Da Lat 18-24C, low rain risk',
-                  style: TextStyle(color: kTripMuted, fontSize: 12, height: 1.35),
-                ),
-              ],
-            ),
-          ),
-          const Text(
-            'Good',
-            style: TextStyle(
-              color: kTripPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarListCard extends StatelessWidget {
-  const _SidebarListCard({
-    required this.title,
-    required this.icon,
-    required this.items,
-  });
-
-  final String title;
-  final IconData icon;
-  final List<_SidebarListItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SidebarCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SidebarTitle(icon: icon, title: title),
-          const SizedBox(height: 12),
-          ...items.map((item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
+              Row(
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: kTripPrimary.withValues(alpha: 0.09),
-                      borderRadius: BorderRadius.circular(11),
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Icon(item.icon, size: 17, color: kTripPrimary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
+                        SizedBox(width: 5),
                         Text(
-                          item.title,
-                          style: const TextStyle(
-                            color: kTripInk,
-                            fontSize: 13,
+                          'AI Travel Planner',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: kTripMuted, fontSize: 11),
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarListItem {
-  const _SidebarListItem(this.title, this.subtitle, this.icon);
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-}
-
-class _TravelTipCard extends StatelessWidget {
-  const _TravelTipCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SidebarCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _SidebarTitle(icon: Icons.tips_and_updates_rounded, title: 'Travel Tip'),
-          SizedBox(height: 10),
-          Text(
-            'Book weekday departures for beach trips. AI usually finds lower fares and quieter hotels.',
-            style: TextStyle(color: kTripMuted, fontSize: 12, height: 1.45),
+              const SizedBox(height: 14),
+              Text(
+                '$greeting,',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w900,
+                  height: 1.15,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sẵn sàng cho chuyến đi tiếp theo? Hãy để AI gợi ý lịch trình phù hợp với bạn.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      child: InkWell(
+                        onTap: onCreate,
+                        borderRadius: BorderRadius.circular(18),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_location_alt_rounded, size: 18, color: _primary),
+                              SizedBox(width: 8),
+                              Text(
+                                'Tạo hành trình',
+                                style: TextStyle(
+                                  color: _primary,
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Material(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      onTap: onHistory,
+                      borderRadius: BorderRadius.circular(18),
+                      child: const Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Icon(Icons.history_rounded, size: 20, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: kTripPrimary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: kTripInk,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
+        ),
+        // Decorative blob — top-right
+        Positioned(
+          right: -30,
+          top: -30,
+          child: Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.08),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              color: kTripMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+        ),
+        Positioned(
+          right: 30,
+          bottom: -20,
+          child: Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.10),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarTitle extends StatelessWidget {
-  const _SidebarTitle({required this.icon, required this.title});
-
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 17, color: kTripPrimary),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: kTripInk,
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
           ),
         ),
       ],
@@ -477,29 +363,401 @@ class _SidebarTitle extends StatelessWidget {
   }
 }
 
-class _SidebarCard extends StatelessWidget {
-  const _SidebarCard({required this.child});
+// ─── Stats row (2 cards) ─────────────────────────────────────────────────────
+class _StatsRow extends StatelessWidget {
+  const _StatsRow();
 
-  final Widget child;
+  static const _primary = TripPlanningScreen._primary;
+  static const _primarySoft = TripPlanningScreen._primarySoft;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            icon: Icons.auto_awesome_motion_rounded,
+            iconColor: _primary,
+            iconBg: _primarySoft,
+            value: 'AI Planner',
+            label: 'Hành trình thông minh',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.savings_rounded,
+            iconColor: const Color(0xFFF59E0B),
+            iconBg: const Color(0xFFFEF3C7),
+            value: '~12%',
+            label: 'Tiết kiệm chi phí',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String value;
+  final String label;
+
+  static const _ink = TripPlanningScreen._ink;
+  static const _muted = TripPlanningScreen._muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8E4)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Quick Action grid (4 items) ─────────────────────────────────────────────
+class _QuickGrid extends StatelessWidget {
+  const _QuickGrid({required this.onCreate, required this.onHistory});
+
+  final VoidCallback onCreate;
+  final VoidCallback onHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _QuickTile(
+        icon: Icons.add_location_alt_rounded,
+        title: 'Tạo hành trình',
+        subtitle: 'AI lên lịch',
+        color: const Color(0xFF008F6A),
+        bg: const Color(0xFFE6F6F0),
+        onTap: onCreate,
+      ),
+      _QuickTile(
+        icon: Icons.history_rounded,
+        title: 'Lịch sử',
+        subtitle: 'Chuyến đã lưu',
+        color: const Color(0xFF0D9488),
+        bg: const Color(0xFFCCFBF1),
+        onTap: onHistory,
+      ),
+      _QuickTile(
+        icon: Icons.map_rounded,
+        title: 'Bản đồ',
+        subtitle: 'Xem tuyến đường',
+        color: const Color(0xFFF97316),
+        bg: const Color(0xFFFFEDD5),
+        onTap: onCreate,
+      ),
+      _QuickTile(
+        icon: Icons.tips_and_updates_rounded,
+        title: 'Mẹo hay',
+        subtitle: 'Từ cộng đồng',
+        color: const Color(0xFF8B5CF6),
+        bg: const Color(0xFFEDE9FE),
+        onTap: onCreate,
+      ),
+    ];
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      childAspectRatio: 2.45,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      children: items,
+    );
+  }
+}
+
+class _QuickTile extends StatelessWidget {
+  const _QuickTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.bg,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color bg;
+  final VoidCallback onTap;
+
+  static const _ink = TripPlanningScreen._ink;
+  static const _muted = TripPlanningScreen._muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8E4)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 21),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Section title ───────────────────────────────────────────────────────────
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title, {this.action, this.onAction});
+
+  final String title;
+  final String? action;
+  final VoidCallback? onAction;
+
+  static const _ink = TripPlanningScreen._ink;
+  static const _primary = TripPlanningScreen._primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: _primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            color: _ink,
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            letterSpacing: -0.1,
+          ),
+        ),
+        const Spacer(),
+        if (action != null)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onAction,
+              borderRadius: BorderRadius.circular(999),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Row(
+                  children: [
+                    Text(
+                      action!,
+                      style: const TextStyle(
+                        color: _primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.arrow_forward_rounded, size: 14, color: _primary),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─── Travel tips card ────────────────────────────────────────────────────────
+class _TravelTipsCard extends StatelessWidget {
+  const _TravelTipsCard();
+
+  static const _ink = TripPlanningScreen._ink;
+  static const _muted = TripPlanningScreen._muted;
+  static const _primary = TripPlanningScreen._primary;
+  static const _primarySoft = TripPlanningScreen._primarySoft;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _primarySoft,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: kTripLine),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x070F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+        border: Border.all(color: _primary.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF008F6A), Color(0xFF05B581)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: const Icon(Icons.tips_and_updates_rounded, color: Colors.white, size: 21),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Mẹo cho chuyến đi của bạn',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Đặt vé vào giữa tuần thường có giá rẻ hơn 15-25%. '
+                  'AI sẽ gợi ý những điểm đến phù hợp với ngân sách và sở thích của bạn.',
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      child: child,
     );
   }
 }

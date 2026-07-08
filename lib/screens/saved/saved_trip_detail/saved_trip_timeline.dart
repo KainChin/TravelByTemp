@@ -24,11 +24,42 @@ class _MiniTimetable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = activities.length;
     final items = activities.take(5).toList();
+    final hasMore = total > items.length;
     return _Card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const _SectionLabel(icon: Icons.schedule_rounded, label: 'Tóm tắt lịch nhanh'),
+        _SectionLabel(
+          icon: Icons.schedule_rounded,
+          label: 'Tóm tắt lịch nhanh',
+          trailing: hasMore
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _primarySoft,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Xem tất cả $total',
+                    style: const TextStyle(
+                      color: _primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                )
+              : null,
+        ),
         const SizedBox(height: 14),
+        if (items.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text('Chưa có hoạt động để tóm tắt.',
+                  style: TextStyle(color: _muted, fontSize: 13)),
+            ),
+          )
+        else
         ...items.asMap().entries.map((e) {
           final a = e.value;
           final isLast = e.key == items.length - 1;
@@ -67,6 +98,23 @@ class _MiniTimetable extends StatelessWidget {
             )),
           ]);
         }),
+        if (hasMore) ...[
+          const SizedBox(height: 6),
+          // Vạch phân cách mỏng + hint dạng pill ở footer
+          const Divider(height: 1, color: _line),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.arrow_downward_rounded, size: 14, color: _muted),
+              const SizedBox(width: 6),
+              Text(
+                'Còn ${total - items.length} hoạt động nữa ở "Lịch trình chi tiết" phía dưới',
+                style: const TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
       ]),
     );
   }
@@ -74,30 +122,123 @@ class _MiniTimetable extends StatelessWidget {
 
 // ─── Itinerary List ───────────────────────────────────────────────────────────
 class _ItineraryList extends StatelessWidget {
-  const _ItineraryList({required this.activities});
+  const _ItineraryList({
+    required this.activities,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
   final List<Map<String, dynamic>> activities;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onEdit;
+  final ValueChanged<int> onDelete;
 
   @override
   Widget build(BuildContext context) => _Card(
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const _SectionLabel(icon: Icons.list_alt_rounded, label: 'Lịch trình chi tiết'),
+      _SectionLabel(
+        icon: Icons.list_alt_rounded,
+        label: 'Lịch trình chi tiết',
+        trailing: _AddButton(onTap: onAdd),
+      ),
       const SizedBox(height: 14),
       if (activities.isEmpty)
         const _Empty()
       else
         ...activities.asMap().entries.map((e) =>
-            _ActivityRow(index: e.key, activity: e.value, isLast: e.key == activities.length - 1)),
+            _ActivityRow(
+              index: e.key,
+              activity: e.value,
+              isLast: e.key == activities.length - 1,
+              onEdit: () => onEdit(e.key),
+              onDelete: () => onDelete(e.key),
+            )),
     ]),
   );
 }
 
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            gradient: _gradPrimary,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: _primary.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 16),
+            SizedBox(width: 4),
+            Text('Thêm', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.index, required this.activity, required this.isLast});
+  const _ActivityRow({
+    required this.index,
+    required this.activity,
+    required this.isLast,
+    required this.onEdit,
+    required this.onDelete,
+  });
   final int index;
   final Map<String, dynamic> activity;
   final bool isLast;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   String get _fmtCost => _fmtAmount(_parseCost(activity));
+
+  Future<void> _showMenu(BuildContext context) async {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) {
+      onEdit();
+      return;
+    }
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) {
+      onEdit();
+      return;
+    }
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(Offset(box.size.width - 40, 30), ancestor: overlay),
+        box.localToGlobal(Offset(box.size.width, 30), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final choice = await showMenu<String>(
+      context: context,
+      position: position,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      items: const [
+        PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 10), Text('Chỉnh sửa')])),
+        PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18), SizedBox(width: 10), Text('Xóa', style: TextStyle(color: Colors.red))])),
+      ],
+    );
+    if (choice == 'edit') onEdit();
+    if (choice == 'delete') onDelete();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,31 +252,64 @@ class _ActivityRow extends StatelessWidget {
         Column(children: [
           Container(
             width: 34, height: 34, alignment: Alignment.center,
-            decoration: BoxDecoration(gradient: _gradIndigo, borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: _indigo.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]),
-            child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+            decoration: BoxDecoration(
+              gradient: _gradPrimary,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: _primary.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Text('${index + 1}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
           ),
-          if (!isLast) Container(width: 2, height: 26, margin: const EdgeInsets.symmetric(vertical: 4),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_indigo.withValues(alpha: 0.4), _indigo.withValues(alpha: 0.05)],
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter),
-                borderRadius: BorderRadius.circular(1),
-              )),
+          if (!isLast) Container(
+            width: 2,
+            height: 26,
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primary.withValues(alpha: 0.4), _primary.withValues(alpha: 0.05)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
         ]),
         const SizedBox(width: 12),
         Expanded(child: Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _line),
-              boxShadow: const [BoxShadow(color: Color(0x060F172A), blurRadius: 20, offset: Offset(0, 8))]),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFAFBFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _line, width: 1),
+          ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: _ink),
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-              const Icon(Icons.favorite_rounded, color: Color(0xFFF43F5E), size: 17),
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: _ink),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              GestureDetector(
+                onTap: () => _showMenu(context),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: _line.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.more_vert_rounded, size: 14, color: _muted),
+                ),
+              ),
             ]),
             const SizedBox(height: 6),
-            Wrap(spacing: 10, children: [
+            Wrap(spacing: 8, runSpacing: 4, children: [
               _MetaChip(icon: Icons.schedule_outlined, label: time, color: const Color(0xFF0EA5E9)),
               _MetaChip(icon: Icons.payments_outlined, label: _fmtCost, color: const Color(0xFFF59E0B)),
               if (dest.isNotEmpty) _MetaChip(icon: Icons.place_outlined, label: dest, color: _muted),

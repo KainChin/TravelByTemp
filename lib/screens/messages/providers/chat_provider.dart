@@ -26,6 +26,11 @@ class ChatProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  /// Đã gửi bao nhiêu request và backend trả lời bao nhiêu. Khác nhau →
+  /// request hiện đang chờ xử lý. UI có thể hiển thị nút "Hủy".
+  int _pendingRequests = 0;
+  bool get hasPendingRequest => _pendingRequests > 0;
+
   String _currentUserName = '';
   String get currentUserName => _currentUserName;
 
@@ -126,17 +131,17 @@ class ChatProvider extends ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isLoading) return;
 
-    _messages.add(
-      ChatMessage(
-        id: _generateId(),
-        message: trimmed,
-        sender: MessageSender.user,
-        timestamp: DateTime.now(),
-        isSent: true,
-      ),
+    final userMsg = ChatMessage(
+      id: _generateId(),
+      message: trimmed,
+      sender: MessageSender.user,
+      timestamp: DateTime.now(),
+      isSent: true,
     );
+    _messages.add(userMsg);
     _isLoading = true;
     _isTyping = true;
+    _pendingRequests++;
     _errorMessage = null;
     notifyListeners();
 
@@ -150,11 +155,15 @@ class ChatProvider extends ChangeNotifier {
           timestamp: DateTime.now(),
         ),
       );
+      _saveCurrentSession();
     } on ChatServiceException catch (e) {
       _errorMessage = e.message;
+    } catch (e) {
+      _errorMessage = 'Đã xảy ra lỗi không xác định: $e';
     } finally {
-      _isLoading = false;
-      _isTyping = false;
+      _pendingRequests = (_pendingRequests - 1).clamp(0, 1 << 30);
+      _isLoading = _pendingRequests > 0;
+      _isTyping = _pendingRequests > 0;
       notifyListeners();
     }
   }
@@ -180,6 +189,7 @@ class ChatProvider extends ChangeNotifier {
     );
     _isLoading = true;
     _isTyping = true;
+    _pendingRequests++;
     _errorMessage = null;
     notifyListeners();
 
@@ -197,11 +207,15 @@ class ChatProvider extends ChangeNotifier {
           timestamp: DateTime.now(),
         ),
       );
+      _saveCurrentSession();
     } on ChatServiceException catch (e) {
       _errorMessage = e.message;
+    } catch (e) {
+      _errorMessage = 'Đã xảy ra lỗi không xác định: $e';
     } finally {
-      _isLoading = false;
-      _isTyping = false;
+      _pendingRequests = (_pendingRequests - 1).clamp(0, 1 << 30);
+      _isLoading = _pendingRequests > 0;
+      _isTyping = _pendingRequests > 0;
       notifyListeners();
     }
   }
@@ -209,6 +223,26 @@ class ChatProvider extends ChangeNotifier {
   void clearChat() {
     _messages.clear();
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Hủy tất cả request AI đang chờ. User bấm "Dừng chờ" khi backend quá
+  /// chậm. Provider sẽ revert UI về trạng thái sẵn sàng nhận tin mới.
+  void cancelPending() {
+    if (_pendingRequests == 0) return;
+    _chatService.cancelAll();
+    _isLoading = false;
+    _isTyping = false;
+    _pendingRequests = 0;
+    _errorMessage = null;
+    _messages.add(
+      ChatMessage(
+        id: _generateId(),
+        message: '⏹ Đã dừng yêu cầu. Bạn có thể nhắn lại.',
+        sender: MessageSender.ai,
+        timestamp: DateTime.now(),
+      ),
+    );
     notifyListeners();
   }
 

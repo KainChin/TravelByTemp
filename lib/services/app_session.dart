@@ -58,7 +58,9 @@ class AppSession extends ChangeNotifier {
         ),
       );
       notifyListeners();
-      await loadSchedules();
+      // Load schedules ở background — không chặn splash/main.
+      // ignore: discarded_futures
+      loadSchedules();
     } catch (_) {
       await _clearStoredAuth(prefs);
     }
@@ -67,8 +69,12 @@ class AppSession extends ChangeNotifier {
   Future<void> login(String username, String password, {bool delayNotify = false}) async {
     final session = await api.login(username, password);
     await _applyAuthSession(session, delayNotify: delayNotify);
-    await refreshLocationAndWeather();
-    await loadSchedules();
+    // Load location, weather và schedules ở background để user vào app
+    // ngay, không phải đợi GPS lock + reverse geocode + backend schedule fetch.
+    // ignore: discarded_futures
+    refreshLocationAndWeather();
+    // ignore: discarded_futures
+    loadSchedules();
   }
 
   Future<void> register({
@@ -86,8 +92,10 @@ class AppSession extends ChangeNotifier {
       phone: phone,
     );
     await _applyAuthSession(session);
-    await refreshLocationAndWeather();
-    await loadSchedules();
+    // ignore: discarded_futures
+    refreshLocationAndWeather();
+    // ignore: discarded_futures
+    loadSchedules();
   }
 
   Future<BeginRegisterResult> beginRegister({
@@ -116,8 +124,10 @@ class AppSession extends ChangeNotifier {
       code: code,
     );
     await _applyAuthSession(session, delayNotify: delayNotify);
-    await refreshLocationAndWeather();
-    await loadSchedules();
+    // ignore: discarded_futures
+    refreshLocationAndWeather();
+    // ignore: discarded_futures
+    loadSchedules();
   }
 
   Future<void> resetPassword({
