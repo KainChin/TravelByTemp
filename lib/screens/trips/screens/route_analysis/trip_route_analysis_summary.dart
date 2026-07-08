@@ -29,7 +29,7 @@ class _SummaryCard extends StatelessWidget {
           _InfoRow(label: 'Tổng số chặng', value: '${analysis.legs.length} chặng'),
           _InfoRow(label: 'Số lần chuyển phương tiện', value: '${analysis.transferCount} lần'),
           _InfoRow(
-            label: 'Chi phí di chuyển dự kiến',
+            label: 'Chi phí di chuyển khứ hồi',
             value: BudgetTier.formatCurrency(totalTransportCost),
           ),
           _InfoRow(label: 'Tổng ngân sách nhóm', value: BudgetTier.formatCurrency(budgetTotal)),

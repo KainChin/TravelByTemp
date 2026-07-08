@@ -66,6 +66,34 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
 
   Future<void> _generateItinerary() async {
     if (_isGenerating) return;
+
+    // Hard stop if budget is exceeded, just in case they ignored the warning
+    if (_analysis.estimatedRouteCostVnd * 2 > widget.budgetPerPerson) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Vượt Quá Ngân Sách', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          content: const Text(
+            'Chi phí di chuyển khứ hồi ước tính đã vượt quá tổng ngân sách chuyến đi của bạn.\n\nVui lòng chọn lại phương tiện rẻ hơn (hoặc điều chỉnh lại ngân sách) để AI có thể thiết kế hành trình!',
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đã Hiểu', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     setState(() => _isGenerating = true);
     final token = VietaiScope.of(context).auth?.accessToken;
     final service = TripItineraryService(authToken: token);
@@ -203,7 +231,7 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
     ];
   }
 
-  void _changeLegMode(RouteLeg leg, TransportOption option) {
+  void _changeLegMode(RouteLeg leg, TransportOption option) async {
     final updated = _analysis.legs.map((item) {
       if (item.order != leg.order) return item;
       return item.copyWith(
@@ -220,7 +248,57 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
             .toList(),
       );
     }).toList();
-    setState(() => _analysis = _analysis.copyWith(legs: updated));
+    
+    final newAnalysis = _analysis.copyWith(legs: updated);
+    setState(() => _analysis = newAnalysis);
+
+    if (newAnalysis.estimatedRouteCostVnd * 2 > widget.budgetPerPerson) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Vượt Quá Ngân Sách', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          content: const Text(
+            'Chi phí di chuyển khứ hồi ước tính đã vượt quá tổng ngân sách chuyến đi của bạn.\n\nVui lòng chọn lại phương tiện rẻ hơn (hoặc điều chỉnh lại ngân sách) để AI có thể thiết kế hành trình!',
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đã hiểu', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } else if (newAnalysis.estimatedRouteCostVnd > widget.budgetPerPerson * 0.8) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Gợi Ý Tối Ưu Chi Phí', style: TextStyle(color: Colors.orange)),
+            ],
+          ),
+          content: const Text(
+            'Chi phí di chuyển đang chiếm hơn 80% tổng ngân sách chuyến đi của bạn. Điều này có thể khiến bạn không còn nhiều tiền cho việc ăn uống, khách sạn và vui chơi.\n\nBạn có muốn đổi sang phương tiện rẻ hơn để tối ưu chi phí không?',
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đã hiểu', style: TextStyle(color: Colors.grey)),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
 

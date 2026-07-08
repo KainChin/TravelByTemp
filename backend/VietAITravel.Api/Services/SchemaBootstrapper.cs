@@ -98,6 +98,86 @@ public static class SchemaBootstrapper
         """,
         "CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_user_favorites_destination_id ON user_favorites(destination_id)",
+        """
+        CREATE TABLE IF NOT EXISTS transport_configs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            key VARCHAR(100) NOT NULL UNIQUE,
+            value VARCHAR(500) NOT NULL,
+            description TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS transport_hubs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            code VARCHAR(50) NOT NULL UNIQUE,
+            name VARCHAR(200) NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            province VARCHAR(100),
+            region VARCHAR(100),
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            description TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS transport_routes (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            origin_hub_id UUID NOT NULL REFERENCES transport_hubs(id),
+            destination_hub_id UUID NOT NULL REFERENCES transport_hubs(id),
+            transport_type VARCHAR(50) NOT NULL,
+            estimated_duration_hours DOUBLE PRECISION NOT NULL,
+            estimated_cost_vnd DECIMAL(18, 2) NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(origin_hub_id, destination_hub_id, transport_type)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS trip_routes (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            departure_name VARCHAR(200) NOT NULL,
+            departure_latitude DOUBLE PRECISION NOT NULL,
+            departure_longitude DOUBLE PRECISION NOT NULL,
+            total_distance_km DOUBLE PRECISION NOT NULL,
+            optimized_hours DOUBLE PRECISION NOT NULL,
+            people_count INT NOT NULL,
+            budget_per_person DECIMAL(18, 2) NOT NULL,
+            has_flight_leg BOOLEAN NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS trip_route_legs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            trip_route_id UUID NOT NULL REFERENCES trip_routes(id) ON DELETE CASCADE,
+            leg_order INT NOT NULL,
+            from_name VARCHAR(200) NOT NULL,
+            to_name VARCHAR(200) NOT NULL,
+            to_region VARCHAR(100),
+            to_latitude DOUBLE PRECISION NOT NULL,
+            to_longitude DOUBLE PRECISION NOT NULL,
+            distance_km DOUBLE PRECISION NOT NULL,
+            duration_hours DOUBLE PRECISION NOT NULL,
+            recommended_mode VARCHAR(50) NOT NULL,
+            reason TEXT,
+            is_google_estimate BOOLEAN NOT NULL,
+            UNIQUE(trip_route_id, leg_order)
+        )
+        """,
+        """
+        INSERT INTO transport_configs (key, value, description) VALUES 
+        ('airportSearchRadiusKm', '80', 'Bán kính tìm sân bay gần nhất'),
+        ('recommendedFlightDistanceKm', '500', 'Quãng đường tối thiểu để đề xuất máy bay'),
+        ('shortFlightDistanceKm', '150', 'Quãng đường bay ngắn nhất cho phép'),
+        ('railSearchRadiusKm', '50', 'Bán kính tìm ga tàu'),
+        ('ferryPortSearchRadiusKm', '30', 'Bán kính tìm bến phà')
+        ON CONFLICT (key) DO NOTHING
+        """
     ];
 
     public static async Task EnsureContentSchemaAsync(AppDbContext db, ILogger logger, CancellationToken ct = default)

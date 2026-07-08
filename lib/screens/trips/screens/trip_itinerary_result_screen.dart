@@ -76,7 +76,8 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
   }
 
   Map<String, num> get _costBreakdown {
-    var transport = 0;
+    final baseTransport = (widget.itinerary['costBreakdown']?['transport'] as num?)?.toInt() ?? 0;
+    var transport = baseTransport;
     var food = 0;
     var stay = 0;
     var activities = 0;
@@ -141,6 +142,31 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
   }
 
   Future<void> _saveItinerary() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận lưu lịch trình'),
+        content: const Text('Bạn có muốn chỉnh sửa gì thêm cho lịch trình này không?\n\nNếu đã ưng ý, hãy chọn "Hoàn tất & Lưu" để chuyển sang danh sách đã lưu.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Chỉnh sửa thêm', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF43F5E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Hoàn tất & Lưu'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
     final itinerary = Map<String, dynamic>.from(widget.itinerary);
     if (widget.itineraryId != null) itinerary['itineraryId'] = widget.itineraryId;
     itinerary['days'] = _days;
@@ -330,6 +356,12 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
                           } else {
                             items[index] = next;
                           }
+                          // Sort activities chronologically by time (HH:mm)
+                          items.sort((a, b) {
+                            final ta = '${a['time'] ?? '00:00'}';
+                            final tb = '${b['time'] ?? '00:00'}';
+                            return ta.compareTo(tb);
+                          });
                           selected['activities'] = items;
                         });
                         Navigator.pop(context);
@@ -429,7 +461,7 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
         title: const Text('Chi tiết chuyến đi', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
-            tooltip: 'Luu hành trình',
+            tooltip: 'Lưu hành trình',
             onPressed: _saveItinerary,
             icon: const Icon(Icons.bookmark_add_outlined),
           ),

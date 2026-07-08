@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'itinerary.dart';
@@ -49,7 +50,30 @@ class ChatMessage {
       isSent: isSent ?? this.isSent,
       itinerary: itinerary ?? this.itinerary,
       imageBytes: imageBytes ?? this.imageBytes,
-      imageName: imageName ?? this.imageName,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'message': message,
+      'sender': sender.index,
+      'timestamp': timestamp.toIso8601String(),
+      'isSent': isSent,
+      'imageName': imageName,
+      if (imageBytes != null) 'imageBytes': base64Encode(imageBytes!),
+    };
+  }
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      id: json['id'] as String,
+      message: json['message'] as String,
+      sender: MessageSender.values[json['sender'] as int],
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      isSent: json['isSent'] as bool? ?? false,
+      imageName: json['imageName'] as String?,
+      imageBytes: json['imageBytes'] != null ? base64Decode(json['imageBytes'] as String) : null,
     );
   }
 }

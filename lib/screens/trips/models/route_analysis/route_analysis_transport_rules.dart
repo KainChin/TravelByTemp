@@ -5,17 +5,17 @@ part of route_analysis;
 String transportLabel(TransportMode mode) {
   switch (mode) {
     case TransportMode.motorbike:
-      return 'Xe may';
+      return 'Xe máy';
     case TransportMode.car:
-      return 'O to';
+      return 'Ô tô';
     case TransportMode.coach:
-      return 'Xe khach';
+      return 'Xe khách';
     case TransportMode.train:
-      return 'Tau hoa';
+      return 'Tàu hỏa';
     case TransportMode.ferry:
-      return 'Pha/tau cao toc';
+      return 'Phà/tàu cao tốc';
     case TransportMode.flight:
-      return 'May bay';
+      return 'Máy bay';
   }
 }
 
@@ -149,9 +149,9 @@ double _fallbackCost(double distanceKm, TransportMode mode) {
 }
 
 String formatHours(double hours) {
-  if (hours < 1) return '${(hours * 60).round()} phut';
+  if (hours < 1) return '${(hours * 60).round()} phút';
   final h = hours.floor();
   final m = ((hours - h) * 60).round();
-  if (m == 0) return '$h gio';
-  return '$h gio $m phut';
+  if (m == 0) return '$h giờ';
+  return '$h giờ $m phút';
 }

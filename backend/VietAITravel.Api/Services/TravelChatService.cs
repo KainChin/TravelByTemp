@@ -32,6 +32,7 @@ public sealed class GroqOptions
     public string ApiKey { get; set; } = "";
     public string BaseUrl { get; set; } = "https://api.groq.com/openai/v1";
     public string VisionModel { get; set; } = "meta-llama/llama-4-scout-17b-16e-instruct";
+    public string ChatModel { get; set; } = "llama-3.1-8b-instant";
 }
 
 public sealed class TravelChatService(
@@ -372,13 +373,34 @@ public sealed class TravelChatService(
             throw new TravelAiException(StatusCodes.Status400BadRequest, "Trip budget must be greater than zero.");
 
         var feasibility = AnalyzeTripFeasibility(request);
-        var prompt = """
+        var roundTripTransportPerPerson = (request.RouteLegs ?? []).Sum(x => x.EstimatedCostVnd) * 2;
+        var groupRoundTripTransport = roundTripTransportPerPerson * request.PeopleCount;
+        var totalBudget = request.BudgetPerPerson;
+        var remainingBudget = totalBudget - groupRoundTripTransport;
+        var destinationNames = string.Join(", ", request.Destinations.Select(d => d.Name));
+        
+        var prompt = $$"""
             Tao lich trinh du lich bang tieng Viet tu form nguoi dung.
             Chi tra ve JSON hop le, khong markdown. Moi ngay phai co 6-8 hoat dong trai dai tu sang den toi.
             Chi phi tung hoat dong phai la so le thuc te theo Viet Nam, khong dung toan so tron nhu 100000/200000.
+            
+            QUAN TRONG: ĐỊA ĐIỂM DU LỊCH BẮT BUỘC LÀ: {{destinationNames}}.
+            => BẠN KHÔNG ĐƯỢC PHÉP đổi sang thành phố khác (ví dụ: đang ở Bến Tre/Hà Tiên tuyệt đối không được viết lịch trình Hà Nội/Đà Lạt). Mọi hoạt động phải diễn ra tại {{destinationNames}}.
+            
+            QUAN TRONG: TỔNG NGÂN SÁCH CỦA NHÓM LÀ {{totalBudget}} VNĐ (cho {{request.PeopleCount}} người). NHƯNG CHI PHÍ DI CHUYỂN KHỨ HỒI ĐÃ CHIẾM HẾT {{groupRoundTripTransport}} VNĐ.
+            => SỐ TIỀN CÒN LẠI ĐỂ TIÊU CHO CẢ NHÓM (ĂN UỐNG, KHÁCH SẠN, VUI CHƠI) CHỈ CÒN ĐÚNG: {{remainingBudget}} VNĐ.
+            
+            NẾU {{remainingBudget}} <= 0 HOẶC KHÔNG ĐỦ TIỀN KHÁCH SẠN:
+            - TRẢ VỀ status của feasibility là "not_feasible", ghi rõ "message": "Chi phí di chuyển khứ hồi đã vượt quá hoặc chiếm gần hết ngân sách. Không đủ tiền để chi trả cho các hoạt động và chỗ ở."
+            - Gợi ý người dùng đổi địa điểm gần hơn hoặc tăng ngân sách trong "recommendations".
+            - BẠN BẮT BUỘC PHẢI THIẾT KẾ MỘT LỊCH TRÌNH MẪU ĐẠI KHÁI, NHƯNG HIỂN THỊ CẢNH BÁO. KHÔNG ĐƯỢC BỎ TRỐNG PHẦN ACTIVITIES.
+            
+            BẠN CHỈ ĐƯỢC PHÉP thiết kế các hoạt động sao cho TỔNG CHI PHÍ costBreakdown (không tính transport) KHÔNG ĐƯỢC VƯỢT QUÁ {{remainingBudget}} VNĐ (nếu còn tiền)!
+            
             Bat buoc phan tich tinh kha thi dua tren:
             - so nguoi
             - tong ngan sach nhom va ngan sach quy doi moi nguoi
+
             - ngay di/ngay ve
             - diem xuat phat, diem den
             - cac chang di chuyen da duoc validate
@@ -395,11 +417,17 @@ public sealed class TravelChatService(
             - Khong duoc viet chung chung nhu "tham quan diem noi bat", "quan dac san dia phuong", "cafe view dep".
             - Neu khong chac ten quan an/cafe cu the, uu tien ten diem/khong gian co that trong khu vuc: cho, pho di bo, bao tang, cong vien, khu du lich, bai bien, lang nghe, khu sinh thai.
             - Moi activity nen co placeName, address neu biet, rating tu 4.0 tro len neu la goi y tham khao.
-            - Khong de lich trinh mau giong nhau giua cac ngay.
-
+            - BẮT BUỘC ĐA DẠNG HÓA LỊCH TRÌNH: Các ngày phải có sự khác nhau về hoạt động trải nghiệm, tuyệt đối không được copy/paste lịch trình giống hệt nhau giữa các ngày.
+            
+            QUY ĐỊNH VỀ CHỖ NGHỈ/KHÁCH SẠN:
+            - NẾU CHUYẾN ĐI TRONG 1 NGÀY (không qua đêm): TUYỆT ĐỐI KHÔNG xếp khách sạn. Chỉ xếp 1 mục "Nghỉ ngơi/Uống cafe" giá rẻ (dưới 100k) vào khoảng 15h-16h.
+            - NẾU CHUYẾN ĐI TỪ 2 NGÀY TRỞ LÊN: PHẢI xếp 1 mục "Nhận phòng khách sạn / Nghỉ ngơi" vào lúc 14h-16h chiều ngày đầu tiên. Giá khách sạn phải tính toán cẩn thận để phù hợp với {{remainingBudget}} còn lại.
             Neu ngan sach khong du, khong duoc gia vo nhu chuyen di van tron ven.
             Phai them warnings ro rang va summary noi that: can cat giam hoat dong, doi phuong tien, giam ngay hoac tang ngan sach.
-            Tong chi phi trong costBreakdown.total phai dua tren uoc tinh thuc te, khong duoc bang ngan sach nguoi dung neu chi phi thuc te cao hon.
+            QUY ĐỊNH TÍNH TOÁN CHI PHÍ (CỰC KỲ QUAN TRỌNG):
+            - Trong object costBreakdown: "transport" PHẢI BẰNG ĐÚNG {{groupRoundTripTransport}}.
+            - "total" (Tổng chi phí dự kiến) PHẢI LÀ PHÉP CỘNG CỦA: transport + food + accommodation + activities. KHÔNG ĐƯỢC BỊA SỐ.
+            - Nếu "total" > {{totalBudget}} (Ngân sách ban đầu), status của feasibility phải là "not_feasible" hoặc "tight".
             Schema:
             {
               "title": "string",
@@ -428,7 +456,7 @@ public sealed class TravelChatService(
         try
         {
             using var aiTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            aiTimeout.CancelAfter(TimeSpan.FromSeconds(18));
+            aiTimeout.CancelAfter(TimeSpan.FromSeconds(180)); // Allow up to 3 minutes for local AI
             var json = await CallOllamaAsync(messages, jsonFormat: true, aiTimeout.Token);
             itinerary = JsonSerializer.Deserialize<object>(json, JsonOptions);
             if (itinerary is null)
@@ -436,8 +464,31 @@ public sealed class TravelChatService(
         }
         catch (Exception ex) when (ex is TravelAiException or JsonException or OperationCanceledException)
         {
-            logger.LogWarning(ex, "Falling back to deterministic itinerary because local AI is unavailable, slow, or returned invalid JSON.");
-            itinerary = BuildFallbackItinerary(request);
+            logger.LogWarning(ex, "Ollama failed or timed out. Trying Groq as fallback...");
+            // Try Groq as secondary AI
+            if (!string.IsNullOrWhiteSpace(groqOptions.ApiKey))
+            {
+                try
+                {
+                    using var groqTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    groqTimeout.CancelAfter(TimeSpan.FromSeconds(60));
+                    var groqJson = await CallGroqAsync(messages, groqTimeout.Token);
+                    itinerary = JsonSerializer.Deserialize<object>(groqJson, JsonOptions);
+                    if (itinerary is null)
+                        itinerary = BuildFallbackItinerary(request);
+                    logger.LogInformation("Groq successfully generated the itinerary.");
+                }
+                catch (Exception groqEx)
+                {
+                    logger.LogWarning(groqEx, "Groq also failed. Using rule-based fallback.");
+                    itinerary = BuildFallbackItinerary(request);
+                }
+            }
+            else
+            {
+                logger.LogWarning("Groq API key not configured. Using rule-based fallback.");
+                itinerary = BuildFallbackItinerary(request);
+            }
         }
 
         return new ChatEnvelopeResponse("Da tao lich trinh.", itinerary);
@@ -452,9 +503,18 @@ public sealed class TravelChatService(
         var profile = BuildPreferenceProfile(request);
 
         var totalDays = Math.Max(1, (request.ReturnDate.Date - request.DepartureDate.Date).Days + 1);
+        var nights = Math.Max(0, totalDays - 1);
+        // Remaining budget after round-trip transport deduction
+        var roundTripTransport = feasibility.TransportPerPerson * 2;
         var userBudgetPerPerson = request.BudgetPerPerson / request.PeopleCount;
-        var perPersonEstimate = Math.Max(feasibility.EstimatedMinimumPerPerson, userBudgetPerPerson * 0.72m);
-        var perDayBudget = perPersonEstimate / totalDays;
+        var remainingPerPerson = Math.Max(0, userBudgetPerPerson - roundTripTransport);
+        // Per-night hotel budget (priority allocation)
+        var hotelPerNight = remainingPerPerson <= 600_000m ? 100_000m
+            : remainingPerPerson <= 2_000_000m ? 250_000m
+            : 450_000m;
+        var totalHotelCost = hotelPerNight * nights;
+        var budgetForActivities = Math.Max(0, remainingPerPerson - totalHotelCost);
+        var perDayActivityBudget = totalDays > 0 ? budgetForActivities / totalDays : 0;
         var days = Enumerable.Range(1, totalDays).Select(day =>
         {
             var destination = destinations[(day - 1) % destinations.Count];
@@ -463,94 +523,122 @@ public sealed class TravelChatService(
             var longitude = destination.Longitude ?? 108.2022;
             var daySeed = day * 13791 + destination.Name.Sum(c => c);
             decimal Cost(decimal ratio, int offset) =>
-                Math.Round((perDayBudget * ratio) + ((daySeed + offset) % 37000) + 9000, 0);
+                Math.Round((perDayActivityBudget * ratio) + ((daySeed + offset) % 23000) + 5000, 0);
             var plan = BuildDayActivityPlan(destination.Name, profile, day);
+            var places = CuratedPlacesFor(destination.Name);
+            var hotelName = places.Resort;
+
+            // Build activity list - only include hotel if multi-day trip
+            var activityList = new List<object>
+            {
+                new
+                {
+                    time = "07:30",
+                    destination = plan.Morning,
+                    placeName = plan.Morning,
+                    address = destination.Name,
+                    rating = 4.4,
+                    activity = $"An sang/cafe tai {plan.Morning}",
+                    estimatedCost = Cost(0.08m, 1100),
+                    latitude,
+                    longitude,
+                    note = profile.MorningNote
+                },
+                new
+                {
+                    time = "09:00",
+                    destination = plan.FirstStop,
+                    placeName = plan.FirstStop,
+                    address = destination.Name,
+                    rating = 4.7,
+                    activity = $"Tham quan {plan.FirstStop}",
+                    estimatedCost = Cost(0.16m, 5200),
+                    latitude = latitude + 0.006,
+                    longitude = longitude + 0.007,
+                    note = profile.PaceNote
+                },
+                new
+                {
+                    time = "11:30",
+                    destination = plan.Lunch,
+                    placeName = plan.Lunch,
+                    address = destination.Name,
+                    rating = 4.5,
+                    activity = $"An trua tai {plan.Lunch}",
+                    estimatedCost = Cost(0.13m, 9300),
+                    latitude = latitude + 0.011,
+                    longitude = longitude + 0.004,
+                    note = profile.FoodNote
+                },
+                new
+                {
+                    time = "14:00",
+                    destination = plan.Afternoon,
+                    placeName = plan.Afternoon,
+                    address = destination.Name,
+                    rating = 4.6,
+                    activity = $"Trai nghiem {plan.Afternoon}",
+                    estimatedCost = Cost(0.15m, 15100),
+                    latitude = latitude + 0.016,
+                    longitude = longitude + 0.012,
+                    note = profile.SpecialNote
+                }
+            };
+
+            // Only add hotel check-in for multi-day trips (at least 1 night)
+            if (nights > 0)
+            {
+                activityList.Add(new
+                {
+                    time = "16:30",
+                    destination = hotelName,
+                    placeName = hotelName,
+                    address = destination.Name,
+                    rating = 4.3,
+                    activity = $"Nhan phong khach san tai {hotelName}",
+                    estimatedCost = Math.Round(hotelPerNight, 0),
+                    category = "khách sạn",
+                    latitude = latitude + 0.021,
+                    longitude = longitude + 0.018,
+                    note = "Nghi ngoi sau ngay dai, nhan phong sau 14:00."
+                });
+            }
+            else
+            {
+                activityList.Add(new
+                {
+                    time = "16:30",
+                    destination = plan.Evening,
+                    placeName = plan.Evening,
+                    address = destination.Name,
+                    rating = 4.4,
+                    activity = $"Nghi ngoi/check-in cafe tai {plan.Evening}",
+                    estimatedCost = Cost(0.09m, 21100),
+                    latitude = latitude + 0.021,
+                    longitude = longitude + 0.018,
+                    note = "Chuyen di trong ngay, nghi ngoi truoc khi ve."
+                });
+            }
+
+            activityList.Add(new
+            {
+                time = "19:00",
+                destination = plan.Evening,
+                placeName = plan.Evening,
+                address = destination.Name,
+                rating = 4.5,
+                activity = $"An toi/di dao tai {plan.Evening}",
+                estimatedCost = Cost(0.17m, 28700),
+                latitude = latitude + 0.025,
+                longitude = longitude + 0.023,
+                note = profile.EveningNote
+            });
 
             return new
             {
                 day,
                 date = date.ToString("yyyy-MM-dd"),
-                activities = new object[]
-                {
-                    new
-                    {
-                        time = "07:30",
-                        destination = plan.Morning,
-                        placeName = plan.Morning,
-                        address = destination.Name,
-                        rating = 4.4,
-                        activity = $"An sang/cafe tai {plan.Morning}",
-                        estimatedCost = Cost(0.08m, 1100),
-                        latitude,
-                        longitude,
-                        note = profile.MorningNote
-                    },
-                    new
-                    {
-                        time = "09:00",
-                        destination = plan.FirstStop,
-                        placeName = plan.FirstStop,
-                        address = destination.Name,
-                        rating = 4.7,
-                        activity = $"Tham quan {plan.FirstStop}",
-                        estimatedCost = Cost(0.16m, 5200),
-                        latitude = latitude + 0.006,
-                        longitude = longitude + 0.007,
-                        note = profile.PaceNote
-                    },
-                    new
-                    {
-                        time = "11:30",
-                        destination = plan.Lunch,
-                        placeName = plan.Lunch,
-                        address = destination.Name,
-                        rating = 4.5,
-                        activity = $"An trua tai {plan.Lunch}",
-                        estimatedCost = Cost(0.13m, 9300),
-                        latitude = latitude + 0.011,
-                        longitude = longitude + 0.004,
-                        note = profile.FoodNote
-                    },
-                    new
-                    {
-                        time = "14:00",
-                        destination = plan.Afternoon,
-                        placeName = plan.Afternoon,
-                        address = destination.Name,
-                        rating = 4.6,
-                        activity = $"Trai nghiem {plan.Afternoon}",
-                        estimatedCost = Cost(0.15m, 15100),
-                        latitude = latitude + 0.016,
-                        longitude = longitude + 0.012,
-                        note = profile.SpecialNote
-                    },
-                    new
-                    {
-                        time = "16:30",
-                        destination = plan.RestStop,
-                        placeName = plan.RestStop,
-                        address = destination.Name,
-                        rating = 4.4,
-                        activity = $"Nghi nhe/check-in tai {plan.RestStop}",
-                        estimatedCost = Cost(0.09m, 21100),
-                        latitude = latitude + 0.021,
-                        longitude = longitude + 0.018,
-                        note = profile.RestNote
-                    },
-                    new
-                    {
-                        time = "19:00",
-                        destination = plan.Evening,
-                        placeName = plan.Evening,
-                        address = destination.Name,
-                        rating = 4.5,
-                        activity = $"An toi/di dao tai {plan.Evening}",
-                        estimatedCost = Cost(0.17m, 28700),
-                        latitude = latitude + 0.025,
-                        longitude = longitude + 0.023,
-                        note = profile.EveningNote
-                    }
-                }
+                activities = activityList
             };
         }).ToList();
 
@@ -567,12 +655,12 @@ public sealed class TravelChatService(
             days,
             costBreakdown = new
             {
-                transport = Math.Round(feasibility.TransportPerPerson * request.PeopleCount, 0),
+                transport = Math.Round(roundTripTransport * request.PeopleCount, 0),
                 food = Math.Round(feasibility.FoodPerPerson * request.PeopleCount, 0),
-                accommodation = Math.Round(feasibility.AccommodationPerPerson * request.PeopleCount, 0),
-                activities = Math.Round(feasibility.ActivitiesPerPerson * request.PeopleCount, 0),
-                total = Math.Round(feasibility.EstimatedMinimumTotal, 0),
-                perPerson = Math.Round(feasibility.EstimatedMinimumPerPerson, 0)
+                accommodation = Math.Round(totalHotelCost * request.PeopleCount, 0),
+                activities = Math.Round(budgetForActivities * request.PeopleCount, 0),
+                total = Math.Round(request.BudgetPerPerson, 0),
+                perPerson = Math.Round(userBudgetPerPerson, 0)
             },
             feasibility = new
             {
@@ -832,9 +920,10 @@ public sealed class TravelChatService(
         var budgetTotal = request.BudgetPerPerson;
         var userBudgetPerPerson = budgetTotal / request.PeopleCount;
 
+        // Round-trip: multiply one-way leg costs by 2
         var transportPerPerson = routeLegs.Count > 0
-            ? routeLegs.Sum(x => Math.Max(0, x.EstimatedCostVnd))
-            : EstimateFallbackTransportPerPerson(request);
+            ? routeLegs.Sum(x => Math.Max(0, x.EstimatedCostVnd)) * 2
+            : EstimateFallbackTransportPerPerson(request) * 2;
 
         var foodPerDay = interests.Any(x => ContainsInsensitive(x, "am thuc") || ContainsInsensitive(x, "food"))
             ? 260_000m
@@ -938,6 +1027,62 @@ public sealed class TravelChatService(
         return builder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
     }
 
+    // Groq is used as a fallback when Ollama is unavailable or too slow.
+    // Ollama remains the primary AI as per project guidelines.
+    private async Task<string> CallGroqAsync(object[] messages, CancellationToken ct)
+    {
+        var keys = groqOptions.ApiKey.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (keys.Length == 0) throw new TravelAiException(StatusCodes.Status500InternalServerError, "No Groq API key configured.");
+
+        var client = httpClientFactory.CreateClient();
+        client.BaseAddress = new Uri(groqOptions.BaseUrl);
+
+        var payload = new
+        {
+            model = groqOptions.ChatModel,
+            messages,
+            temperature = 0.1,
+            max_tokens = 2500,
+            response_format = new { type = "json_object" }
+        };
+
+        foreach (var key in keys)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
+            try
+            {
+                using var response = await client.PostAsJsonAsync(
+                    $"{groqOptions.BaseUrl.TrimEnd('/')}/chat/completions", payload, JsonOptions, ct);
+                var body = await response.Content.ReadAsStringAsync(ct);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    return doc.RootElement
+                        .GetProperty("choices")[0]
+                        .GetProperty("message")
+                        .GetProperty("content")
+                        .GetString() ?? "{}";
+                }
+                
+                var maskedKey = key.Length > 4 ? key.Substring(key.Length - 4) : "****";
+                logger.LogWarning("Groq chat request failed with key ending in {KeyEnd}: {StatusCode} {Body}", 
+                    maskedKey, response.StatusCode, body);
+                
+                // If the key is rate limited or invalid, we continue to the next key.
+                continue;
+            }
+            catch (Exception ex)
+            {
+                var maskedKey = key.Length > 4 ? key.Substring(key.Length - 4) : "****";
+                logger.LogWarning(ex, "Groq chat request exception with key ending in {KeyEnd}", maskedKey);
+                // Continue to try the next key
+            }
+        }
+        
+        throw new TravelAiException(StatusCodes.Status503ServiceUnavailable, "All Groq API keys failed or were rate limited.");
+    }
+
     private async Task<string> CallOllamaAsync(object[] messages, bool jsonFormat, CancellationToken ct)
     {
         var client = httpClientFactory.CreateClient("ollama-chat");
@@ -951,8 +1096,8 @@ public sealed class TravelChatService(
             ["options"] = new
             {
                 temperature = jsonFormat ? 0.1 : 0.3,
-                num_ctx = 1024,
-                num_predict = jsonFormat ? 450 : 140
+                num_ctx = 4096,
+                num_predict = jsonFormat ? 2048 : 512
             }
         };
         if (jsonFormat)

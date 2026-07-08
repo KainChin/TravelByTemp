@@ -135,6 +135,18 @@ public sealed class RouteAnalysisService(
             options);
     }
 
+    private static bool IsIsland(string placeName)
+    {
+        var lower = placeName.ToLowerInvariant();
+        return lower.Contains("phú quốc") || lower.Contains("phu quoc") ||
+               lower.Contains("côn đảo") || lower.Contains("con dao") ||
+               lower.Contains("nam du") ||
+               lower.Contains("lý sơn") || lower.Contains("ly son") ||
+               lower.Contains("phú quý") || lower.Contains("phu quy") ||
+               lower.Contains("cô tô") || lower.Contains("co to") ||
+               lower.Contains("cát bà") || lower.Contains("cat ba");
+    }
+
     private async Task<List<TransportOptionResponse>> BuildTransportOptionsAsync(
         RoutePlaceDto from,
         RoutePlaceDto to,
@@ -149,18 +161,22 @@ public sealed class RouteAnalysisService(
         var fromPort = await NearestHubAsync(from, "ferry_port", transportRules.FerryPortSearchRadiusKm, ct);
         var toPort = await NearestHubAsync(to, "ferry_port", transportRules.FerryPortSearchRadiusKm, ct);
 
+        var isCrossing = IsIsland(from.Name) != IsIsland(to.Name);
+        var roadAvailable = !isCrossing;
+        var roadReason = isCrossing ? "Không thể đi đường bộ trực tiếp ra đảo (phải dùng kết hợp Xe & Phà hoặc Máy bay)." : "Road transport is available for this leg.";
+
         var options = new List<TransportOptionResponse>
         {
-            new("car", true, "Road transport is available for this leg.", DurationForModeHours(distanceKm, "car"), CostForMode(distanceKm, "car")),
-            new("motorbike", distanceKm <= 180, distanceKm <= 180 ? "Suitable for a short road leg." : "Not recommended for a long road leg.", DurationForModeHours(distanceKm, "motorbike"), CostForMode(distanceKm, "motorbike")),
-            new("coach", distanceKm >= 40, distanceKm >= 40 ? "Coach is suitable for intercity road travel." : "Leg is too short for coach to be practical.", DurationForModeHours(distanceKm, "coach"), CostForMode(distanceKm, "coach"))
+            new("car", roadAvailable, roadReason, DurationForModeHours(distanceKm, "car"), CostForMode(distanceKm, "car")),
+            new("motorbike", roadAvailable && distanceKm <= 180, roadAvailable ? (distanceKm <= 180 ? "Suitable for a short road leg." : "Not recommended for a long road leg.") : roadReason, DurationForModeHours(distanceKm, "motorbike"), CostForMode(distanceKm, "motorbike")),
+            new("coach", roadAvailable && distanceKm >= 40, roadAvailable ? (distanceKm >= 40 ? "Coach is suitable for intercity road travel." : "Leg is too short for coach to be practical.") : roadReason, DurationForModeHours(distanceKm, "coach"), CostForMode(distanceKm, "coach"))
         };
 
         var trainRoute = fromRail is null || toRail is null
             ? null
             : await FindRouteAsync(fromRail.Id, toRail.Id, "train", ct);
-        options.Add(trainRoute is null
-            ? new("train", false, "Train is unavailable because no active rail hubs/routes match both endpoints.", DurationForModeHours(distanceKm, "train"), CostForMode(distanceKm, "train"))
+        options.Add(trainRoute is null || isCrossing
+            ? new("train", false, isCrossing ? roadReason : "Train is unavailable because no active rail hubs/routes match both endpoints.", DurationForModeHours(distanceKm, "train"), CostForMode(distanceKm, "train"))
             : new("train", true, $"Train route available via {fromRail!.Name} -> {toRail!.Name}.", trainRoute.EstimatedDurationHours, (double)trainRoute.EstimatedCostVnd));
 
         var flightOption = await BuildFlightOptionAsync(from, to, distanceKm, fromAirport, toAirport, transportRules, ct);
@@ -169,9 +185,39 @@ public sealed class RouteAnalysisService(
         var ferryRoute = fromPort is null || toPort is null
             ? null
             : await FindRouteAsync(fromPort.Id, toPort.Id, "ferry", ct);
-        options.Add(ferryRoute is null
-            ? new("ferry", false, "Ferry is unavailable because no active ferry hubs/routes match both endpoints.", DurationForModeHours(distanceKm, "ferry"), CostForMode(distanceKm, "ferry"))
-            : new("ferry", true, $"Ferry route available via {fromPort!.Name} -> {toPort!.Name}.", ferryRoute.EstimatedDurationHours, (double)ferryRoute.EstimatedCostVnd));
+            
+        if (fromPort is null || toPort is null || ferryRoute is null)
+        {
+            options.Add(new("ferry", false, "Ferry is unavailable because no active ferry hubs/routes match both endpoints.", DurationForModeHours(distanceKm, "ferry"), CostForMode(distanceKm, "ferry")));
+        }
+        else
+        {
+            var roadToPortKm = EstimateDistance(from, ToPlace(fromPort)).DistanceKm;
+            var portToDestKm = EstimateDistance(ToPlace(toPort), to).DistanceKm;
+
+            var roadMode = roadToPortKm > 40 ? "coach" : "car";
+            var destRoadMode = portToDestKm > 40 ? "coach" : "car";
+
+            var roadDuration = DurationForModeHours(roadToPortKm, roadMode);
+            var roadCost = CostForMode(roadToPortKm, roadMode);
+
+            var destDuration = DurationForModeHours(portToDestKm, destRoadMode);
+            var destCost = CostForMode(portToDestKm, destRoadMode);
+
+            var totalDuration = roadDuration + ferryRoute.EstimatedDurationHours + destDuration;
+            var totalCost = roadCost + (double)ferryRoute.EstimatedCostVnd + destCost;
+
+            var reason = $"Tuyến phà qua {fromPort.Name} -> {toPort.Name}. Đã cộng chi phí đi {roadMode} ra bến tàu.";
+            
+            var segments = new List<string>
+            {
+                $"{from.Name} -> {fromPort.Name} ({roadMode})",
+                $"{fromPort.Name} -> {toPort.Name} (ferry)",
+                $"{toPort.Name} -> {to.Name} ({destRoadMode})"
+            };
+
+            options.Add(new("ferry", true, reason, totalDuration, totalCost, Segments: segments));
+        }
 
         return options;
     }
@@ -239,11 +285,21 @@ public sealed class RouteAnalysisService(
         RoutePlaceDto to,
         TransportConfigValues transportRules)
     {
+        var isCrossing = IsIsland(from.Name) != IsIsland(to.Name);
+
         if (distanceKm > transportRules.RecommendedFlightDistanceKm && options.Any(x => x.Mode == "flight" && x.IsAvailable)) return "flight";
+        
+        if (isCrossing && options.Any(x => x.Mode == "ferry" && x.IsAvailable)) return "ferry";
+
         if (distanceKm is >= 150 and <= 700 && options.Any(x => x.Mode == "train" && x.IsAvailable)) return "train";
-        if (distanceKm < 150 && string.Equals(from.Region, to.Region, StringComparison.OrdinalIgnoreCase)) return "motorbike";
-        if (distanceKm < 150) return "car";
-        return "coach";
+        
+        if (distanceKm < 150 && string.Equals(from.Region, to.Region, StringComparison.OrdinalIgnoreCase) && options.Any(x => x.Mode == "motorbike" && x.IsAvailable)) return "motorbike";
+        
+        if (distanceKm < 150 && options.Any(x => x.Mode == "car" && x.IsAvailable)) return "car";
+        
+        if (options.Any(x => x.Mode == "coach" && x.IsAvailable)) return "coach";
+
+        return options.FirstOrDefault(x => x.IsAvailable)?.Mode ?? "coach";
     }
 
     private async Task<TransportHub?> NearestHubAsync(
