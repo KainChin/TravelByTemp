@@ -35,6 +35,30 @@
 
 ---
 
+## 🏛️ Kiến trúc hệ thống (System Architecture)
+
+Hệ thống được thiết kế theo mô hình **Client-Server** kết hợp vi dịch vụ nhẹ (Service-Oriented):
+
+1. **Client Layer (Mobile App - Flutter)**:
+   - Giao diện người dùng xử lý hiển thị bản đồ, lịch trình và nhận thao tác.
+   - Giao tiếp trực tiếp với **Firebase** để lưu trữ/tải file ảnh lớn, giúp giảm tải cho Backend Server chính.
+   - Tự động gọi API Backend RESTful thông qua `ApiClient` kèm token xác thực.
+
+2. **API Server Layer (ASP.NET Core .NET 8)**:
+   - Đóng vai trò là trung tâm xử lý business logic (Orchestrator).
+   - Middleware xác thực request bằng JWT Token.
+   - Tách biệt rõ ràng các Services lớn thành **Partial Classes** (`TravelChatService`, `RouteAnalysisService`) để tối ưu hiệu suất biên dịch và bảo trì mã nguồn, giúp code không bị quá tải.
+
+3. **AI & External Integration Layer**:
+   - Gửi prompt và ngữ cảnh đến các LLMs (Gemini/Groq/Ollama/OpenAI) qua REST API.
+   - Đồng bộ hóa với Google Maps để lấy khoảng cách (Distance Matrix) và điều hướng (Directions) nhằm tối ưu lại lịch trình do AI tạo ra.
+
+4. **Data Layer**:
+   - **PostgreSQL**: Lưu trữ quan hệ (thông tin user, lịch sử chuyến đi, danh mục, thống kê).
+   - **Firestore (NoSQL)**: Lưu trữ phi quan hệ (dữ liệu base64 của user story/kỷ niệm ảnh).
+
+---
+
 ## 💡 Giải đáp thắc mắc về hệ thống
 
 **1. Vai trò của Firebase trong dự án là gì?**
