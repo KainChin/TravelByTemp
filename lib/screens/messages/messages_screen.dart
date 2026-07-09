@@ -18,7 +18,11 @@ class MessagesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<ChatProvider>(
-      create: (_) => ChatProvider()..addInitialGreeting(currentUserName),
+      create: (_) {
+        final provider = ChatProvider();
+        provider.initialize(currentUserName);
+        return provider;
+      },
       child: _MessagesView(currentUserName: currentUserName),
     );
   }
@@ -57,6 +61,16 @@ class _MessagesViewState extends State<_MessagesView> {
   @override
   Widget build(BuildContext context) {
     final chatProvider = context.watch<ChatProvider>();
+
+    // Show loading spinner while restoring chat history from storage
+    if (!chatProvider.isReady) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0D47A1),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
 
     final error = chatProvider.errorMessage;
     if (error != null && error != _lastShownError) {

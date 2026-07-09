@@ -161,6 +161,7 @@ class _RegionBannerState extends State<RegionBanner>
                           opacity: _fadeAnim,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               // Glassmorphism Badge
                               ClipRRect(
@@ -272,6 +273,7 @@ class _RegionBannerState extends State<RegionBanner>
                   opacity: _fadeAnim,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       // Glassmorphism Badge
                       ClipRRect(
