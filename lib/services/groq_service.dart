@@ -76,7 +76,7 @@ Trả về kết quả ĐÚNG định dạng JSON sau (không chứa code block 
   static Map<String, dynamic> _fallbackData(double cost, double budget) {
     return {
       "aiBadges": ["AI đề xuất", "Cân bằng thời gian và chi phí", "Độ thuận tiện: Trung bình"],
-      "aiRecommendation": "Hệ thống đang tạm thời gián đoạn. Phương tiện và ngân sách đã được tính toán dựa trên mức trung bình."
+      "aiRecommendation": "Phương tiện và ngân sách đã được tính toán dựa trên mức trung bình."
     };
   }
 }
