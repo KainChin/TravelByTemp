@@ -17,6 +17,8 @@ import '../services/trip_itinerary_service.dart';
 
 part 'itinerary_result/trip_itinerary_result_overview.dart';
 part 'itinerary_result/trip_itinerary_result_map.dart';
+part 'itinerary_result/trip_itinerary_result_map_places.dart';
+part 'itinerary_result/trip_itinerary_result_map_widgets.dart';
 part 'itinerary_result/trip_itinerary_result_timeline.dart';
 part 'itinerary_result/trip_itinerary_result_budget.dart';
 part 'itinerary_result/trip_itinerary_result_insights.dart';
@@ -567,6 +569,7 @@ class _TripItineraryResultScreenState extends State<TripItineraryResultScreen> {
     );
   }
 }
+
 
 
 

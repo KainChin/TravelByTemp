@@ -1,78 +1,73 @@
-# VietAI Travel (TravelByTemp) 🌴✈️
+# TravelByTemp 🌍✈️
 
-> **Ứng dụng du lịch ứng dụng Trí tuệ Nhân tạo (AI)** giúp người dùng Việt Nam và du khách quốc tế khám phá điểm đến, lập lịch trình thông minh, tính toán chi phí di chuyển và quản lý chuyến đi một cách dễ dàng nhất.
+**TravelByTemp** là một dự án cá nhân (Personal Project) cung cấp ứng dụng du lịch thông minh, giúp người dùng tự động lập kế hoạch và quản lý lịch trình bằng sức mạnh của Trí tuệ nhân tạo (AI). Ứng dụng hỗ trợ lên lịch trình tự động, phân tích tuyến đường tối ưu, dự báo thời tiết và lưu giữ kỷ niệm chuyến đi.
 
-![VietAI Travel](assets/images/1.jpg)
+---
 
-## 🌟 Tính năng nổi bật (Core Features)
+## 🚀 Tính năng nổi bật
 
-1. **AI Smart Itinerary (Lập lịch trình bằng AI):**
-   - Tự động tạo lịch trình đa dạng, **không lặp lại địa điểm** giữa các ngày.
-   - **Tối ưu hóa lộ trình địa lý** để tránh di chuyển vòng vèo, nhóm các địa điểm gần nhau vào cùng một buổi.
-   - **Cân đối ngân sách (Thu liễm ngân sách):** Tự động đề xuất ăn uống vỉa hè nếu ngân sách hẹp, hoặc resort/hải sản cao cấp nếu ngân sách dư dả sau khi trừ tiền vé xe.
-   
-2. **AI Vision Chatbot:**
-   - Trợ lý AI tích hợp khả năng đọc hiểu hình ảnh. Bạn có thể tải lên ảnh danh sách địa điểm hoặc poster du lịch, AI sẽ phân tích và lập kế hoạch ngay lập tức.
-   
-3. **Groq Cost Estimation & Route Analysis:**
-   - Phân tích tuyến đường, quãng đường và thời gian di chuyển.
-   - Động cơ ước tính chi phí di chuyển siêu tốc được hỗ trợ bởi Groq AI.
-   
-4. **Premium Dashboard:**
-   - Cung cấp cái nhìn tổng quan về thời tiết điểm đến.
-   - Thống kê chuyến đi, các điểm đến yêu thích và hiển thị linh hoạt (Dynamic Sidebar).
+- **🗺️ Lên lịch trình bằng AI**: Tích hợp nhiều mô hình ngôn ngữ lớn (LLM) như **Gemini, OpenAI, Groq, Ollama** để phân tích yêu cầu người dùng, thời tiết và tạo lịch trình phù hợp tự động.
+- **🌤️ Tích hợp Thời tiết (Open-Meteo)**: Phân tích điều kiện thời tiết thực tế để đưa ra gợi ý và thay đổi các hoạt động ngoài trời/trong nhà cho phù hợp.
+- **📍 Phân tích & Tối ưu tuyến đường**: Sử dụng **Google Maps API** để tính toán khoảng cách, thời gian di chuyển, tối ưu lộ trình trong ngày và vẽ bản đồ trực quan.
+- **📸 Kỷ niệm & Story (Tích hợp Firebase)**: Người dùng có thể tải ảnh lên (`base64`) để lưu trữ kỷ niệm từng chuyến đi và xem lại như một slideshow (Story/Video).
+- **🔒 Quản lý Tài khoản & Bảo mật**: Authentication với JWT cho backend và **Firebase Auth** + **Firestore** cho frontend (Story/Media).
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+---
 
-### Frontend (Mobile App)
-- **Framework:** Flutter / Dart
-- **Design:** Tuân thủ chuẩn WCAG 2.1 AA, thiết kế riêng biệt thân thiện, ấm áp, đậm chất du lịch địa phương (Tránh UI chung chung của các app SaaS).
+## 🛠️ Kiến trúc & Công nghệ
 
-### Backend (Server)
-- **Framework:** ASP.NET Core 8.0 Web API (C#)
-- **AI Integration:** Semantic Kernel, Ollama (Local AI), Groq Cloud API.
-- **Database:**
-  - **PostgreSQL (+ PGVector):** Lưu trữ dữ liệu cấu trúc và vector tìm kiếm.
-  - **MongoDB:** Lưu trữ dữ liệu phi cấu trúc, log và thông tin linh hoạt.
-- **Containerization:** Docker & Docker Compose (cho việc triển khai 1-click toàn bộ stack DB, API và Ollama).
+### 1. Frontend (Mobile App)
+- **Framework**: [Flutter](https://flutter.dev/) (Dart)
+- **Bản đồ**: `flutter_map` kết hợp Leaflet (OpenStreetMap) và Google Maps.
+- **Firebase**:
+  - `firebase_auth`: Hỗ trợ đăng nhập/đăng ký.
+  - `cloud_firestore`: **Lưu trữ dữ liệu ảnh** (base64) và meta-data cho tính năng tạo Kỷ niệm / Story.
+- **Quản lý State & Dependency**: `provider`, custom Scopes (`VietaiScope`).
 
-## 🚀 Hướng dẫn chạy dự án (Getting Started)
+### 2. Backend (API Server)
+- **Framework**: [.NET 8](https://dotnet.microsoft.com/) (C# 12) - ASP.NET Core Web API.
+- **Cơ sở dữ liệu**: PostgreSQL (kết hợp Entity Framework Core).
+- **AI Orchestration**: Flexible Services hỗ trợ nhiều LLM (Gemini, ChatGPT, Groq, local Ollama) fallback qua lại nếu có lỗi.
+- **External Services**:
+  - `Open-Meteo`: API lấy dữ liệu thời tiết.
+  - `Google Maps`: Matrix API / Directions API.
+  - `SerpApi`: Tìm kiếm hình ảnh điểm đến.
 
-### 1. Khởi động Backend (Docker)
-Để chạy toàn bộ hệ thống API và Database, bạn chỉ cần sử dụng Docker:
+---
+
+## 💡 Giải đáp thắc mắc về hệ thống
+
+**1. Vai trò của Firebase trong dự án là gì?**
+- Firebase trong dự án được dùng chủ yếu để hỗ trợ **Authentication** (xác thực người dùng) và **Firestore** để lưu trữ các thông tin NoSQL linh hoạt, đặc biệt là hình ảnh của người dùng.
+
+**2. Tính năng upload ảnh tạo Story có sử dụng Firebase không?**
+- **Có, hoàn toàn sử dụng Firebase.** Khi bạn upload ảnh trong tính năng Kỷ niệm (Story), ứng dụng sẽ chuyển ảnh thành dạng chuỗi `base64` và lưu vào **Cloud Firestore** theo cấu trúc: `users/{uid}/trips/{tripId}/photos`. Khi xem lại, ứng dụng lấy danh sách ảnh này từ Firestore và hiển thị slideshow (VideoPreviewScreen).
+
+---
+
+## 💻 Hướng dẫn chạy dự án
+
+### Yêu cầu
+- Flutter SDK (>= 3.0)
+- .NET 8 SDK
+- PostgreSQL Server (Đang chạy)
+- Thiết lập biến môi trường API Keys (Google Maps, Gemini, Groq, SerpApi)
+
+### Chạy Backend
 ```bash
-docker-compose -f docker-compose.yml up -d --build
+cd backend/VietAITravel.Api
+dotnet restore
+dotnet ef database update # (Nếu có migration)
+dotnet run
 ```
-Hệ thống sẽ tự động khởi tạo:
-- Backend Container (`vietai_backend`)
-- PostgreSQL (`vietai_postgres`)
-- MongoDB (`vietai_mongodb`)
-- Ollama Server (`vietai_ollama`)
 
-### 2. Khởi động Frontend (Flutter)
-Mở terminal tại thư mục gốc, cài đặt các package và chạy ứng dụng:
+### Chạy Frontend
 ```bash
 flutter pub get
 flutter run
 ```
 
-## 🔒 Biến môi trường (Environment Variables)
-Đừng quên cấu hình các API Key quan trọng:
-- `GROQ_API_KEY`: Dùng cho dịch vụ phân tích ngân sách siêu tốc (chạy command `--dart-define=GROQ_API_KEY=YOUR_KEY`).
-- Các biến database connection strings trong file `docker-compose.yml` hoặc `.env`.
-
-## 🎨 Thiết kế (Design Principles)
-- **Màu sắc chủ đạo:** Xanh Brand `#2D9F75`.
-- **Trải nghiệm:** Mobile-first, font chữ dễ đọc, hỗ trợ đa ngôn ngữ (Tiếng Việt/English).
-- **Quy tắc:** Không sử dụng màu đen thuần (`#000`), thay vào đó là tone màu "ink" để tạo chiều sâu UI.
-- API-driven: Không mock data cứng trên production.
-
-## 🧑‍💻 Tác giả & Đóng góp (Author & Contributions)
-Dự án được cá nhân hóa và phát triển tính năng bởi **Trình Khánh (KainChin)**.
-Các tính năng nổi bật được tôi trực tiếp phát triển:
-- **Tối ưu hóa Thuật toán AI:** Thiết kế hệ thống Prompt thu liễm ngân sách và định tuyến địa lý chống trùng lặp.
-- **Tích hợp Groq AI:** Xây dựng hệ thống ước tính chi phí di chuyển siêu tốc.
-- **Premium Dashboard UI:** Thiết kế lại toàn bộ giao diện Trang chủ với API thời tiết và thống kê trực quan.
-
 ---
-*Dự án được xây dựng với mục tiêu mang lại trải nghiệm du lịch trọn vẹn, không ảo giác (no AI hallucination) và tính ứng dụng thực tế cao nhất cho du khách.*
+
+## 📝 Bản quyền & Đóng góp
+Dự án được phát triển dưới dạng **Personal Project**. Mọi logic cốt lõi như thuật toán phân tích AI, chia tách Services (Partial classes) và Flutter UI component architecture đã được tối ưu cho hiệu năng và khả năng bảo trì.
