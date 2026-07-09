@@ -98,13 +98,24 @@ String _distanceToNextLabel(Map<String, dynamic> current, Map<String, dynamic>? 
 
 String _activityCategory(Map<String, dynamic> activity) {
   final raw = '${activity['category'] ?? activity['type'] ?? ''}'.trim().toLowerCase();
-  if (raw.contains('an') || raw.contains('food') || raw.contains('restaurant')) return 'ăn uống';
-  if (raw.contains('hotel') || raw.contains('khách') || raw.contains('lưu trú')) return 'khách sạn';
-  if (raw.contains('transport') || raw.contains('di chuyển') || raw.contains('bus') || raw.contains('car')) return 'di chuyển';
+  final normRaw = _normalizeText(raw);
+  if (normRaw == 'an uong' || normRaw == 'ăn uống' || normRaw.contains('food') || normRaw.contains('restaurant') || normRaw.contains('cafe')) return 'ăn uống';
+  if (normRaw.contains('hotel') || normRaw.contains('khach') || normRaw.contains('luu tru')) return 'khách sạn';
+  if (normRaw.contains('transport') || normRaw.contains('di chuyen') || normRaw.contains('bus') || normRaw.contains('car')) return 'di chuyển';
+  
   final title = _normalizeText('${_activityTitle(activity)} ${activity['destination'] ?? ''}');
-  if (title.contains('an ') || title.contains('nha hang') || title.contains('cafe') || title.contains('quan')) return 'ăn uống';
-  if (title.contains('khach san') || title.contains('check in') || title.contains('homestay')) return 'khách sạn';
-  if (title.contains('di chuyen') || title.contains('don xe') || title.contains('san bay')) return 'di chuyển';
+  final tokens = title.split(RegExp(r'\s+'));
+  
+  if (tokens.contains('an') || tokens.contains('uong') || title.contains('nha hang') || title.contains('ca phe') || title.contains('cafe')) {
+    if (!title.contains('tham quan')) {
+      return 'ăn uống';
+    }
+  }
+  if (tokens.contains('quan') && !title.contains('tham quan')) {
+    return 'ăn uống';
+  }
+  if (title.contains('khach san') || title.contains('check in') || title.contains('homestay') || title.contains('nha nghi')) return 'khách sạn';
+  if (title.contains('di chuyen') || title.contains('don xe') || title.contains('san bay') || title.contains('tau hoa') || title.contains('xe khach')) return 'di chuyển';
   return 'tham quan';
 }
 

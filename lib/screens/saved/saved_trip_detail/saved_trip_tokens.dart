@@ -28,9 +28,10 @@ int _parseCost(Map<String, dynamic> a) {
 
 String _parseCategory(Map<String, dynamic> a) {
   final raw = '${a['category'] ?? a['type'] ?? ''}'.toLowerCase();
-  if (raw.contains('an') || raw.contains('food')) return 'ăn uống';
-  if (raw.contains('hotel') || raw.contains('khách')) return 'khách sạn';
-  if (raw.contains('transport') || raw.contains('di chuyển')) return 'di chuyển';
+  final norm = raw.replaceAll('đ', 'd').replaceAll(RegExp('[àáạảãâầấậẩẫăằắặẳẵ]'), 'a').replaceAll(RegExp('[òóọỏõôồốộổỗơờớợởỡ]'), 'o');
+  if (norm == 'an uong' || norm.contains('food') || norm.contains('restaurant') || norm.contains('cafe')) return 'ăn uống';
+  if (norm.contains('hotel') || norm.contains('khach') || norm.contains('accommodation')) return 'khách sạn';
+  if (norm.contains('transport') || norm.contains('di chuyen')) return 'di chuyển';
   return 'tham quan';
 }
 
