@@ -319,114 +319,125 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
           padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // App Logo
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1976D2).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.travel_explore_rounded,
-                        color: Color(0xFF1976D2), size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'VietAI Travel',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height,
               ),
-              const SizedBox(height: 36),
-              const Text(
-                'VÙNG MIỀN',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white70,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Vertical sliding tab marker layout
-              Stack(
-                children: [
-                  // Sliding Background Marker
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOutCubic,
-                    top: _selectedRegionIndex * 52.0,
-                    left: 0,
-                    right: 0,
-                    height: 46,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.25),
-                          width: 1,
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // App Logo
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1976D2).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.travel_explore_rounded,
+                              color: Color(0xFF1976D2), size: 24),
                         ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'VietAI Travel',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 36),
+                    const Text(
+                      'VÙNG MIỀN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white70,
+                        letterSpacing: 1.0,
                       ),
                     ),
-                  ),
-                  // Tab Items
-                  Column(
-                    children: List.generate(tabs.length, (index) {
-                      final tab = tabs[index];
-                      final isSelected = _selectedRegion == tab.type;
-                      return Container(
-                        height: 52,
-                        alignment: Alignment.centerLeft,
-                        child: GestureDetector(
-                          onTap: () => _onTabChanged(tab.type),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  tab.icon,
-                                  size: 20,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.white60,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  tab.label,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white60,
-                                  ),
-                                ),
-                              ],
+                    const SizedBox(height: 12),
+                    // Vertical sliding tab marker layout
+                    Stack(
+                      children: [
+                        // Sliding Background Marker
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOutCubic,
+                          top: _selectedRegionIndex * 52.0,
+                          left: 0,
+                          right: 0,
+                          height: 46,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                                width: 1,
+                              ),
                             ),
                           ),
                         ),
-                      );
-                    }),
-                  ),
-                ],
+                        // Tab Items
+                        Column(
+                          children: List.generate(tabs.length, (index) {
+                            final tab = tabs[index];
+                            final isSelected = _selectedRegion == tab.type;
+                            return Container(
+                              height: 52,
+                              alignment: Alignment.centerLeft,
+                              child: GestureDetector(
+                                onTap: () => _onTabChanged(tab.type),
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        tab.icon,
+                                        size: 20,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.white60,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        tab.label,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.w600,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.white60,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Promo Card
+                    const PromoCard(),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-              const Spacer(),
-              // Promo Card
-              const PromoCard(),
-            ],
+            ),
           ),
         ),
       ),

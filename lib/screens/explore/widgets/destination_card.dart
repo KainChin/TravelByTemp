@@ -47,6 +47,7 @@ class _DestinationCardState extends State<DestinationCard> {
               : Matrix4.identity(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               _CardImage(
                 imageUrl: widget.destination.imageUrl,

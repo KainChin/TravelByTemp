@@ -29,7 +29,7 @@ class DestinationSection extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 240,
+          height: 262,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: destinations.length,

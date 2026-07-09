@@ -8,13 +8,14 @@ import '../models/chat_message.dart';
 import '../models/chat_history_item.dart';
 import '../services/chat_service.dart';
 
+const _kHistoryKey = 'chat_history_v2';
+const _kCurrentSessionKey = 'chat_current_session_v2';
+
 /// Holds chat state for the Messages screen: the message list, loading /
 /// typing flags, and the [sendMessage] use case. Backed by [ChatService],
 /// which is the only class allowed to perform network calls.
 class ChatProvider extends ChangeNotifier {
-  ChatProvider({ChatService? chatService}) : _chatService = chatService ?? ChatService() {
-    _loadFromStorage();
-  }
+  ChatProvider({ChatService? chatService}) : _chatService = chatService ?? ChatService();
 
   final ChatService _chatService;
 
@@ -33,93 +34,138 @@ class ChatProvider extends ChangeNotifier {
   String _currentUserName = '';
   String get currentUserName => _currentUserName;
 
+  bool _isReady = false;
+  bool get isReady => _isReady;
+
   String _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
   final List<ChatHistoryItem> _history = [];
   List<ChatHistoryItem> get history => List.unmodifiable(_history);
 
-  Future<void> _loadFromStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonStr = prefs.getString('chat_history_v2'); // use v2 to avoid conflicts
-      if (jsonStr != null) {
-        final List<dynamic> jsonList = jsonDecode(jsonStr);
-        _history.clear();
-        for (var itemJson in jsonList) {
-          _history.add(ChatHistoryItem.fromJson(itemJson));
-        }
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Error loading chat history: $e');
-    }
-  }
+  // ─── Storage ─────────────────────────────────────────────────────────────
 
-  Future<void> _saveToStorage() async {
+  Future<void> _saveHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = _history.map((h) => h.toJson()).toList();
-      await prefs.setString('chat_history_v2', jsonEncode(jsonList));
+      await prefs.setString(_kHistoryKey, jsonEncode(jsonList));
     } catch (e) {
       debugPrint('Error saving chat history: $e');
     }
   }
 
-  /// Adds the initial AI greeting using the logged-in user's name.
-  /// Call once, right after the provider is created — does nothing if the
-  /// conversation already has messages (e.g. after a hot reload).
-  void addInitialGreeting(String userName) {
-    if (_messages.isNotEmpty) return;
+  Future<void> _saveCurrentSessionToPrefs() async {
+    try {
+      if (_messages.length <= 1) return; // only greeting, skip
+      final prefs = await SharedPreferences.getInstance();
+      final data = {
+        'sessionId': _currentSessionId,
+        'messages': _messages.map((m) => m.toJson()).toList(),
+      };
+      await prefs.setString(_kCurrentSessionKey, jsonEncode(data));
+    } catch (e) {
+      debugPrint('Error saving current session: $e');
+    }
+  }
+
+  Future<void> _clearCurrentSessionPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kCurrentSessionKey);
+  }
+
+  // ─── Initialization ───────────────────────────────────────────────────────
+
+  /// Must be called once after provider is created.
+  /// Loads history + restores in-progress session, THEN shows greeting if needed.
+  Future<void> initialize(String userName) async {
     _currentUserName = userName;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Load full chat history
+      final historyStr = prefs.getString(_kHistoryKey);
+      if (historyStr != null) {
+        final List<dynamic> jsonList = jsonDecode(historyStr);
+        _history.clear();
+        for (var itemJson in jsonList) {
+          _history.add(ChatHistoryItem.fromJson(itemJson as Map<String, dynamic>));
+        }
+      }
+
+      // 2. Restore in-progress session (if any)
+      final currentStr = prefs.getString(_kCurrentSessionKey);
+      if (currentStr != null) {
+        final data = jsonDecode(currentStr) as Map<String, dynamic>;
+        final restoredMessages = (data['messages'] as List<dynamic>)
+            .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+            .toList();
+        if (restoredMessages.length > 1) {
+          // Has actual conversation (not just greeting)
+          _currentSessionId = data['sessionId'] as String;
+          _messages.clear();
+          _messages.addAll(restoredMessages);
+          _isReady = true;
+          notifyListeners();
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading chat data: $e');
+    }
+
+    // 3. No in-progress session → show fresh greeting
+    _messages.clear();
     _messages.add(
       ChatMessage(
         id: _generateId(),
-        message: 'Xin chào $userName! 👋\nMình có thể giúp gì cho chuyến đi của bạn hôm nay?',
+        message: 'Xin chào $_currentUserName! 👋\nMình có thể giúp gì cho chuyến đi của bạn hôm nay?',
         sender: MessageSender.ai,
         timestamp: DateTime.now(),
       ),
     );
+    _isReady = true;
     notifyListeners();
   }
 
-  void _saveCurrentSession() {
-    if (_messages.length > 1) {
-      final index = _history.indexWhere((h) => h.id == _currentSessionId);
-      final firstUserMsg = _messages.firstWhere(
-        (m) => m.sender == MessageSender.user,
-        orElse: () => _messages.last,
-      );
-      
-      // Prevent updating time if it's already in history (unless you want it bumped)
-      String timeStr = DateFormat('HH:mm').format(DateTime.now());
-      if (index >= 0) {
-        timeStr = _history[index].time;
-      }
+  // ─── Session management ───────────────────────────────────────────────────
 
-      final item = ChatHistoryItem(
-        id: _currentSessionId,
-        title: 'Cuộc trò chuyện mới',
-        subtitle: firstUserMsg.message,
-        time: timeStr,
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Dragon_Bridge.jpg/1280px-Dragon_Bridge.jpg',
-        messages: List.from(_messages),
-      );
+  void _archiveCurrentSession() {
+    if (_messages.length <= 1) return; // Only greeting, nothing to save
 
-      if (index >= 0) {
-        _history[index] = item;
-      } else {
-        _history.insert(0, item);
-      }
-      
-      _saveToStorage();
+    final index = _history.indexWhere((h) => h.id == _currentSessionId);
+    final firstUserMsg = _messages.firstWhere(
+      (m) => m.sender == MessageSender.user,
+      orElse: () => _messages.last,
+    );
+
+    String timeStr = index >= 0
+        ? _history[index].time
+        : DateFormat('HH:mm').format(DateTime.now());
+
+    final item = ChatHistoryItem(
+      id: _currentSessionId,
+      title: 'Cuộc trò chuyện mới',
+      subtitle: firstUserMsg.message,
+      time: timeStr,
+      imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Dragon_Bridge.jpg/1280px-Dragon_Bridge.jpg',
+      messages: List.from(_messages),
+    );
+
+    if (index >= 0) {
+      _history[index] = item;
+    } else {
+      _history.insert(0, item);
     }
+
+    _saveHistory();
   }
 
   /// Clears all messages and re-injects the welcome greeting.
-  /// Call this when user taps "Mới chat" or "Làm mới chat".
   void clearAndRestart([String? userName]) {
-    _saveCurrentSession();
+    _archiveCurrentSession();
     _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    _clearCurrentSessionPrefs();
 
     _messages.clear();
     _isLoading = false;
@@ -140,8 +186,8 @@ class ChatProvider extends ChangeNotifier {
 
   /// Loads an existing session from history
   void loadSession(String sessionId) {
-    _saveCurrentSession();
-    
+    _archiveCurrentSession();
+
     final index = _history.indexWhere((h) => h.id == sessionId);
     if (index >= 0) {
       _currentSessionId = sessionId;
@@ -154,7 +200,8 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Sends [text] as a user message, then awaits and appends the AI reply.
+  // ─── Sending messages ─────────────────────────────────────────────────────
+
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isLoading) return;
@@ -172,6 +219,8 @@ class ChatProvider extends ChangeNotifier {
     _isTyping = true;
     _errorMessage = null;
     notifyListeners();
+    // Save user message immediately so it's not lost even if app crashes
+    _saveCurrentSessionToPrefs();
 
     try {
       final reply = await _chatService.sendMessage(trimmed);
@@ -188,7 +237,8 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _isTyping = false;
-      _saveCurrentSession(); // Save after message is sent
+      _archiveCurrentSession();
+      _saveCurrentSessionToPrefs();
       notifyListeners();
     }
   }
@@ -216,6 +266,7 @@ class ChatProvider extends ChangeNotifier {
     _isTyping = true;
     _errorMessage = null;
     notifyListeners();
+    _saveCurrentSessionToPrefs();
 
     try {
       final reply = await _chatService.sendImageMessage(
@@ -236,7 +287,8 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _isTyping = false;
-      _saveCurrentSession(); // Save after image message is sent
+      _archiveCurrentSession();
+      _saveCurrentSessionToPrefs();
       notifyListeners();
     }
   }
@@ -255,6 +307,11 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    // Save everything when the provider is destroyed (user leaves screen)
+    _archiveCurrentSession();
+    // Note: can't await here in dispose, so use fire-and-forget
+    _saveCurrentSessionToPrefs();
+    _saveHistory();
     _chatService.dispose();
     super.dispose();
   }

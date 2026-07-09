@@ -33,6 +33,8 @@ abstract final class MockData {
           'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600',
       avgTempC: 28,
       climate: DestinationClimate.warm,
+      latitude: 12.2388,
+      longitude: 109.1967,
     ),
     Destination(
       id: 'da-lat',
@@ -47,6 +49,8 @@ abstract final class MockData {
           'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600',
       avgTempC: 18,
       climate: DestinationClimate.cool,
+      latitude: 11.9404,
+      longitude: 108.4583,
     ),
     Destination(
       id: 'phu-quoc',
@@ -61,6 +65,8 @@ abstract final class MockData {
           'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600',
       avgTempC: 29,
       climate: DestinationClimate.warm,
+      latitude: 10.2289,
+      longitude: 103.9572,
     ),
     Destination(
       id: 'ban-gioc',
@@ -75,6 +81,8 @@ abstract final class MockData {
           'https://images.unsplash.com/photo-1432407692369-79c9a5c07085?w=600',
       avgTempC: 22,
       climate: DestinationClimate.cool,
+      latitude: 22.8553,
+      longitude: 106.7248,
     ),
     Destination(
       id: 'mui-ne',
@@ -89,6 +97,8 @@ abstract final class MockData {
           'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600',
       avgTempC: 31,
       climate: DestinationClimate.hot,
+      latitude: 10.9576,
+      longitude: 108.2863,
     ),
     Destination(
       id: 'sapa',
@@ -103,6 +113,8 @@ abstract final class MockData {
           'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600',
       avgTempC: 15,
       climate: DestinationClimate.cold,
+      latitude: 22.3364,
+      longitude: 103.8438,
     ),
   ];
 
