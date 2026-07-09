@@ -33,7 +33,7 @@ class ChatBubble extends StatelessWidget {
                 width: 36,
                 height: 36,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.smart_toy_rounded,
                   size: 18,
                   color: Colors.white,

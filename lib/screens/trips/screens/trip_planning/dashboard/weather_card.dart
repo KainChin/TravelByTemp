@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:assignment/core/widgets/vietai_scope.dart';
-import 'package:assignment/services/api_client.dart';
 
 class PremiumWeatherCard extends StatefulWidget {
   const PremiumWeatherCard({super.key});

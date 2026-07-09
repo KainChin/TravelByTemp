@@ -12,28 +12,13 @@ class TripAiInsightCard extends StatefulWidget {
 
   final VoidCallback onCreate;
 
-  // Add back the removed field just to satisfy Hot Reload
-  static const _insights = [
-    _InsightData(
-      Icons.trending_down_rounded,
-      'Gia ve dang giam',
-      'Thap hon khoang 15% so voi tuan truoc.',
-      Color(0xFF22C55E),
-    )
-  ];
+
 
   @override
   State<TripAiInsightCard> createState() => _TripAiInsightCardState();
 }
 
-// Add back the removed class just to satisfy Hot Reload
-class _InsightData {
-  const _InsightData(this.icon, this.title, this.subtitle, this.color);
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-}
+
 
 class _WeatherInfo {
   final double temperature;
@@ -104,7 +89,7 @@ class _TripAiInsightCardState extends State<TripAiInsightCard> {
       .replaceAll('đ', 'd');
 
   bool _matches(Destination destination) {
-    final queryText = _searchQuery ?? '';
+    final queryText = _searchQuery;
     if (queryText.trim().isEmpty) return true;
     final query = _normalize(queryText);
     final haystack = _normalize(destination.name);
@@ -216,7 +201,7 @@ class _TripAiInsightCardState extends State<TripAiInsightCard> {
 
   @override
   Widget build(BuildContext context) {
-    final queryText = _searchQuery ?? '';
+    final queryText = _searchQuery;
     final filteredDestinations = queryText.trim().isEmpty 
         ? _defaultProminentDestinations 
         : _allDestinations.where(_matches).toList();

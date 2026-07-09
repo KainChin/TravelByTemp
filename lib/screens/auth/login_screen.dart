@@ -4,7 +4,6 @@ library login_screen;
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:assignment/services/api_client.dart';
 import 'package:flutter/material.dart';

@@ -183,12 +183,10 @@ class _WaveEffectState extends State<_WaveEffect> with SingleTickerProviderState
   @override
   void didUpdateWidget(covariant _WaveEffect oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_controller == null) {
-      _controller = AnimationController(
+    _controller ??= AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1800),
       );
-    }
     if (widget.isHovered && !oldWidget.isHovered) {
       _controller!.repeat();
     } else if (!widget.isHovered && oldWidget.isHovered) {
