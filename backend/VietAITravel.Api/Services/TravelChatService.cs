@@ -782,12 +782,17 @@ public sealed class TravelChatService(
         var avoidWalking = ContainsInsensitive(summary, "tranh di bo") || ContainsInsensitive(summary, "nguoi lon tuoi");
         var kids = ContainsInsensitive(summary, "tre em") || ContainsInsensitive(summary, "gia dinh");
 
-        var morning = vegan
-            ? places.Vegan
-            : wantsFood
-                ? places.Food
-                : places.Morning;
+        // Xoay vòng địa điểm theo ngày để mỗi ngày có một bộ địa điểm khác nhau.
+        var pool = places.AllOrdered().ToList();
+        if (pool.Count == 0) pool = new List<string> { destinationName };
+        var morningPick = pool[WrapIndex(0, pool.Count, day)];
+        var firstStopPick = pool[WrapIndex(1, pool.Count, day)];
+        var lunchPick = pool[WrapIndex(2, pool.Count, day)];
+        var afternoonPick = pool[WrapIndex(3, pool.Count, day)];
+        var restPick = pool[WrapIndex(4, pool.Count, day)];
+        var eveningPick = pool[WrapIndex(5, pool.Count, day)];
 
+        var morning = vegan ? places.Vegan : wantsFood ? places.Food : morningPick;
         var firstStop = wantsBeach
             ? places.Beach
             : wantsNature
@@ -796,19 +801,11 @@ public sealed class TravelChatService(
                     ? places.Culture
                     : wantsPhoto
                         ? places.Photo
-                        : places.Highlight;
-
+                        : firstStopPick;
         if (kids) firstStop = places.Family;
         if (avoidWalking) firstStop = places.EasyAccess;
 
-        var lunch = vegan
-            ? places.Vegan
-            : wantsBudget
-                ? places.Market
-                : wantsFood
-                    ? places.Food
-                    : places.Lunch;
-
+        var lunch = vegan ? places.Vegan : wantsBudget ? places.Market : wantsFood ? places.Food : lunchPick;
         var afternoon = wantsResort
             ? places.Resort
             : wantsNature
@@ -817,23 +814,26 @@ public sealed class TravelChatService(
                     ? places.CultureAlt
                     : wantsPhoto
                         ? places.PhotoAlt
-                        : places.Experience;
-
+                        : afternoonPick;
         var rest = wantsFood
             ? places.Cafe
             : wantsResort
                 ? places.Resort
-                : places.Cafe;
-
+                : restPick;
         var evening = wantsNightlife
             ? places.Nightlife
             : wantsFood
                 ? places.NightMarket
-                : day % 2 == 0
-                    ? places.NightMarket
-                    : places.Evening;
+                : eveningPick;
 
         return new DayActivityPlan(morning, firstStop, lunch, afternoon, rest, evening);
+    }
+
+    private static int WrapIndex(int slot, int count, int day)
+    {
+        // Day bắt đầu từ 1, mỗi ngày +slot tăng thêm 6 bước để các slot lệch
+        // hẳn về phía sau, đảm bảo ngày 2, 3, ... chọn địa điểm hoàn toàn khác.
+        return ((slot + (day - 1) * 6) % count + count) % count;
     }
 
     private sealed record CuratedPlaceSet(
@@ -857,7 +857,17 @@ public sealed class TravelChatService(
         string Cafe,
         string Nightlife,
         string NightMarket,
-        string Evening);
+        string Evening)
+    {
+        public IReadOnlyList<string> AllOrdered() => new[]
+        {
+            Morning, Highlight, Lunch, AfternoonOrExperience(), RestCafe(), EveningOrNight()
+        };
+
+        private string AfternoonOrExperience() => Experience;
+        private string RestCafe() => Cafe;
+        private string EveningOrNight() => NightMarket;
+    }
 
     private static CuratedPlaceSet CuratedPlacesFor(string destinationName)
     {

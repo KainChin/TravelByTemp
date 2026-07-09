@@ -122,10 +122,3 @@ _AiDraft _draftFor(String prompt) {
     changes: [],
   );
 }
-
-int _humanizeCost(int value, int seed) {
-  if (value <= 0) return 0;
-  if (value % 1000 != 0) return value;
-  final offset = 3000 + (seed % 23) * 700;
-  return value + offset;
-}

@@ -3,51 +3,182 @@ part of saved_trip_detail_screen;
 
 // ─── Hero SliverAppBar ────────────────────────────────────────────────────────
 class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({required this.title, required this.activities});
+  const _HeroHeader({
+    required this.title,
+    required this.totalActivities,
+    required this.allActivities,
+    required this.dayCount,
+    required this.isDirty,
+  });
   final String title;
-  final List<Map<String, dynamic>> activities;
+  final int totalActivities;
+  final List<Map<String, dynamic>> allActivities;
+  final int dayCount;
+  final bool isDirty;
 
-  int get _totalCost => activities.fold(0, (s, a) => s + _parseCost(a));
+  /// Tổng chi phí của toàn trip (không phải của ngày đang chọn).
+  int get _totalCost => allActivities.fold(0, (s, a) => s + _parseCost(a));
+
+  String get _dayLabel => dayCount <= 1 ? '1 ngày' : '$dayCount ngày';
 
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 280, pinned: true, stretch: true,
-      backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white, elevation: 0,
+      expandedHeight: 260,
+      pinned: true,
+      stretch: true,
+      backgroundColor: const Color(0xFF16A34A),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      // Title hiển thị ở collapsed (pinned) state. Khi expanded bị hero che
+      // bởi layer khác, nên ta chỉ set title ngắn gọn.
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      leading: Navigator.of(context).canPop()
+          ? IconButton(
+              tooltip: 'Quay lại',
+              icon: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
+              ),
+              onPressed: () => Navigator.of(context).maybePop(),
+            )
+          : null,
+      actions: [
+        if (isDirty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(
+                  width: 12, height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+                SizedBox(width: 6),
+                Text('Đang lưu…',
+                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+              ]),
+            ),
+          )
+        else
+          IconButton(
+            tooltip: 'Chia sẻ',
+            icon: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.ios_share_rounded, size: 16, color: Colors.white),
+            ),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: title));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã sao chép tên hành trình.'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        const SizedBox(width: 4),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+        // Tắt title của FlexibleSpaceBar – ta dùng title riêng ở AppBar cho
+        // collapsed state, tránh title đúp khi expanded.
+        titlePadding: EdgeInsets.zero,
         background: Stack(fit: StackFit.expand, children: [
+          // Background image
           SafeNetworkImage(
             url: 'https://images.unsplash.com/photo-1540202404-d0c7fe46a087?auto=format&fit=crop&w=1400&q=80',
             fit: BoxFit.cover,
             source: 'saved trip detail hero',
-            fallback: Container(decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF0F4C81), Color(0xFF006B52), Color(0xFF0891B2)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight),
-            )),
+            fallback: Container(decoration: const BoxDecoration(gradient: _gradHero)),
           ),
+          // Tint gradient xanh lá
           const DecoratedBox(decoration: BoxDecoration(gradient: _gradHero)),
-          DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
-            colors: [Colors.transparent, const Color(0xFF4338CA).withValues(alpha: 0.15)],
-            begin: Alignment.bottomCenter, end: Alignment.topCenter,
-          ))),
+          // Subtle bottom shadow for text readability
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+          // Content
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                _GlassBadge(icon: Icons.bookmark_rounded, label: 'Đã lưu'),
-                const SizedBox(height: 8),
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900,
-                        height: 1.15, shadows: [Shadow(color: Color(0x88000000), blurRadius: 12)])),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  _StatBadge(icon: Icons.calendar_today_outlined, label: '1 ngày', color: _indigoLight),
-                  _StatBadge(icon: Icons.explore_outlined, label: '${activities.length} hoạt động', color: _tealLight),
-                  _StatBadge(icon: Icons.payments_outlined, label: _fmtAmount(_totalCost), color: const Color(0xFFFBBF24)),
-                ]),
-              ]),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Glass badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.bookmark_rounded, size: 14, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('Hành trình đã lưu',
+                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                      ]),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          height: 1.15,
+                        )),
+                    const SizedBox(height: 14),
+                    // Stats row thay thế cũ
+                    Row(children: [
+                      Expanded(child: _HeroStat(icon: Icons.calendar_today_rounded, label: _dayLabel)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _HeroStat(icon: Icons.event_note_rounded, label: '$totalActivities hoạt động')),
+                      const SizedBox(width: 8),
+                      Expanded(child: _HeroStat(icon: Icons.payments_rounded, label: _fmtAmount(_totalCost))),
+                    ]),
+                  ],
+                ),
+              ),
             ),
           ),
         ]),
@@ -56,116 +187,200 @@ class _HeroHeader extends StatelessWidget {
   }
 }
 
-class _GlassBadge extends StatelessWidget {
-  const _GlassBadge({required this.icon, required this.label});
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.icon, required this.label});
   final IconData icon;
   final String label;
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(999),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: Colors.white),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-        ]),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       ),
-    ),
-  );
-}
-
-class _StatBadge extends StatelessWidget {
-  const _StatBadge({required this.icon, required this.label, required this.color});
-  final IconData icon; final String label; final Color color;
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(999),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
+      child: Row(children: [
+        Icon(icon, size: 14, color: Colors.white),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 5),
-          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800)),
-        ]),
-      ),
-    ),
-  );
+      ]),
+    );
+  }
 }
 
 // ─── Action Buttons ───────────────────────────────────────────────────────────
+// Style mới: pill button trắng + icon gradient + label, đồng bộ với saved_header
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.onEdit, required this.onShare, required this.onDelete});
-  final VoidCallback onEdit, onShare, onDelete;
+  const _ActionButtons({
+    required this.onEdit,
+    required this.onShare,
+    required this.onDelete,
+    required this.onRename,
+    required this.onClone,
+  });
+  final VoidCallback onEdit, onShare, onDelete, onRename, onClone;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(28),
-      border: Border.all(color: _line),
-      boxShadow: const [
-        BoxShadow(color: Color(0x0A1A1F36), blurRadius: 32, offset: Offset(0, 12)),
-      ],
-    ),
-    child: Row(children: [
-      _ActionBtn(label: 'Dùng & Sửa',    icon: Icons.copy_outlined,         gradient: _gradIndigo, onTap: onEdit),
-      const SizedBox(width: 8),
-      _ActionBtn(label: 'Chat AI & Bill', icon: Icons.camera_alt_outlined,   gradient: _gradTeal,   onTap: () {}),
-      const SizedBox(width: 8),
-      _ActionBtn(label: 'Chia sẻ',       icon: Icons.ios_share_rounded,     gradient: _gradBlue,   onTap: onShare),
-      const SizedBox(width: 8),
-      _ActionBtn(label: 'Xóa',           icon: Icons.delete_outline_rounded, gradient: _gradRed,    onTap: onDelete),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final buttons = [
+      _PillAction(
+        label: 'Sửa',
+        icon: Icons.edit_outlined,
+        gradient: _gradPrimary,
+        onTap: onEdit,
+      ),
+      _PillAction(
+        label: 'Đổi tên',
+        icon: Icons.drive_file_rename_outline_rounded,
+        gradient: _gradTeal,
+        onTap: onRename,
+      ),
+      _PillAction(
+        label: 'Sao chép',
+        icon: Icons.content_copy_rounded,
+        gradient: _gradBlue,
+        onTap: onClone,
+      ),
+      _PillAction(
+        label: 'Chia sẻ',
+        icon: Icons.ios_share_rounded,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        onTap: onShare,
+      ),
+      _PillAction(
+        label: 'Xóa',
+        icon: Icons.delete_outline_rounded,
+        gradient: LinearGradient(
+          colors: [Colors.red.shade400, Colors.red.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        onTap: onDelete,
+      ),
+    ];
+    // Bố cục: 2 hàng × 3 cột cho tối đa 6 nút. Với 5 nút sẽ là 2 hàng 3-2.
+    const columns = 3;
+    final rows = <List<_PillAction>>[];
+    for (var i = 0; i < buttons.length; i += columns) {
+      rows.add(buttons.sublist(
+        i,
+        i + columns > buttons.length ? buttons.length : i + columns,
+      ));
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _line),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          for (var r = 0; r < rows.length; r++) ...[
+            if (r > 0) const SizedBox(height: 8),
+            Row(
+              children: [
+                for (var c = 0; c < rows[r].length; c++) ...[
+                  if (c > 0) const SizedBox(width: 8),
+                  Expanded(child: rows[r][c]),
+                ],
+                // Nếu hàng cuối không đủ cột thì thêm Spacer để giãn đều
+                for (var c = rows[r].length; c < columns; c++) ...[
+                  const SizedBox(width: 8),
+                  const Expanded(child: SizedBox()),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({required this.label, required this.icon, required this.gradient, required this.onTap});
-  final String label; final IconData icon; final LinearGradient gradient; final VoidCallback onTap;
+class _PillAction extends StatelessWidget {
+  const _PillAction({
+    required this.label,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final Gradient gradient;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = gradient.colors.first;
-    return Expanded(
-      child: GestureDetector(
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [c.withValues(alpha: 0.12), c.withValues(alpha: 0.06)],
-                begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: c.withValues(alpha: 0.2)),
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 10, offset: const Offset(0, 4))]),
-              child: Icon(icon, color: Colors.white, size: 18),
+            gradient: LinearGradient(
+              colors: [c.withValues(alpha: 0.1), c.withValues(alpha: 0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: c, fontSize: 9.5, fontWeight: FontWeight.w800),
-                textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ]),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: c.withValues(alpha: 0.2), width: 1),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  gradient: gradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: c.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: c,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

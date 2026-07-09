@@ -123,7 +123,6 @@ class TripItineraryService {
               'returnDate': _dateOnly(returnDate),
               'peopleCount': peopleCount,
               'budgetPerPerson': budgetPerPerson,
-              'budgetTotal': budgetPerPerson,
               'departurePoint': departurePoint,
               'travelGroup': travelGroup,
               'interests': interests,

@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
@@ -11,9 +11,10 @@ CREATE TABLE roles (
 INSERT INTO roles (name, description) VALUES
 ('Admin', 'Quản trị toàn bộ hệ thống, tài khoản, dữ liệu và cấu hình'),
 ('TravelManager', 'Quản lý địa điểm du lịch, nội dung, đánh giá và dữ liệu gợi ý'),
-('Traveler', 'Người dùng cuối, tạo lịch trình và nhận gợi ý từ AI');
+('Traveler', 'Người dùng cuối, tạo lịch trình và nhận gợi ý từ AI')
+ON CONFLICT (name) DO NOTHING;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id UUID NOT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -29,7 +30,7 @@ CREATE TABLE users (
     CONSTRAINT fk_users_roles FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     token VARCHAR(500) NOT NULL UNIQUE,
@@ -39,7 +40,7 @@ CREATE TABLE refresh_tokens (
     CONSTRAINT fk_refresh_tokens_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE destinations (
+CREATE TABLE IF NOT EXISTS destinations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(200) NOT NULL,
     slug VARCHAR(250) NOT NULL UNIQUE,
@@ -67,7 +68,7 @@ CREATE TABLE destinations (
     CONSTRAINT ck_destinations_cost CHECK (estimated_cost >= 0)
 );
 
-CREATE TABLE schedules (
+CREATE TABLE IF NOT EXISTS schedules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     title VARCHAR(200) NOT NULL,
@@ -90,7 +91,7 @@ CREATE TABLE schedules (
     CONSTRAINT ck_schedules_budget CHECK (budget_input >= 0)
 );
 
-CREATE TABLE schedule_destinations (
+CREATE TABLE IF NOT EXISTS schedule_destinations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_id UUID NOT NULL,
     destination_id UUID NOT NULL,
@@ -107,7 +108,7 @@ CREATE TABLE schedule_destinations (
     CONSTRAINT uq_schedule_day_order UNIQUE (schedule_id, day_number, order_in_day)
 );
 
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     destination_id UUID NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE comments (
     CONSTRAINT ck_comments_rating CHECK (rating BETWEEN 1 AND 5)
 );
 
-CREATE TABLE user_favorites (
+CREATE TABLE IF NOT EXISTS user_favorites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     destination_id UUID NOT NULL,
@@ -132,7 +133,7 @@ CREATE TABLE user_favorites (
     CONSTRAINT uq_user_favorites_user_destination UNIQUE (user_id, destination_id)
 );
 
-CREATE TABLE auth_verification_codes (
+CREATE TABLE IF NOT EXISTS auth_verification_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     purpose VARCHAR(40) NOT NULL,
     username VARCHAR(50) NOT NULL,
@@ -147,7 +148,7 @@ CREATE TABLE auth_verification_codes (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE ai_itineraries (
+CREATE TABLE IF NOT EXISTS ai_itineraries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NULL,
     title VARCHAR(255),
@@ -158,7 +159,7 @@ CREATE TABLE ai_itineraries (
     CONSTRAINT fk_ai_itineraries_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE transport_hubs (
+CREATE TABLE IF NOT EXISTS transport_hubs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(200) NOT NULL,
@@ -173,7 +174,7 @@ CREATE TABLE transport_hubs (
     CONSTRAINT ck_transport_hubs_type CHECK (type IN ('airport', 'train_station', 'ferry_port', 'bus_station'))
 );
 
-CREATE TABLE transport_routes (
+CREATE TABLE IF NOT EXISTS transport_routes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     origin_hub_id UUID NOT NULL,
     destination_hub_id UUID NOT NULL,
@@ -190,7 +191,7 @@ CREATE TABLE transport_routes (
     CONSTRAINT uq_transport_route UNIQUE (origin_hub_id, destination_hub_id, transport_type)
 );
 
-CREATE TABLE transport_configs (
+CREATE TABLE IF NOT EXISTS transport_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key VARCHAR(120) NOT NULL UNIQUE,
     value VARCHAR(120) NOT NULL,
@@ -199,7 +200,7 @@ CREATE TABLE transport_configs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE trip_routes (
+CREATE TABLE IF NOT EXISTS trip_routes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NULL,
     departure_name VARCHAR(255) NOT NULL,
@@ -216,7 +217,7 @@ CREATE TABLE trip_routes (
     CONSTRAINT ck_trip_routes_budget CHECK (budget_per_person IS NULL OR budget_per_person >= 0)
 );
 
-CREATE TABLE trip_route_legs (
+CREATE TABLE IF NOT EXISTS trip_route_legs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     trip_route_id UUID NOT NULL,
     leg_order INT NOT NULL,
@@ -234,7 +235,7 @@ CREATE TABLE trip_route_legs (
     CONSTRAINT uq_trip_route_legs_route_order UNIQUE (trip_route_id, leg_order)
 );
 
-CREATE TABLE user_travel_memories (
+CREATE TABLE IF NOT EXISTS user_travel_memories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE,
     preferred_styles_json JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -249,28 +250,33 @@ CREATE TABLE user_travel_memories (
     CONSTRAINT ck_user_travel_memories_trip_count CHECK (trip_count >= 0)
 );
 
-CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX idx_destinations_region ON destinations(region);
-CREATE INDEX idx_destinations_category ON destinations(category);
-CREATE INDEX idx_destinations_is_active ON destinations(is_active);
-CREATE INDEX idx_schedules_user_id ON schedules(user_id);
-CREATE INDEX idx_schedule_destinations_schedule_id ON schedule_destinations(schedule_id);
-CREATE INDEX idx_comments_destination_id ON comments(destination_id);
-CREATE INDEX idx_user_favorites_user_id ON user_favorites(user_id);
-CREATE INDEX idx_user_favorites_destination_id ON user_favorites(destination_id);
-CREATE INDEX idx_ai_itineraries_user_id ON ai_itineraries(user_id);
-CREATE INDEX idx_ai_itineraries_created_at ON ai_itineraries(created_at);
-CREATE INDEX idx_trip_routes_user_id ON trip_routes(user_id);
-CREATE INDEX idx_trip_routes_created_at ON trip_routes(created_at);
-CREATE INDEX idx_trip_route_legs_trip_route_id ON trip_route_legs(trip_route_id);
-CREATE INDEX idx_transport_hubs_type_active ON transport_hubs(type, is_active);
-CREATE INDEX idx_transport_routes_type_active ON transport_routes(transport_type, is_active);
-CREATE INDEX idx_transport_configs_active ON transport_configs(is_active);
-CREATE INDEX idx_user_travel_memories_user_id ON user_travel_memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_destinations_region ON destinations(region);
+CREATE INDEX IF NOT EXISTS idx_destinations_category ON destinations(category);
+CREATE INDEX IF NOT EXISTS idx_destinations_is_active ON destinations(is_active);
+CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_destinations_schedule_id ON schedule_destinations(schedule_id);
+CREATE INDEX IF NOT EXISTS idx_comments_destination_id ON comments(destination_id);
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_favorites_destination_id ON user_favorites(destination_id);
+CREATE INDEX IF NOT EXISTS idx_ai_itineraries_user_id ON ai_itineraries(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_itineraries_created_at ON ai_itineraries(created_at);
+CREATE INDEX IF NOT EXISTS idx_trip_routes_user_id ON trip_routes(user_id);
+CREATE INDEX IF NOT EXISTS idx_trip_routes_created_at ON trip_routes(created_at);
+CREATE INDEX IF NOT EXISTS idx_trip_route_legs_trip_route_id ON trip_route_legs(trip_route_id);
+CREATE INDEX IF NOT EXISTS idx_transport_hubs_type_active ON transport_hubs(type, is_active);
+CREATE INDEX IF NOT EXISTS idx_transport_routes_type_active ON transport_routes(transport_type, is_active);
+CREATE INDEX IF NOT EXISTS idx_transport_configs_active ON transport_configs(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_travel_memories_user_id ON user_travel_memories(user_id);
 
-CREATE TABLE content_articles (
+
+
+
+
+
+CREATE TABLE IF NOT EXISTS content_articles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(300) NOT NULL,
     slug VARCHAR(350) NOT NULL UNIQUE,
@@ -293,7 +299,7 @@ CREATE TABLE content_articles (
     CONSTRAINT ck_content_articles_status CHECK (status IN ('draft', 'pending', 'published'))
 );
 
-CREATE TABLE content_activity_logs (
+CREATE TABLE IF NOT EXISTS content_activity_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     action_type VARCHAR(50) NOT NULL,
@@ -304,7 +310,7 @@ CREATE TABLE content_activity_logs (
     CONSTRAINT fk_content_activity_logs_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE banners (
+CREATE TABLE IF NOT EXISTS banners (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(200) NOT NULL,
     image_url VARCHAR(500) NOT NULL,
@@ -315,7 +321,7 @@ CREATE TABLE banners (
     updated_at TIMESTAMPTZ
 );
 
-CREATE TABLE gallery_images (
+CREATE TABLE IF NOT EXISTS gallery_images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(200) NOT NULL,
     image_url VARCHAR(500) NOT NULL,
@@ -325,7 +331,7 @@ CREATE TABLE gallery_images (
     CONSTRAINT fk_gallery_images_destination FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE SET NULL
 );
 
-CREATE TABLE featured_content (
+CREATE TABLE IF NOT EXISTS featured_content (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(200) NOT NULL,
     subtitle VARCHAR(300),
@@ -338,19 +344,13 @@ CREATE TABLE featured_content (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_content_articles_status ON content_articles(status);
-CREATE INDEX idx_content_articles_type ON content_articles(article_type);
-CREATE INDEX idx_content_articles_author ON content_articles(author_id);
-CREATE INDEX idx_content_articles_created_at ON content_articles(created_at DESC);
-CREATE INDEX idx_content_activity_logs_created_at ON content_activity_logs(created_at DESC);
-CREATE INDEX idx_destinations_view_count ON destinations(view_count DESC);
-
 INSERT INTO transport_configs (key, value, description) VALUES
 ('airportSearchRadiusKm', '100', 'Radius for finding an airport near origin/destination.'),
 ('recommendedFlightDistanceKm', '250', 'Distance threshold where flight becomes the recommended mode when airport hubs exist.'),
 ('shortFlightDistanceKm', '150', 'Below this distance flight remains selectable but is marked not recommended.'),
 ('railSearchRadiusKm', '35', 'Radius for finding a railway station near origin/destination.'),
-('ferryPortSearchRadiusKm', '70', 'Radius for finding a ferry/speedboat port near origin/destination.');
+('ferryPortSearchRadiusKm', '70', 'Radius for finding a ferry/speedboat port near origin/destination.')
+ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO transport_hubs (code, name, type, province, region, latitude, longitude, description) VALUES
 ('tan_son_nhat_airport', 'San bay Tan Son Nhat', 'airport', 'TP.HCM', 'South', 10.8188, 106.6519, 'Airport serving Ho Chi Minh City'),
@@ -384,7 +384,8 @@ INSERT INTO transport_hubs (code, name, type, province, region, latitude, longit
 ('ha_tien_port', 'Cang Ha Tien', 'ferry_port', 'Kien Giang', 'South', 10.3833, 104.4833, 'Ferry/speedboat port for Phu Quoc'),
 ('phu_quoc_port', 'Cang Phu Quoc', 'ferry_port', 'Kien Giang', 'South', 10.2131, 103.9592, 'Ferry/speedboat port on Phu Quoc'),
 ('tran_de_port', 'Cang Tran De', 'ferry_port', 'Soc Trang', 'South', 9.4969, 106.2089, 'Speedboat port for Con Dao'),
-('con_dao_port', 'Cang Con Dao', 'ferry_port', 'Ba Ria - Vung Tau', 'South', 8.6849, 106.6086, 'Ferry/speedboat port on Con Dao');
+('con_dao_port', 'Cang Con Dao', 'ferry_port', 'Ba Ria - Vung Tau', 'South', 8.6849, 106.6086, 'Ferry/speedboat port on Con Dao')
+ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO transport_routes (origin_hub_id, destination_hub_id, transport_type, estimated_duration_hours, estimated_cost_vnd)
 SELECT
@@ -416,7 +417,8 @@ SELECT
         ELSE 3500000
     END
 FROM transport_hubs a
-JOIN transport_hubs b ON a.type = 'airport' AND b.type = 'airport' AND a.code < b.code;
+JOIN transport_hubs b ON a.type = 'airport' AND b.type = 'airport' AND a.code < b.code
+ON CONFLICT (origin_hub_id, destination_hub_id, transport_type) DO NOTHING;
 
 INSERT INTO transport_routes (origin_hub_id, destination_hub_id, transport_type, estimated_duration_hours, estimated_cost_vnd)
 SELECT a.id, b.id, 'train',
@@ -431,7 +433,8 @@ SELECT a.id, b.id, 'train',
            POWER(SIN(RADIANS(b.longitude - a.longitude) / 2), 2)
        ))) * 950)::numeric, 0))
 FROM transport_hubs a
-JOIN transport_hubs b ON a.type = 'train_station' AND b.type = 'train_station' AND a.code < b.code;
+JOIN transport_hubs b ON a.type = 'train_station' AND b.type = 'train_station' AND a.code < b.code
+ON CONFLICT (origin_hub_id, destination_hub_id, transport_type) DO NOTHING;
 
 INSERT INTO transport_routes (origin_hub_id, destination_hub_id, transport_type, estimated_duration_hours, estimated_cost_vnd)
 SELECT p1.id, p2.id, 'ferry', 2.5, 250000
@@ -440,7 +443,8 @@ JOIN transport_hubs p2 ON p1.code = 'ha_tien_port' AND p2.code = 'phu_quoc_port'
 UNION ALL
 SELECT p1.id, p2.id, 'ferry', 2.25, 390000
 FROM transport_hubs p1
-JOIN transport_hubs p2 ON p1.code = 'tran_de_port' AND p2.code = 'con_dao_port';
+JOIN transport_hubs p2 ON p1.code = 'tran_de_port' AND p2.code = 'con_dao_port'
+ON CONFLICT (origin_hub_id, destination_hub_id, transport_type) DO NOTHING;
 
 CREATE OR REPLACE VIEW vw_destination_ratings AS
 SELECT d.id AS destination_id, d.name AS destination_name, d.province, d.region, d.category,
@@ -546,12 +550,7 @@ INSERT INTO destinations (name, slug, description, province, region, latitude, l
 ('Chau Doc', 'chau-doc', 'Thi xa gan bien gioi voi nui Sam, chua Ba va van hoa song nuoc.', 'An Giang', 'West', 10.700000, 105.116700, 'Cultural', 450000, 'Ca ngay', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600', 'Thang 11 den thang 4', 'Kho rao', 'Van hoa, tam linh', 'Phu hop tham quan nui Sam va cho noi.', 'Chau Doc An Giang West culture river'),
 ('My Tho', 'my-tho', 'Cua ngo mien Tay voi song Tien, cu lao va dac san hu tieu.', 'Tien Giang', 'West', 10.360000, 106.360000, 'Cultural', 400000, 'Ca ngay', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600', 'Quanh nam', 'Am, it mua', 'Song nuoc, am thuc', 'Phu hop di trong ngay tu TP HCM.', 'My Tho Tien Giang West river food'),
 ('Ha Tien', 'ha-tien', 'Thanh pho bien Tay Nam voi nui, bien va nhieu thang canh.', 'Kien Giang', 'West', 10.383300, 104.483300, 'Nature', 700000, 'Ca ngay', 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600', 'Thang 11 den thang 4', 'Nang dep', 'Bien, thien nhien', 'Phu hop ket hop bien va van hoa dia phuong.', 'Ha Tien Kien Giang West beach nature'),
-('Ben Tre', 'ben-tre', 'Xu dua voi kenh rach, vuon trai cay va trai nghiem miet vuon.', 'Ben Tre', 'West', 10.233300, 106.383300, 'Nature', 450000, 'Ca ngay', 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600', 'Quanh nam', 'Am ap', 'Miet vuon, song nuoc', 'Phu hop trai nghiem nong thon mien Tay.', 'Ben Tre West coconut river garden')
-ON CONFLICT (slug) DO NOTHING;
-
-INSERT INTO destinations (name, slug, description, province, region, latitude, longitude, category,
-    estimated_cost, opening_hours, image_url, best_time_to_visit, suitable_weather, travel_style,
-    ai_recommendation_note, embedding_text) VALUES
+('Ben Tre', 'ben-tre', 'Xu dua voi kenh rach, vuon trai cay va trai nghiem miet vuon.', 'Ben Tre', 'West', 10.233300, 106.383300, 'Nature', 450000, 'Ca ngay', 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600', 'Quanh nam', 'Am ap', 'Miet vuon, song nuoc', 'Phu hop trai nghiem nong thon mien Tay.', 'Ben Tre West coconut river garden'),
 ('Vịnh Hạ Long', 'vinh-ha-long',
  'Di sản thiên nhiên thế giới với hàng nghìn đảo đá vôi hùng vĩ trên biển.',
  'Quảng Ninh', 'North', 20.910100, 107.183900, 'Nature', 1500000, 'Cả ngày',
@@ -569,4 +568,175 @@ INSERT INTO destinations (name, slug, description, province, region, latitude, l
  'Lâm Đồng', 'South', 11.940400, 108.458300, 'Mountain', 800000, 'Cả ngày',
  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600',
  'Tháng 10 đến tháng 4', 'Thời tiết mát mẻ', 'Nghỉ dưỡng, thiên nhiên',
- 'Phù hợp nghỉ dưỡng mát mẻ.', 'Đà Lạt Lâm Đồng miền Nam núi khí hậu mát mẻ nghỉ dưỡng');
+ 'Phù hợp nghỉ dưỡng mát mẻ.', 'Đà Lạt Lâm Đồng miền Nam núi khí hậu mát mẻ nghỉ dưỡng')
+ON CONFLICT (slug) DO NOTHING;
+
+-- ============================================================================
+-- Content management tables for AI Travel Admin dashboard
+-- ============================================================================
+
+
+
+
+
+CREATE INDEX IF NOT EXISTS idx_content_articles_status ON content_articles(status);
+CREATE INDEX IF NOT EXISTS idx_content_articles_type ON content_articles(article_type);
+CREATE INDEX IF NOT EXISTS idx_content_articles_author ON content_articles(author_id);
+CREATE INDEX IF NOT EXISTS idx_content_articles_created_at ON content_articles(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_activity_logs_created_at ON content_activity_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_destinations_view_count ON destinations(view_count DESC);
+
+UPDATE destinations SET view_count = CASE slug
+    WHEN 'da-nang' THEN 125600
+    WHEN 'phu-quoc' THEN 118400
+    WHEN 'pho-co-hoi-an' THEN 98700
+    WHEN 'thanh-pho-da-lat' THEN 87200
+    WHEN 'ha-noi' THEN 76500
+    WHEN 'vinh-ha-long' THEN 65400
+    WHEN 'hue' THEN 54300
+    WHEN 'sapa' THEN 43200
+    ELSE 10000 + (ABS(hashtext(slug::text)) % 50000)
+END WHERE view_count = 0;
+
+-- ============================================================================
+-- Content seed: 245 articles + logs + banners + gallery + featured
+-- Idempotent: chỉ insert khi bảng tương ứng còn rỗng.
+-- ============================================================================
+
+DO $$
+DECLARE
+    v_manager_id UUID;
+BEGIN
+    SELECT id INTO v_manager_id FROM users WHERE username = 'manager';
+    IF v_manager_id IS NULL THEN
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM content_articles) THEN
+        -- 5 bài viết đầu (giống ContentSeeder.cs)
+        INSERT INTO content_articles
+            (id, title, slug, summary, content, article_type, category, status,
+             author_id, thumbnail_url, destination_id, view_count, created_at, updated_at, published_at)
+        VALUES
+            (gen_random_uuid(), 'Khám phá Đà Nẵng: 10 điểm đến không thể bỏ qua',
+             'kham-pha-da-nang-10-diem-den',
+             'Tóm tắt nội dung cho Khám phá Đà Nẵng: 10 điểm đến không thể bỏ qua',
+             '<p>Nội dung chi tiết cho bài viết: Khám phá Đà Nẵng: 10 điểm đến không thể bỏ qua</p>',
+             'article', 'destination', 'published', v_manager_id,
+             'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=400',
+             (SELECT id FROM destinations WHERE slug = 'da-nang'),
+             0, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'),
+            (gen_random_uuid(), 'Kinh nghiệm du lịch Phú Quốc 3 ngày 2 đêm tiết kiệm',
+             'kinh-nghiem-phu-quoc-3-ngay',
+             'Tóm tắt nội dung cho Kinh nghiệm du lịch Phú Quốc 3 ngày 2 đêm tiết kiệm',
+             '<p>Nội dung chi tiết cho bài viết: Kinh nghiệm du lịch Phú Quốc 3 ngày 2 đêm tiết kiệm</p>',
+             'article', 'experience', 'published', v_manager_id,
+             'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400',
+             (SELECT id FROM destinations WHERE slug = 'phu-quoc'),
+             0, NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days'),
+            (gen_random_uuid(), 'Hội An lung linh đèn lồng: Lịch trình 2 ngày hoàn hảo',
+             'hoi-an-den-long-2-ngay',
+             'Tóm tắt nội dung cho Hội An lung linh đèn lồng: Lịch trình 2 ngày hoàn hảo',
+             '<p>Nội dung chi tiết cho bài viết: Hội An lung linh đèn lồng: Lịch trình 2 ngày hoàn hảo</p>',
+             'article', 'destination', 'pending', v_manager_id,
+             'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=400',
+             (SELECT id FROM destinations WHERE slug = 'pho-co-hoi-an'),
+             0, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NULL),
+            (gen_random_uuid(), 'Đà Lạt mùa hoa: Gợi ý homestay và quán cafe view đẹp',
+             'da-lat-mua-hoa-homestay',
+             'Tóm tắt nội dung cho Đà Lạt mùa hoa: Gợi ý homestay và quán cafe view đẹp',
+             '<p>Nội dung chi tiết cho bài viết: Đà Lạt mùa hoa: Gợi ý homestay và quán cafe view đẹp</p>',
+             'article', 'experience', 'draft', v_manager_id,
+             'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=400',
+             (SELECT id FROM destinations WHERE slug = 'thanh-pho-da-lat'),
+             0, NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours', NULL),
+            (gen_random_uuid(), 'Vịnh Hạ Long được UNESCO công nhận di sản lần thứ hai',
+             'vinh-ha-long-unesco-2026',
+             'Tóm tắt nội dung cho Vịnh Hạ Long được UNESCO công nhận di sản lần thứ hai',
+             '<p>Nội dung chi tiết cho bài viết: Vịnh Hạ Long được UNESCO công nhận di sản lần thứ hai</p>',
+             'news', 'news', 'published', v_manager_id,
+             'https://images.unsplash.com/photo-1528181304800-259b08848526?w=400',
+             (SELECT id FROM destinations WHERE slug = 'vinh-ha-long'),
+             0, NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days');
+
+        -- 240 bài còn lại (i = 5..244), lặp qua 10 destination đầu tiên
+        INSERT INTO content_articles
+            (id, title, slug, summary, content, article_type, category, status,
+             author_id, thumbnail_url, destination_id, view_count, created_at, updated_at, published_at)
+        SELECT
+            gen_random_uuid(),
+            'Bài viết du lịch #' || (i + 1)::text || ': ' || d.name,
+            'bai-viet-du-lich-' || (i + 1)::text,
+            'Tóm tắt nội dung cho Bài viết du lịch #' || (i + 1)::text || ': ' || d.name,
+            '<p>Nội dung chi tiết cho bài viết: Bài viết du lịch #' || (i + 1)::text || ': ' || d.name || '</p>',
+            (CASE WHEN i % 4 = 0 THEN 'news' ELSE 'article' END)::varchar,
+            (CASE WHEN (CASE WHEN i % 4 = 0 THEN 'news' ELSE 'article' END) = 'news'
+                  THEN 'news'
+                  ELSE (CASE WHEN i % 3 = 0 THEN 'experience' ELSE 'destination' END)
+             END)::varchar,
+            (CASE WHEN i % 7 = 0 THEN 'pending'
+                  WHEN i % 11 = 0 THEN 'draft'
+                  ELSE 'published' END)::varchar,
+            v_manager_id,
+            d.image_url,
+            d.id,
+            0,
+            NOW() - (i::text || ' days')::interval,
+            NOW() - (i::text || ' days')::interval,
+            (CASE WHEN (CASE WHEN i % 7 = 0 THEN 'pending'
+                             WHEN i % 11 = 0 THEN 'draft'
+                             ELSE 'published' END) = 'published'
+                  THEN NOW() - (i::text || ' days')::interval
+                  ELSE NULL END)
+        FROM generate_series(5, 244) AS i
+        CROSS JOIN LATERAL (
+            SELECT id, name, image_url
+            FROM destinations
+            WHERE is_active
+            ORDER BY name
+            LIMIT 10
+        ) d
+        WHERE d.id IS NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM content_activity_logs) THEN
+        INSERT INTO content_activity_logs (id, user_id, action_type, description, entity_type, entity_id, created_at)
+        VALUES
+            (gen_random_uuid(), v_manager_id, 'publish_article', 'Đăng bài viết mới "Khám phá Đà Nẵng: 10 điểm đến không thể bỏ qua"', 'content', NULL, NOW() - INTERVAL '10 minutes'),
+            (gen_random_uuid(), v_manager_id, 'update_destination', 'Cập nhật thông tin địa điểm "Phú Quốc"', 'destination', NULL, NOW() - INTERVAL '1 hour'),
+            (gen_random_uuid(), v_manager_id, 'create_article', 'Tạo bài viết "Hội An lung linh đèn lồng" chờ duyệt', 'content', NULL, NOW() - INTERVAL '2 hours'),
+            (gen_random_uuid(), v_manager_id, 'publish_article', 'Xuất bản tin tức "Vịnh Hạ Long được UNESCO công nhận"', 'content', NULL, NOW() - INTERVAL '5 hours'),
+            (gen_random_uuid(), v_manager_id, 'update_destination', 'Thêm ảnh mới cho địa điểm "Đà Lạt"', 'destination', NULL, NOW() - INTERVAL '8 hours'),
+            (gen_random_uuid(), v_manager_id, 'create_article', 'Tạo bản nháp "Đà Lạt mùa hoa"', 'content', NULL, NOW() - INTERVAL '1 day');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM banners) THEN
+        INSERT INTO banners (id, title, image_url, link_url, sort_order, is_active, created_at, updated_at)
+        VALUES
+            (gen_random_uuid(), 'Khám phá miền Trung', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800', NULL, 1, TRUE, NOW(), NULL),
+            (gen_random_uuid(), 'Phú Quốc - Thiên đường biển đảo', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800', NULL, 2, TRUE, NOW(), NULL);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM gallery_images) THEN
+        INSERT INTO gallery_images (id, title, image_url, destination_id, sort_order, created_at)
+        SELECT gen_random_uuid(), x.title, x.image_url, x.dest_id, x.sort_order, NOW()
+        FROM (VALUES
+            ('Bãi biển Mỹ Khê', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600', 'da-nang', 1),
+            ('Hoàng hôn Phú Quốc', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600', 'phu-quoc', 2),
+            ('Phố cổ Hội An', 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600', 'pho-co-hoi-an', 3)
+        ) AS x(title, image_url, slug, sort_order)
+        LEFT JOIN destinations d ON d.slug = x.slug;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM featured_content) THEN
+        INSERT INTO featured_content (id, title, subtitle, image_url, link_url, content_type, reference_id, sort_order, is_active, created_at)
+        VALUES
+            (gen_random_uuid(), 'Top 10 điểm đến mùa hè', 'Gợi ý từ AI Travel', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800', NULL, 'article', NULL, 1, TRUE, NOW()),
+            (gen_random_uuid(), 'Ẩm thực miền Trung', 'Hành trình vị giác', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800', NULL, 'article', NULL, 2, TRUE, NOW());
+    END IF;
+END $$;
+
+-- ============================================================================
+-- Auth: verification codes (sign-up & forgot-password flow) — already created above.
+-- Indexes:
+-- ============================================================================
