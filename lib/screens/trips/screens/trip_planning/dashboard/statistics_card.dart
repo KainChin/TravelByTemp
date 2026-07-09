@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
-import 'package:assignment/services/api_client.dart';
 
 class PremiumStatisticsCard extends StatefulWidget {
   const PremiumStatisticsCard({super.key});

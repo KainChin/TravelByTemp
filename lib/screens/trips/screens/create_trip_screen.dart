@@ -35,6 +35,7 @@ class CreateTripScreen extends StatelessWidget {
 class _AiInterviewView extends StatefulWidget {
   const _AiInterviewView();
 
+  @override
   State<_AiInterviewView> createState() => _AiInterviewViewState();
 }
 

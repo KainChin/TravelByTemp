@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -106,7 +105,7 @@ class _MessagesViewState extends State<_MessagesView> {
               'assets/images/chatAI.png',
               fit: BoxFit.cover,
               alignment: Alignment.center,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0xFF0D47A1), Color(0xFF1976D2), Color(0xFF42A5F5)],
@@ -190,7 +189,7 @@ class _MessagesViewState extends State<_MessagesView> {
               'assets/images/chatAI.png',
               fit: BoxFit.cover,
               alignment: Alignment.center,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0xFF0D47A1), Color(0xFF1976D2), Color(0xFF42A5F5)],
@@ -315,7 +314,7 @@ class _ChatTopBar extends StatelessWidget {
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.smart_toy_rounded,
                       color: Colors.white,
                       size: 24,

@@ -28,7 +28,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
   List<TripItineraryHistoryItem> _history = [];
   List<Destination> _topDestinations = [];
   bool _isLoadingHistory = true;
-  bool _isLoadingDest = true;
+
   
   double? _weatherTemp;
   int? _weatherCode;
@@ -83,7 +83,6 @@ class _HomeSidebarState extends State<HomeSidebar> {
           if (mounted) {
             setState(() {
               _topDestinations = list.take(3).toList();
-              _isLoadingDest = false;
               if (_topDestinations.isNotEmpty) {
                 _topDestWeather = _topDestinations.first;
                 _fetchWeather(_topDestWeather!);
@@ -101,7 +100,6 @@ class _HomeSidebarState extends State<HomeSidebar> {
     if (mounted) {
       setState(() {
         _topDestinations = fallback.take(3).toList();
-        _isLoadingDest = false;
         if (_topDestinations.isNotEmpty) {
           _topDestWeather = _topDestinations.first;
           _fetchWeather(_topDestWeather!);
