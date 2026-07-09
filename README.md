@@ -69,6 +69,17 @@ Hệ thống được thiết kế theo mô hình **Client-Server** kết hợp 
 
 ---
 
+## 📚 Tài liệu Hệ thống (System Documentation)
+
+Các tài liệu kiến trúc phần mềm, sơ đồ và kịch bản kiểm thử (Test Cases) được lưu trữ tại thư mục **[`docs/`](./docs)** trong mã nguồn. Bạn có thể xem chi tiết:
+- 🗄️ [ERD Diagram](./docs/erd_diagram.md): Sơ đồ Thực thể - Liên kết cơ sở dữ liệu.
+- 🌐 [Context Diagram](./docs/context_diagram.md): Biểu đồ ngữ cảnh C4 Model.
+- 🔐 [Roles & Permissions](./docs/roles_permissions.md): Ma trận phân quyền.
+- 🔄 [Sequence Diagrams](./docs/sequence_diagrams.md): Biểu đồ tuần tự luồng Lên lịch trình, Auth, Upload Story.
+- 🧪 [Test Cases](./docs/test_cases.md): Kịch bản kiểm thử AI & Auth.
+
+---
+
 ## 💻 Hướng dẫn chạy dự án
 
 ### Yêu cầu
