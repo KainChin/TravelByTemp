@@ -1,3 +1,5 @@
+import 'package:assignment/core/utils/destination_images.dart';
+import 'package:assignment/core/widgets/safe_network_image.dart';
 import 'package:assignment/core/widgets/vietai_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -35,7 +37,9 @@ class _TripItineraryHistoryScreenState extends State<TripItineraryHistoryScreen>
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = TripItineraryService(authToken: _token).history());
+    setState(() {
+      _future = TripItineraryService(authToken: _token).history();
+    });
     await _future;
   }
 
@@ -147,60 +151,248 @@ class _HistoryCard extends StatelessWidget {
     final days = item.itinerary['days'] is List ? (item.itinerary['days'] as List).length : 0;
     final date = '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}';
 
+    // Try to extract destination info from itinerary for cover image.
+    final destinations = _extractDestinations(item.itinerary);
+    final coverUrl = destinations.isEmpty ? null : _coverUrlFor(destinations.first);
+    final activityCount = destinations.length;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 14),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: _line),
           boxShadow: const [BoxShadow(color: Color(0x080F172A), blurRadius: 16, offset: Offset(0, 8))],
         ),
-        child: Row(children: [
-          // Gradient icon
-          Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: index % 2 == 0
-                    ? const [Color(0xFF4338CA), Color(0xFF6D28D9)]
-                    : const [Color(0xFF0D9488), Color(0xFF0891B2)],
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Cover image (with shimmer + gradient fallback)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  SafeNetworkImage(
+                    url: coverUrl,
+                    fit: BoxFit.cover,
+                    source: 'history-card-${item.id}',
+                    fallback: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: index % 2 == 0
+                              ? const [Color(0xFF4338CA), Color(0xFF6D28D9)]
+                              : const [Color(0xFF0D9488), Color(0xFF0891B2)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        // Decorative route/network background
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.alt_route_rounded,
+                            color: Colors.white.withValues(alpha: 0.18),
+                            size: 90,
+                          ),
+                          if (destinations.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 18),
+                              child: Text(
+                                destinations.take(3).join(' • '),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Subtle dark gradient for top/bottom chips readability.
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.55),
+                          ],
+                          stops: const [0.0, 0.45, 1.0],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Top-left chip: number of activities
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.94),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.place_rounded, size: 12, color: _indigo),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$activityCount điểm',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: _indigo,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Bottom-left: trip title on cover
+                  Positioned(
+                    left: 14,
+                    right: 14,
+                    bottom: 12,
+                    child: Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                        shadows: [
+                          Shadow(color: Color(0x88000000), blurRadius: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(
-                color: (index % 2 == 0 ? _indigo : _teal).withValues(alpha: 0.35),
-                blurRadius: 10, offset: const Offset(0, 4),
-              )],
             ),
-            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item.title,
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _ink)),
-            const SizedBox(height: 5),
-            Wrap(spacing: 8, children: [
-              _MetaTag(icon: Icons.calendar_today_outlined, label: date, color: _muted),
-              _MetaTag(icon: Icons.explore_outlined, label: '$days ngày', color: _indigo),
-              _MetaTag(icon: Icons.smart_toy_outlined, label: item.aiModel ?? 'AI', color: _teal),
-            ]),
-          ])),
-          const SizedBox(width: 8),
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              color: _indigo.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+
+            // ── Info row: meta chips
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _MetaTag(icon: Icons.calendar_today_outlined, label: date, color: _muted),
+                      if (days > 0)
+                        _MetaTag(
+                          icon: Icons.event_outlined,
+                          label: '$days ngày',
+                          color: _indigo,
+                        ),
+                      if (item.aiModel != null && item.aiModel!.trim().isNotEmpty)
+                        _MetaTag(
+                          icon: Icons.smart_toy_outlined,
+                          label: item.aiModel!,
+                          color: _teal,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Nhấn để xem chi tiết chuyến đi',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: _indigo.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.chevron_right_rounded,
+                          color: _indigo,
+                          size: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            child: const Icon(Icons.chevron_right_rounded, color: _indigo, size: 18),
-          ),
-        ]),
-      ).animate(delay: (index * 80).ms).fadeIn(duration: 500.ms).slideX(begin: 0.08, end: 0, curve: Curves.easeOut),
+          ],
+        ),
+      )
+          .animate(delay: (index * 80).ms)
+          .fadeIn(duration: 500.ms)
+          .slideX(begin: 0.08, end: 0, curve: Curves.easeOut),
     );
+  }
+
+  // Extract a list of destination names from itinerary days/activities.
+  static List<String> _extractDestinations(Map<String, dynamic> itinerary) {
+    final names = <String>{};
+    final days = itinerary['days'];
+    if (days is List) {
+      for (final day in days) {
+        if (day is Map) {
+          final activities = day['activities'];
+          if (activities is List) {
+            for (final a in activities) {
+              if (a is Map) {
+                final d = (a['destination'] ?? a['placeName'] ?? '').toString().trim();
+                if (d.isNotEmpty && d.toLowerCase() != 'null') {
+                  names.add(d);
+                  if (names.length >= 6) return names.toList();
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    // Fallback: try destinations/places at root.
+    final root = itinerary['destinations'] ?? itinerary['places'];
+    if (root is List) {
+      for (final p in root) {
+        if (p is Map) {
+          final n = (p['name'] ?? p['destination'] ?? '').toString().trim();
+          if (n.isNotEmpty && n.toLowerCase() != 'null') {
+            names.add(n);
+            if (names.length >= 6) return names.toList();
+          }
+        }
+      }
+    }
+    return names.toList();
+  }
+
+  // Build Unsplash cover URL from destination name (use seed for stable image).
+  static String? _coverUrlFor(String destinationName) {
+    final query = DestinationImages.urlFor(destinationName);
+    return query.startsWith('http') ? query : null;
   }
 }
 
