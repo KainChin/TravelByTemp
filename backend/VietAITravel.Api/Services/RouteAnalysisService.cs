@@ -15,12 +15,15 @@ public sealed class GoogleMapsOptions
 public sealed class RouteAnalysisService(
     AppDbContext db,
     GoogleMapsOptions googleMapsOptions,
+    VietAITravel.Api.Services.GroqOptions groqOptions,
+    IHttpClientFactory httpClientFactory,
     ILogger<RouteAnalysisService> logger)
 {
     private static readonly HttpClient GoogleClient = new()
     {
         Timeout = TimeSpan.FromSeconds(20)
     };
+
 
     public async Task<AnalyzeRouteResponse> AnalyzeAsync(AnalyzeRouteRequest request, CancellationToken ct)
     {
@@ -154,6 +157,9 @@ public sealed class RouteAnalysisService(
         TransportConfigValues transportRules,
         CancellationToken ct)
     {
+        var dynamicCosts = await EstimateCostsWithGroqAsync(distanceKm, from.Name, to.Name, ct);
+        double GetCost(string m) => dynamicCosts != null && dynamicCosts.TryGetValue(m, out var c) && c > 0 ? c : CostForMode(distanceKm, m);
+
         var fromAirport = await NearestHubAsync(from, "airport", transportRules.AirportSearchRadiusKm, ct);
         var toAirport = await NearestHubAsync(to, "airport", transportRules.AirportSearchRadiusKm, ct);
         var fromRail = await NearestHubAsync(from, "train_station", transportRules.RailSearchRadiusKm, ct);
@@ -167,28 +173,28 @@ public sealed class RouteAnalysisService(
 
         var options = new List<TransportOptionResponse>
         {
-            new("car", roadAvailable, roadReason, DurationForModeHours(distanceKm, "car"), CostForMode(distanceKm, "car")),
-            new("motorbike", roadAvailable && distanceKm <= 180, roadAvailable ? (distanceKm <= 180 ? "Suitable for a short road leg." : "Not recommended for a long road leg.") : roadReason, DurationForModeHours(distanceKm, "motorbike"), CostForMode(distanceKm, "motorbike")),
-            new("coach", roadAvailable && distanceKm >= 40, roadAvailable ? (distanceKm >= 40 ? "Coach is suitable for intercity road travel." : "Leg is too short for coach to be practical.") : roadReason, DurationForModeHours(distanceKm, "coach"), CostForMode(distanceKm, "coach"))
+            new("car", roadAvailable, roadReason, DurationForModeHours(distanceKm, "car"), GetCost("car")),
+            new("motorbike", roadAvailable && distanceKm <= 180, roadAvailable ? (distanceKm <= 180 ? "Suitable for a short road leg." : "Not recommended for a long road leg.") : roadReason, DurationForModeHours(distanceKm, "motorbike"), GetCost("motorbike")),
+            new("coach", roadAvailable && distanceKm >= 40, roadAvailable ? (distanceKm >= 40 ? "Coach is suitable for intercity road travel." : "Leg is too short for coach to be practical.") : roadReason, DurationForModeHours(distanceKm, "coach"), GetCost("coach"))
         };
 
-        var trainRoute = fromRail is null || toRail is null
+        var trainRoute = fromRail is null || toRail is null || fromRail.Id == toRail.Id
             ? null
             : await FindRouteAsync(fromRail.Id, toRail.Id, "train", ct);
         options.Add(trainRoute is null || isCrossing
-            ? new("train", false, isCrossing ? roadReason : "Train is unavailable because no active rail hubs/routes match both endpoints.", DurationForModeHours(distanceKm, "train"), CostForMode(distanceKm, "train"))
-            : new("train", true, $"Train route available via {fromRail!.Name} -> {toRail!.Name}.", trainRoute.EstimatedDurationHours, (double)trainRoute.EstimatedCostVnd));
+            ? new("train", false, isCrossing ? roadReason : "Tàu hỏa không khả thi (không có ga phù hợp hoặc 2 điểm dùng chung 1 ga).", DurationForModeHours(distanceKm, "train"), GetCost("train"))
+            : new("train", true, $"Có tuyến tàu hỏa qua {fromRail!.Name} -> {toRail!.Name}.", trainRoute.EstimatedDurationHours, (double)trainRoute.EstimatedCostVnd));
 
-        var flightOption = await BuildFlightOptionAsync(from, to, distanceKm, fromAirport, toAirport, transportRules, ct);
+        var flightOption = await BuildFlightOptionAsync(from, to, distanceKm, fromAirport, toAirport, transportRules, GetCost("flight"), ct);
         options.Add(flightOption);
 
-        var ferryRoute = fromPort is null || toPort is null
+        var ferryRoute = fromPort is null || toPort is null || fromPort.Id == toPort.Id
             ? null
             : await FindRouteAsync(fromPort.Id, toPort.Id, "ferry", ct);
             
-        if (fromPort is null || toPort is null || ferryRoute is null)
+        if (fromPort is null || toPort is null || ferryRoute is null || fromPort.Id == toPort.Id)
         {
-            options.Add(new("ferry", false, "Ferry is unavailable because no active ferry hubs/routes match both endpoints.", DurationForModeHours(distanceKm, "ferry"), CostForMode(distanceKm, "ferry")));
+            options.Add(new("ferry", false, "Phà/tàu thủy không khả thi (không có bến phù hợp hoặc 2 điểm dùng chung bến).", DurationForModeHours(distanceKm, "ferry"), GetCost("ferry")));
         }
         else
         {
@@ -199,10 +205,10 @@ public sealed class RouteAnalysisService(
             var destRoadMode = portToDestKm > 40 ? "coach" : "car";
 
             var roadDuration = DurationForModeHours(roadToPortKm, roadMode);
-            var roadCost = CostForMode(roadToPortKm, roadMode);
+            var roadCost = GetCost(roadMode);
 
             var destDuration = DurationForModeHours(portToDestKm, destRoadMode);
-            var destCost = CostForMode(portToDestKm, destRoadMode);
+            var destCost = GetCost(destRoadMode);
 
             var totalDuration = roadDuration + ferryRoute.EstimatedDurationHours + destDuration;
             var totalCost = roadCost + (double)ferryRoute.EstimatedCostVnd + destCost;
@@ -229,21 +235,35 @@ public sealed class RouteAnalysisService(
         TransportHub? fromAirport,
         TransportHub? toAirport,
         TransportConfigValues transportRules,
+        double estimatedFlightCost,
         CancellationToken ct)
     {
-        if (fromAirport is null || toAirport is null)
+        if (fromAirport is null || toAirport is null || fromAirport.Id == toAirport.Id)
         {
             return new(
                 "flight",
                 false,
-                "Flight is unavailable because origin or destination has no active airport inside the configured search radius.",
+                "Máy bay không khả thi vì không có sân bay phù hợp hoặc 2 địa điểm dùng chung 1 sân bay.",
                 FlightDurationHours(distanceKm, 0, 0),
-                FlightFareEstimateVnd(distanceKm),
-                Segments: [$"{from.Name} -> airport lookup failed", "flight unavailable", $"airport lookup failed -> {to.Name}"]);
+                estimatedFlightCost,
+                Segments: [$"{from.Name} -> Không có sân bay", "Không có chuyến bay", $"Không có sân bay -> {to.Name}"]);
         }
 
         var airportDistance = EstimateDistance(ToPlace(fromAirport), ToPlace(toAirport)).DistanceKm;
         var airportRoute = await FindRouteAsync(fromAirport.Id, toAirport.Id, "flight", ct);
+        
+        // Khong the bay neu khoang cach thuc te giua 2 san bay qua ngan (duoi 100km)
+        if (airportDistance < 100)
+        {
+            return new(
+                "flight",
+                false,
+                "Máy bay không khả thi vì khoảng cách giữa 2 sân bay quá gần.",
+                FlightDurationHours(distanceKm, 0, 0),
+                estimatedFlightCost,
+                Segments: [$"{from.Name} -> {fromAirport.Name}", "Khoảng cách quá gần để bay", $"{toAirport.Name} -> {to.Name}"]);
+        }
+
         var originTransferKm = EstimateDistance(from, ToPlace(fromAirport)).DistanceKm;
         var destinationTransferKm = EstimateDistance(ToPlace(toAirport), to).DistanceKm;
         var duration = FlightDurationHours(
@@ -251,15 +271,15 @@ public sealed class RouteAnalysisService(
             DurationForModeHours(originTransferKm, "car"),
             DurationForModeHours(destinationTransferKm, "car"));
         var cost = CostForMode(originTransferKm, "car") +
-                   (double)(airportRoute?.EstimatedCostVnd ?? (decimal)FlightFareEstimateVnd(airportDistance)) +
+                   (double)(airportRoute?.EstimatedCostVnd ?? (decimal)estimatedFlightCost) +
                    CostForMode(destinationTransferKm, "car");
 
         if (distanceKm < transportRules.ShortFlightDistanceKm)
         {
             return new(
                 "flight",
-                true,
-                "Khong khuyen nghi: chang ngan, nhung hai dau co san bay phu hop.",
+                false, // Set to false so it won't be recommended or chosen by default for short routes
+                "Không khuyến nghị: Chặng quá ngắn, đi đường bộ sẽ nhanh và rẻ hơn.",
                 duration,
                 cost,
                 Segments: [$"{from.Name} -> {fromAirport.Name}", $"{fromAirport.Name} -> {toAirport.Name}", $"{toAirport.Name} -> {to.Name}"]);
@@ -527,6 +547,55 @@ public sealed class RouteAnalysisService(
             "flight" => FlightFareEstimateVnd(distanceKm),
             _ => Math.Max(120000, distanceKm * 1000)
         };
+    }
+
+    private async Task<Dictionary<string, double>?> EstimateCostsWithGroqAsync(double distanceKm, string fromName, string toName, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(groqOptions.ApiKey)) return null;
+
+        var prompt = $"Estimate realistic transport costs in VND for traveling {distanceKm:F1}km from {fromName} to {toName} in Vietnam. Return ONLY a valid JSON object with keys: car, coach, train, flight, motorbike, ferry. The values must be integer VND representing the cost per person. If a mode is impossible, set its value to 0. Do not output any markdown or explanation.";
+
+        var payload = new
+        {
+            model = groqOptions.ChatModel ?? "llama3-8b-8192",
+            messages = new object[] { new { role = "user", content = prompt } },
+            temperature = 0.1
+        };
+
+        var client = httpClientFactory.CreateClient("groq");
+        client.BaseAddress = new Uri(groqOptions.BaseUrl.TrimEnd('/') + "/");
+        var key = groqOptions.ApiKey.Split(',').FirstOrDefault()?.Trim();
+        if (string.IsNullOrEmpty(key)) return null;
+        
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
+
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            using var response = await client.PostAsJsonAsync("chat/completions", payload, new JsonSerializerOptions(JsonSerializerDefaults.Web), timeout.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(timeout.Token);
+                using var doc = JsonDocument.Parse(body);
+                var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    content = content.Trim();
+                    if (content.StartsWith("```json")) content = content.Substring(7);
+                    if (content.StartsWith("```")) content = content.Substring(3);
+                    if (content.EndsWith("```")) content = content.Substring(0, content.Length - 3);
+                    
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, double>>(content.Trim(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    return dict;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to estimate cost with Groq for {From} to {To}", fromName, toName);
+        }
+        return null;
     }
 
     private static double FlightFareEstimateVnd(double distanceKm)

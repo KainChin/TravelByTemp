@@ -2,7 +2,7 @@
 
 part of trip_route_analysis_screen;
 
-class _SummaryCard extends StatelessWidget {
+class _SummaryCard extends StatefulWidget {
   const _SummaryCard({
     required this.analysis,
     required this.budgetTotal,
@@ -14,9 +14,58 @@ class _SummaryCard extends StatelessWidget {
   final int peopleCount;
 
   @override
+  State<_SummaryCard> createState() => _SummaryCardState();
+}
+
+class _SummaryCardState extends State<_SummaryCard> {
+  bool _isLoading = true;
+  List<String> _aiBadges = [];
+  String _aiRecommendation = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGroqAnalysis();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SummaryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.analysis != oldWidget.analysis || widget.budgetTotal != oldWidget.budgetTotal) {
+      _fetchGroqAnalysis();
+    }
+  }
+
+  Future<void> _fetchGroqAnalysis() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    
+    final cost = widget.analysis.estimatedRouteCostVnd * widget.peopleCount;
+    final dests = widget.analysis.destinations.map((d) => d.destination.name).join(', ');
+    
+    // Call Groq API via our new service
+    final result = await GroqService.analyzeRouteBudget(
+      totalDistanceKm: widget.analysis.totalDistanceKm,
+      optimizedHours: widget.analysis.optimizedHours,
+      estimatedCostVnd: cost,
+      budgetVnd: widget.budgetTotal,
+      transferCount: widget.analysis.transferCount,
+      destinationsName: dests,
+    );
+    
+    if (mounted) {
+      setState(() {
+        _aiBadges = List<String>.from(result['aiBadges'] ?? []);
+        _aiRecommendation = result['aiRecommendation'] ?? '';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final totalTransportCost = analysis.estimatedRouteCostVnd * peopleCount;
-    final budgetUsage = budgetTotal <= 0 ? 0.0 : totalTransportCost / budgetTotal * 100;
+    final totalTransportCost = widget.analysis.estimatedRouteCostVnd * widget.peopleCount;
+    final budgetUsage = widget.budgetTotal <= 0 ? 0.0 : totalTransportCost / widget.budgetTotal * 100;
 
     return _Panel(
       child: Column(
@@ -24,50 +73,62 @@ class _SummaryCard extends StatelessWidget {
         children: [
           const Text('Tổng quan hành trình', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          _InfoRow(label: 'Tổng khoảng cách', value: '${analysis.totalDistanceKm.toStringAsFixed(0)} km'),
-          _InfoRow(label: 'Tổng thời gian di chuyển', value: formatHours(analysis.optimizedHours)),
-          _InfoRow(label: 'Tổng số chặng', value: '${analysis.legs.length} chặng'),
-          _InfoRow(label: 'Số lần chuyển phương tiện', value: '${analysis.transferCount} lần'),
+          _InfoRow(label: 'Tổng khoảng cách', value: '${widget.analysis.totalDistanceKm.toStringAsFixed(0)} km'),
+          _InfoRow(label: 'Tổng thời gian di chuyển', value: formatHours(widget.analysis.optimizedHours)),
+          _InfoRow(label: 'Tổng số chặng', value: '${widget.analysis.legs.length} chặng'),
+          _InfoRow(label: 'Số lần chuyển phương tiện', value: '${widget.analysis.transferCount} lần'),
           _InfoRow(
             label: 'Chi phí di chuyển khứ hồi',
             value: BudgetTier.formatCurrency(totalTransportCost),
           ),
-          _InfoRow(label: 'Tổng ngân sách nhóm', value: BudgetTier.formatCurrency(budgetTotal)),
+          _InfoRow(label: 'Tổng ngân sách nhóm', value: BudgetTier.formatCurrency(widget.budgetTotal)),
           _BudgetUsageRow(percent: budgetUsage),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: analysis.aiBadges.map((badge) => _SummaryPill(text: badge)).toList(),
-          ),
-          if (analysis.importantNotes.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            ...analysis.importantNotes.map((note) => _SummaryNote(text: note)),
-          ],
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF6FBF8),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFDCEEE5)),
+          
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 20, height: 20, 
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0FA958))
+                )
+              ),
+            )
+          else ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _aiBadges.map((badge) => _SummaryPill(text: badge)).toList(),
             ),
-            child: Text(
-              analysis.aiRecommendation,
-              style: const TextStyle(
-                color: Color(0xFF38443C),
-                fontSize: 12,
-                height: 1.35,
-                fontWeight: FontWeight.w600,
+            if (widget.analysis.importantNotes.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ...widget.analysis.importantNotes.map((note) => _SummaryNote(text: note)),
+            ],
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6FBF8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFDCEEE5)),
+              ),
+              child: Text(
+                _aiRecommendation,
+                style: const TextStyle(
+                  color: Color(0xFF38443C),
+                  fontSize: 12,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
-
 }
 
 class _SummaryPill extends StatelessWidget {

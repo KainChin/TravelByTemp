@@ -385,7 +385,7 @@ public sealed class TravelChatService(
             Chi phi tung hoat dong phai la so le thuc te theo Viet Nam, khong dung toan so tron nhu 100000/200000.
             
             QUAN TRONG: ĐỊA ĐIỂM DU LỊCH BẮT BUỘC LÀ: {{destinationNames}}.
-            => BẠN KHÔNG ĐƯỢC PHÉP đổi sang thành phố khác (ví dụ: đang ở Bến Tre/Hà Tiên tuyệt đối không được viết lịch trình Hà Nội/Đà Lạt). Mọi hoạt động phải diễn ra tại {{destinationNames}}.
+            => BẠN KHÔNG ĐƯỢC PHÉP đổi sang thành phố khác (ví dụ: đang ở Bến Tre/Hà Tiên tuyệt đối không được viết lịch trình Hà Nội/Đà Lạt). Mọi hoạt động, ăn uống, vui chơi phải diễn ra tại {{destinationNames}}. CHÚ Ý: CHỈ GỢI Ý CÁC ĐỊA ĐIỂM TẠI TỈNH MÀ NGƯỜI DÙNG ĐÃ TỚI, TUYỆT ĐỐI KHÔNG LAN MAN SANG CÁC NƠI KHÁC NẰM NGOÀI {{destinationNames}}.
             
             QUAN TRONG: TỔNG NGÂN SÁCH CỦA NHÓM LÀ {{totalBudget}} VNĐ (cho {{request.PeopleCount}} người). NHƯNG CHI PHÍ DI CHUYỂN KHỨ HỒI ĐÃ CHIẾM HẾT {{groupRoundTripTransport}} VNĐ.
             => SỐ TIỀN CÒN LẠI ĐỂ TIÊU CHO CẢ NHÓM (ĂN UỐNG, KHÁCH SẠN, VUI CHƠI) CHỈ CÒN ĐÚNG: {{remainingBudget}} VNĐ.
@@ -396,7 +396,11 @@ public sealed class TravelChatService(
             - BẠN BẮT BUỘC PHẢI THIẾT KẾ MỘT LỊCH TRÌNH MẪU ĐẠI KHÁI, NHƯNG HIỂN THỊ CẢNH BÁO. KHÔNG ĐƯỢC BỎ TRỐNG PHẦN ACTIVITIES.
             
             BẠN CHỈ ĐƯỢC PHÉP thiết kế các hoạt động sao cho TỔNG CHI PHÍ costBreakdown (không tính transport) KHÔNG ĐƯỢC VƯỢT QUÁ {{remainingBudget}} VNĐ (nếu còn tiền)!
-            
+            ĐẶC BIỆT LƯU Ý VỀ CHI TIÊU HẰNG NGÀY:
+            - Phân bổ đều số tiền {{remainingBudget}} ra tất cả các ngày đi, tuyệt đối KHÔNG ĐƯỢC tiêu hết sạch tiền vào ngày đầu tiên.
+            - Nếu {{remainingBudget}} còn quá ít (sau khi trừ vé xe/máy bay), PHẢI CHỈ ĐỊNH các địa điểm ăn uống bình dân, quán vỉa hè, tham quan miễn phí hoặc giá siêu rẻ (chợ đêm, công viên, bãi biển công cộng).
+            - Nếu {{remainingBudget}} dư dả, hãy mạnh dạn đề xuất các nhà hàng sang trọng, resort, khu vui chơi giải trí cao cấp, ăn hải sản...
+            - Giá tiền "estimatedCost" của mỗi hoạt động phải PHẢN ÁNH ĐÚNG mức độ ngân sách trên.            
             Bat buoc phan tich tinh kha thi dua tren:
             - so nguoi
             - tong ngan sach nhom va ngan sach quy doi moi nguoi
@@ -417,7 +421,8 @@ public sealed class TravelChatService(
             - Khong duoc viet chung chung nhu "tham quan diem noi bat", "quan dac san dia phuong", "cafe view dep".
             - Neu khong chac ten quan an/cafe cu the, uu tien ten diem/khong gian co that trong khu vuc: cho, pho di bo, bao tang, cong vien, khu du lich, bai bien, lang nghe, khu sinh thai.
             - Moi activity nen co placeName, address neu biet, rating tu 4.0 tro len neu la goi y tham khao.
-            - BẮT BUỘC ĐA DẠNG HÓA LỊCH TRÌNH: Các ngày phải có sự khác nhau về hoạt động trải nghiệm, tuyệt đối không được copy/paste lịch trình giống hệt nhau giữa các ngày.
+            - BẮT BUỘC ĐA DẠNG HÓA VÀ CỤ THỂ HÓA LỊCH TRÌNH: MỘT ĐỊA ĐIỂM (nhà hàng, quán cafe, điểm tham quan) TUYỆT ĐỐI KHÔNG ĐƯỢC LẶP LẠI HAI LẦN TRONG CHUYẾN ĐI (ngoại trừ khách sạn). Các hoạt động trong cùng 1 ngày và giữa các ngày phải mang lại trải nghiệm hoàn toàn khác biệt nhau (ví dụ: sáng đi đảo/biển, chiều đi bảo tàng, tối đi chợ đêm). KHÔNG ĐƯỢC dùng các mô tả chung chung vô nghĩa như "Tham quan điểm nổi bật", "Ăn sáng", "Nghỉ ngơi" mà PHẢI nêu rõ đích danh (ví dụ: "Thưởng thức bún quậy Kiến Xây", "Tham quan Bảo tàng Quảng Ninh", "Chơi công viên Sun World"). Lịch trình chung chung, lặp lại địa điểm sẽ bị coi là lỗi nghiêm trọng.
+            - TUYẾN ĐƯỜNG DI CHUYỂN HỢP LÝ (TỐI ƯU HÓA LỘ TRÌNH): Sắp xếp thứ tự các địa điểm đi trong ngày theo một lộ trình địa lý hợp lý. Tuyệt đối không được nhảy cóc qua lại liên tục giữa các nơi cách xa nhau (ví dụ: không đi Bãi Cháy -> Tuần Châu -> Cửa Lục rồi lại quay lại Bãi Cháy -> Cửa Lục). Hãy nhóm các địa điểm ở gần nhau vào cùng một buổi (Sáng/Chiều) để tránh việc phải quay đầu hay di chuyển lãng phí thời gian của người dùng.
             
             QUY ĐỊNH VỀ CHỖ NGHỈ/KHÁCH SẠN:
             - NẾU CHUYẾN ĐI TRONG 1 NGÀY (không qua đêm): TUYỆT ĐỐI KHÔNG xếp khách sạn. Chỉ xếp 1 mục "Nghỉ ngơi/Uống cafe" giá rẻ (dưới 100k) vào khoảng 15h-16h.
@@ -434,7 +439,7 @@ public sealed class TravelChatService(
               "summary": "string",
               "userBudget": 0,
               "peopleCount": 0,
-              "days": [{"day": 1, "date": "yyyy-MM-dd", "activities": [{"time": "08:00", "destination": "ten dia diem cu the", "placeName": "ten dia diem cu the", "address": "string|null", "rating": 4.5, "activity": "string", "estimatedCost": 0, "latitude": 0, "longitude": 0, "note": "string"}]}],
+              "days": [{"day": 1, "date": "yyyy-MM-dd", "activities": [{"time": "08:00", "destination": "ten dia diem cu the", "placeName": "ten dia diem cu the", "address": "string|null", "rating": 4.5, "activity": "string", "category": "ăn uống|tham quan|khách sạn|di chuyển", "estimatedCost": 0, "latitude": 0, "longitude": 0, "note": "string"}]}],
               "costBreakdown": {"transport": 0, "food": 0, "accommodation": 0, "activities": 0, "total": 0, "perPerson": 0},
               "feasibility": {"status": "feasible|tight|not_feasible", "budgetTotal": 0, "estimatedMinimumTotal": 0, "gap": 0, "message": "string", "recommendations": ["string"]},
               "warnings": ["string"]
@@ -447,7 +452,17 @@ public sealed class TravelChatService(
             new
             {
                 role = "system",
-                content = "Ban la AI lap lich trinh du lich thuc te tai Viet Nam. Luon tra ve JSON hop le theo schema. Uu tien tinh dung thuc te hon viec tao noi dung dep."
+                content = """
+                    You are an Expert Vietnam Travel Planning AI and an advanced AI Transportation & Budget Planning Engine for a Vietnam Travel Planning application.
+                    Your mission is to create realistic, enjoyable, diverse, and practical travel itineraries. 
+                    You must intelligently analyze ALL available information and determine the most realistic, safest, most economical transportation plan.
+                    
+                    CRITICAL RULES:
+                    1. Never hallucinate. Never recommend impossible transportation. For example, flying from Ho Chi Minh City to Vung Tau is completely unrealistic and impossible; you must teach the AI to evaluate if the flight is realistic for the given distance. 
+                    2. Combine multiple categories of experiences (Nature, Culture, etc.). Every day should feel unique.
+                    3. ONLY suggest activities within the requested destination province.
+                    4. Always return valid JSON according to the schema. Prioritize realistic planning over making things look "nice".
+                    """
             },
             new { role = "user", content = $"{prompt}\nDu lieu form:\n{userData}" }
         };

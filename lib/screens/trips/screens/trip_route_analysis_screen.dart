@@ -12,6 +12,7 @@ import '../models/route_analysis.dart';
 import '../services/trip_itinerary_service.dart';
 import '../../../core/widgets/vietai_scope.dart';
 import 'trip_itinerary_result_screen.dart';
+import '../../../../services/groq_service.dart';
 
 part 'route_analysis/trip_route_analysis_map.dart';
 part 'route_analysis/trip_route_analysis_layout.dart';
@@ -98,6 +99,13 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
     final token = VietaiScope.of(context).auth?.accessToken;
     final service = TripItineraryService(authToken: token);
     try {
+      final destinationNames = _analysis.destinations.map((d) => d.destination.name).join(', ');
+      final strictPrompt = 'CHÚ Ý QUAN TRỌNG: Chỉ được phép gợi ý và lên lịch các địa điểm vui chơi, ăn uống nằm TRONG PHẠM VI các tỉnh/thành phố đích đến ($destinationNames). TUYỆT ĐỐI KHÔNG gợi ý các địa điểm ở tỉnh khác hoặc lan man ra ngoài khu vực đã chọn.';
+      
+      final finalRequest = (widget.specialRequest != null && widget.specialRequest!.isNotEmpty)
+          ? '${widget.specialRequest}. $strictPrompt'
+          : strictPrompt;
+
       final result = await service.generate(
         destinations: _analysis.destinations,
         departureDate: widget.departureDate,
@@ -107,7 +115,7 @@ class _TripRouteAnalysisScreenState extends State<TripRouteAnalysisScreen> {
         departurePoint: _analysis.departure.name,
         travelGroup: widget.travelGroup,
         interests: widget.interests,
-        specialRequest: widget.specialRequest,
+        specialRequest: finalRequest,
         routeLegs: _analysis.legs,
       );
       if (!mounted) return;
