@@ -9,4 +9,5 @@ import 'destination.dart';
 part 'route_analysis/route_analysis_types.dart';
 part 'route_analysis/route_analysis_trip.dart';
 part 'route_analysis/route_analysis_transport_rules.dart';
+part 'route_analysis/route_analysis_infrastructure.dart';
 

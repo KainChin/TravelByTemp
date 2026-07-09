@@ -288,49 +288,8 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
-  String _buildShareText(SavedItineraryItem item) {
-    final days = item.itinerary['days'];
-    final dests = <String>{};
-    var dayCount = 0;
-    var activityCount = 0;
-    if (days is List) {
-      dayCount = days.length;
-      for (final day in days) {
-        if (day is Map) {
-          final activities = day['activities'] ?? day['schedule'];
-          if (activities is List) {
-            activityCount += activities.length;
-            for (final a in activities) {
-              if (a is Map) {
-                final name = (a['destination'] ?? a['placeName'] ?? '').toString().trim();
-                if (name.isNotEmpty && name.toLowerCase() != 'null') dests.add(name);
-              }
-            }
-          }
-        }
-      }
-    }
-    final route = dests.isEmpty
-        ? 'điểm đến đã chọn'
-        : dests.take(5).join(' → ');
-    final summary = item.itinerary['summary']?.toString().trim();
-    final buffer = StringBuffer()
-      ..writeln('🌏 Hành trình: ${item.title}')
-      ..writeln('🗺️  Lộ trình: $route')
-      ..writeln('📅 $dayCount ngày • $activityCount hoạt động');
-    if (summary != null && summary.isNotEmpty) {
-      buffer
-        ..writeln()
-        ..writeln(summary);
-    }
-    buffer
-      ..writeln()
-      ..writeln('— Lưu bởi VietAI Travel');
-    return buffer.toString();
-  }
-
   void _shareItinerary(SavedItineraryItem item) {
-    final text = _buildShareText(item);
+    final text = SavedItineraryStore.buildShareText(item);
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -344,7 +303,7 @@ class _SavedScreenState extends State<SavedScreen> {
     // No PDF dependency in this project — export the same shareable text
     // so the user can paste it into Google Docs / Word and print to PDF
     // from there. Honest placeholder, not a fake success toast.
-    final text = _buildShareText(item);
+    final text = SavedItineraryStore.buildShareText(item);
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

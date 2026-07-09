@@ -6,17 +6,60 @@ class TimelineSection extends StatelessWidget {
   const TimelineSection({
     super.key,
     required this.day,
+    required this.dayIndex,
+    required this.totalDays,
     required this.onAdd,
     required this.onEdit,
     required this.onOptimize,
     required this.onDelete,
+    this.onDayChanged,
+    this.days = const [],
   });
 
+  /// Map ngày thô từ state — dùng để suy ra destination đầu ngày cho header.
   final Object? day;
+  final int dayIndex;
+  final int totalDays;
   final VoidCallback onAdd;
   final void Function(Map<String, dynamic> activity, int index) onEdit;
   final void Function(Map<String, dynamic> activity, int index) onOptimize;
   final ValueChanged<int> onDelete;
+
+  /// Callback khi user bấm chuyển ngày trong tab inline.
+  final ValueChanged<int>? onDayChanged;
+
+  /// Danh sách days đầy đủ để hiển thị nhãn cho từng tab ngày.
+  final List<Map<String, dynamic>> days;
+
+  /// Tên ngày hiển thị trong header. Luôn lấy trực tiếp từ `day` đã được
+  /// _TripItineraryResultScreenState truyền vào (1-to-1 với _days[index]),
+  /// tránh đọc nhầm dữ liệu ngày khác nếu state bị lệch.
+  String _daySubtitle() {
+    if (day is! Map) return 'Ngày ${dayIndex + 1}';
+    final activities = _activitiesFor(day);
+    String? firstDestination;
+    if (activities.isNotEmpty) {
+      // Ưu tiên activity thật, không phải placeholder do _expandActivities
+      // tự fill (loại bỏ dòng có note 'Bấm "Thêm"...' để tránh hiển thị
+      // 'Điểm đến ngày X' làm tiêu đề ngày).
+      final realActivity = activities.firstWhere(
+        (a) {
+          final note = '${a['note'] ?? ''}';
+          return !note.contains('Bấm "Thêm"');
+        },
+        orElse: () => activities.first,
+      );
+      firstDestination =
+          '${realActivity['destination'] ?? _activityTitle(realActivity)}'.trim();
+    }
+    final dayLabel = 'Ngày ${dayIndex + 1}';
+    if (firstDestination == null ||
+        firstDestination.isEmpty ||
+        firstDestination.startsWith('Điểm đến ngày')) {
+      return dayLabel;
+    }
+    return '$dayLabel — $firstDestination';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +71,29 @@ class TimelineSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Lịch trình trong ngày',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Lịch trình trong ngày',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _TripItineraryResultScreenState._muted),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _daySubtitle(),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (totalDays > 1) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Ngày ${dayIndex + 1} / $totalDays',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _TripItineraryResultScreenState._muted),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               FilledButton.tonalIcon(
@@ -47,8 +109,18 @@ class TimelineSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          // Nút chuyển nhanh giữa các ngày — hiển thị ngay trong card lịch trình
+          // để user không phải cuộn lên đầu trang dùng DaySelector riêng.
+          if (totalDays > 1 && onDayChanged != null) ...[
+            _DayQuickSwitcher(
+              days: days,
+              selectedIndex: dayIndex,
+              onChanged: onDayChanged!,
+            ),
+            const SizedBox(height: 14),
+          ],
           if (activities.isEmpty)
-            const _EmptyState()
+            _EmptyState(onAdd: onAdd)
           else
             ...activities.asMap().entries.map((entry) {
               final index = entry.key;
@@ -104,67 +176,101 @@ class ActivityTimelineCard extends StatelessWidget {
     final rating = _activityRating(activity);
     final nextDistance = _distanceToNextLabel(activity, nextActivity);
     final hasPlace = destination.isNotEmpty || address.isNotEmpty;
+    final visual = _visualForCategory(category);
+
+    // Độ dài line dọc tỉ lệ theo duration (phút) của activity hiện tại:
+    // - activity ngắn (~30p) → line ngắn ~28px
+    // - activity dài (~180p) → line dài ~80px
+    // Sau đó scale theo isMajor để tham quan có line dài hơn ăn uống.
+    final minutes = _durationToMinutes(duration) ?? 0;
+    final baseLength = minutes > 0
+        ? 28 + (minutes.clamp(0, 240) / 240) * 60
+        : 40.0;
+    final lineLength = baseLength * (visual.isMajor ? 1.3 : 0.85);
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Timeline line and dot
+          // Timeline line and dot — màu theo category
           SizedBox(
-            width: 30,
+            width: 38,
             child: Column(
               children: [
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: visual.isMajor ? 34 : 30,
+                  height: visual.isMajor ? 34 : 30,
                   margin: const EdgeInsets.only(top: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: visual.isMajor ? visual.color : Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF4338CA), width: 2),
+                    border: Border.all(
+                      color: visual.color,
+                      width: visual.isMajor ? 0 : 2,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFF4338CA).withValues(alpha: 0.2), blurRadius: 8),
+                      BoxShadow(
+                        color: visual.color.withValues(alpha: 0.28),
+                        blurRadius: visual.isMajor ? 12 : 8,
+                      ),
                     ],
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      color: Color(0xFF4338CA),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  child: Icon(
+                    visual.icon,
+                    size: visual.isMajor ? 18 : 15,
+                    color: visual.isMajor ? Colors.white : visual.color,
                   ),
                 ),
                 if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      margin: const EdgeInsets.only(top: 4, bottom: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xFF4338CA), Color(0xFF0EA5E9)],
-                        ),
-                        borderRadius: BorderRadius.circular(1),
+                  // SizedBox thay vì Expanded để tỉ lệ theo duration.
+                  // Expanded vẫn được dùng để kéo dài hết chiều cao card bên phải
+                  // (nhưng tỉ lệ tương đối dựa trên duration đã set min height).
+                  Container(
+                    width: 2,
+                    height: lineLength,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [visual.lineColor, visual.lineColor.withValues(alpha: 0.5)],
                       ),
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
               ],
             ),
           ),
           const SizedBox(width: 14),
-          // Content
+          // Content card — kích thước + style theo isMajor
           Expanded(
             child: Container(
               margin: const EdgeInsets.only(bottom: 24),
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(visual.isMajor ? 18 : 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFF1F5F9)),
-                boxShadow: const [BoxShadow(color: Color(0x080F172A), blurRadius: 20, offset: Offset(0, 8))],
+                gradient: visual.isMajor
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [visual.bgColor, Colors.white],
+                      )
+                    : null,
+                color: visual.isMajor ? null : Colors.white,
+                borderRadius: BorderRadius.circular(visual.isMajor ? 26 : 20),
+                border: Border.all(
+                  color: visual.isMajor ? visual.color.withValues(alpha: 0.25) : const Color(0xFFF1F5F9),
+                  width: visual.isMajor ? 1.5 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: visual.isMajor
+                        ? visual.color.withValues(alpha: 0.12)
+                        : const Color(0x080F172A),
+                    blurRadius: visual.isMajor ? 24 : 16,
+                    offset: Offset(0, visual.isMajor ? 10 : 6),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,15 +288,15 @@ class ActivityTimelineCard extends StatelessWidget {
                               children: [
                                 _ActivityMeta(icon: Icons.schedule_outlined, label: time.isEmpty ? '--:--' : time, color: const Color(0xFF0EA5E9)),
                                 _ActivityMeta(icon: Icons.payments_outlined, label: _formatMoney(_activityCost(activity)), color: const Color(0xFFF59E0B)),
-                                _ActivityMeta(icon: Icons.category_outlined, label: category, color: const Color(0xFF8B5CF6)),
+                                _ActivityMeta(icon: visual.icon, label: category, color: visual.color),
                               ],
                             ),
                             const SizedBox(height: 10),
                             Text(
                               title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: _TripItineraryResultScreenState._ink,
-                                fontSize: 16,
+                                fontSize: visual.isMajor ? 17 : 15,
                                 fontWeight: FontWeight.w900,
                                 height: 1.3,
                               ),
@@ -209,9 +315,9 @@ class ActivityTimelineCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       destination,
-                      style: const TextStyle(
-                        color: Color(0xFF4338CA), // Accent color
-                        fontSize: 13,
+                      style: TextStyle(
+                        color: visual.color,
+                        fontSize: visual.isMajor ? 14 : 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -245,13 +351,13 @@ class ActivityTimelineCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: visual.bgColor.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF4338CA)),
+                          Icon(Icons.info_outline_rounded, size: 16, color: visual.color),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -302,14 +408,12 @@ class _ActivityMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       onSelected: (value) {
-        if (value == 'edit' || value == 'time' || value == 'place') onEdit();
+        if (value == 'edit') onEdit();
         if (value == 'ai') onOptimize();
         if (value == 'delete') onDelete();
       },
       itemBuilder: (context) => const [
         PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
-        PopupMenuItem(value: 'time', child: Text('Đổi giờ')),
-        PopupMenuItem(value: 'place', child: Text('Đổi địa điểm')),
         PopupMenuItem(value: 'ai', child: Text('AI tối ưu lại hoạt động này')),
         PopupMenuItem(value: 'delete', child: Text('Xóa')),
       ],
@@ -370,6 +474,96 @@ class _PlaceAction extends StatelessWidget {
         textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      ),
+    );
+  }
+}
+
+/// Tab chuyển nhanh giữa các ngày, đặt ngay dưới header của TimelineSection.
+/// Mỗi tab hiển thị "Ngày X" + số activity ngắn gọn, giúp user điều hướng
+/// trong lịch trình dài nhiều ngày mà không cần cuộn lên đầu trang.
+class _DayQuickSwitcher extends StatelessWidget {
+  const _DayQuickSwitcher({
+    required this.days,
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  final List<Map<String, dynamic>> days;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: days.length,
+        separatorBuilder: (context, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final selected = index == selectedIndex;
+          final dayData = days[index];
+          final dayNumber = dayData['day'] ?? (index + 1);
+          final activityCount = _activitiesFor(dayData).length;
+          return InkWell(
+            onTap: () => onChanged(index),
+            borderRadius: BorderRadius.circular(999),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFF008F6A)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0xFF008F6A)
+                      : const Color(0xFFE2E8E4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 13,
+                    color: selected ? Colors.white : const Color(0xFF15221D),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Ngày $dayNumber',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: selected ? Colors.white : const Color(0xFF15221D),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? Colors.white.withValues(alpha: 0.22)
+                          : const Color(0xFF15221D).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$activityCount',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: selected ? Colors.white : const Color(0xFF15221D),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

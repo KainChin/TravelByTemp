@@ -241,32 +241,6 @@ class ProfileHeader extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 14),
-                      // Social media icons
-                      Row(children: [
-                        _SocialIcon(
-                          color: const Color(0xFF1877F2),
-                          icon: Icons.facebook,
-                        ),
-                        const SizedBox(width: 10),
-                        _SocialIcon(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFF58529), Color(0xFFDD2A7B), Color(0xFF8134AF)],
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                          ),
-                          icon: Icons.camera_alt_rounded,
-                        ),
-                        const SizedBox(width: 10),
-                        _SocialIcon(
-                          color: const Color(0xFFFF0000),
-                          icon: Icons.play_circle_fill,
-                        ),
-                        const SizedBox(width: 10),
-                        _SocialIcon(
-                          color: const Color(0xFF111111),
-                          icon: Icons.music_note_rounded,
-                        ),
-                      ]),
                     ],
                   ),
                 ),
@@ -309,27 +283,6 @@ class _GlassIconButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SocialIcon extends StatelessWidget {
-  const _SocialIcon({this.color, this.gradient, required this.icon});
-  final Color? color;
-  final LinearGradient? gradient;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 33,
-      height: 33,
-      decoration: BoxDecoration(
-        color: gradient == null ? color : null,
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Icon(icon, color: Colors.white, size: 17),
     );
   }
 }

@@ -100,6 +100,7 @@ class RouteLeg {
     this.durationHours,
     this.estimatedCostVndOverride,
     this.transportOptions = const [],
+    this.from,
   });
 
   final int order;
@@ -112,6 +113,11 @@ class RouteLeg {
   final double? durationHours;
   final double? estimatedCostVndOverride;
   final List<TransportOption> transportOptions;
+
+  /// Toạ độ + landmass của origin. Một số chức năng (multi-leg, check
+  /// availability) cần Destination chứ không chỉ tên. Có thể null khi
+  /// leg được tạo từ backend không gửi origin object.
+  final Destination? from;
 
   String get routeLabel => '$fromName -> ${to.name}';
 
@@ -126,6 +132,7 @@ class RouteLeg {
     double? durationHours,
     double? estimatedCostVndOverride,
     List<TransportOption>? transportOptions,
+    Destination? from,
   }) {
     return RouteLeg(
       order: order ?? this.order,
@@ -139,6 +146,7 @@ class RouteLeg {
       estimatedCostVndOverride:
           estimatedCostVndOverride ?? this.estimatedCostVndOverride,
       transportOptions: transportOptions ?? this.transportOptions,
+      from: from ?? this.from,
     );
   }
 
