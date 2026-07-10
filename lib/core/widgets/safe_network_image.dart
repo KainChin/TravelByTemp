@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -13,6 +14,7 @@ class SafeNetworkImage extends StatefulWidget {
     this.fallback,
     this.loading,
     this.source = 'network image',
+    this.cacheWidth,
   });
 
   final String? url;
@@ -22,6 +24,7 @@ class SafeNetworkImage extends StatefulWidget {
   final Widget? fallback;
   final Widget? loading;
   final String source;
+  final int? cacheWidth;
 
   @override
   State<SafeNetworkImage> createState() => _SafeNetworkImageState();
@@ -127,24 +130,22 @@ class _SafeNetworkImageState extends State<SafeNetworkImage> {
   }
 
   Widget _buildImage(String trimmedUrl) {
-    return Image.network(
-      trimmedUrl,
+    return CachedNetworkImage(
+      imageUrl: trimmedUrl,
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return widget.loading ?? _fallback(icon: Icons.image_outlined);
-      },
-      errorBuilder: (context, error, stackTrace) {
+      memCacheWidth: widget.cacheWidth ?? 720,
+      maxWidthDiskCache: 1280,
+      fadeInDuration: const Duration(milliseconds: 200),
+      placeholder: (context, url) =>
+          widget.loading ?? _fallback(icon: Icons.image_outlined),
+      errorWidget: (context, url, error) {
         logImageDecodeIssueOnce(
           'network-image-error|${widget.source}|$trimmedUrl|$error',
           () {
             debugPrint('[ImageDecode] Failed to load image from ${widget.source}.');
             debugPrint('[ImageDecode] URL: $trimmedUrl');
-            if (error is NetworkImageLoadException) {
-              debugPrint('[ImageDecode] HTTP Status Code: ${error.statusCode}');
-            }
             debugPrint('[ImageDecode] Error: $error');
           },
         );

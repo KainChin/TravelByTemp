@@ -54,6 +54,11 @@ class _LegList extends StatelessWidget {
                       _LegTransportChip(leg: leg),
                       const SizedBox(height: 4),
                       Text(leg.reason, style: const TextStyle(color: Color(0xFF647067), fontSize: 12)),
+                      if (leg.recommendedMode == TransportMode.flight ||
+                          leg.recommendedMode == TransportMode.ferry) ...[
+                        const SizedBox(height: 8),
+                        _LegMultiLegBreakdown(leg: leg),
+                      ],
                       if (leg.recommendedMode == TransportMode.flight) ...[
                         const SizedBox(height: 10),
                         const _FlightBookingLinks(),
@@ -233,6 +238,108 @@ IconData _transportIcon(TransportMode mode) {
       return Icons.directions_boat_filled_outlined;
     case TransportMode.flight:
       return Icons.flight_takeoff;
+  }
+}
+
+/// Hiển thị breakdown sub-leg trong _LegList. Dùng `effectiveJourneyForLeg`
+/// để đảm bảo cùng nguồn dữ liệu với popup chọn phương tiện + _SummaryCard.
+class _LegMultiLegBreakdown extends StatelessWidget {
+  const _LegMultiLegBreakdown({required this.leg});
+
+  final RouteLeg leg;
+
+  @override
+  Widget build(BuildContext context) {
+    final journey = effectiveJourneyForLeg(leg);
+    if (journey == null || !journey.isMultiLeg) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6FBF8),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFDCEEE5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.alt_route, size: 12, color: Color(0xFF0B7D4B)),
+            SizedBox(width: 4),
+            Text(
+              'Chi tiết từng chặng',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF0B7D4B),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          ...journey.legs.asMap().entries.map((entry) {
+            final i = entry.key;
+            final legItem = entry.value;
+            final subLabel = legItem.subMode == TransitSubMode.na
+                ? ''
+                : ' (${legItem.subMode.label})';
+            return Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE0F4E9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0B7D4B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${legItem.note ?? '${legItem.fromLabel} → ${legItem.toLabel}'}$subLabel',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1B1F1C),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          [
+                            if (legItem.distanceKm > 0)
+                              '${legItem.distanceKm.toStringAsFixed(0)} km',
+                            legItem.durationLabel,
+                            if (legItem.costVnd > 0) legItem.costLabel,
+                          ].where((s) => s.isNotEmpty).join(' • '),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF647067),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 }
 

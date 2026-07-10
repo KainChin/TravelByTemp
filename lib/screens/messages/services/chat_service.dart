@@ -25,14 +25,27 @@ class ChatService {
   /// emulator — see the "Backend connection" notes for details.
   final http.Client _client;
   final Duration timeout;
+  final List<http.Client> _extraClients = [];
 
-  ChatService({http.Client? client, this.timeout = const Duration(minutes: 5)})
+  ChatService({http.Client? client, this.timeout = const Duration(seconds: 90)})
       : _client = client ?? http.Client();
+
+  /// Hủy tất cả request đang chờ (đóng các client tạm). Sau khi gọi, các
+  /// `sendMessage` đang chờ sẽ nhận `http.ClientException` và provider sẽ
+  /// hiển thị lỗi cho người dùng.
+  void cancelAll() {
+    for (final client in _extraClients) {
+      client.close();
+    }
+    _extraClients.clear();
+  }
 
   /// Sends [message] to the backend and returns the AI's plain-text reply.
   Future<String> sendMessage(String message) async {
+    final client = http.Client();
+    _extraClients.add(client);
     try {
-      final response = await _client
+      final response = await client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/api/chat'),
             headers: const {'Content-Type': 'application/json'},
@@ -52,7 +65,9 @@ class ChatService {
         'Server trả về lỗi (mã ${response.statusCode}). Vui lòng thử lại.',
       );
     } on TimeoutException {
-      throw ChatServiceException('Hết thời gian chờ phản hồi. Vui lòng thử lại.');
+      throw ChatServiceException(
+        'Hết thời gian chờ phản hồi (${timeout.inSeconds}s). Có thể backend đang bận — thử lại sau.',
+      );
     } on http.ClientException {
       throw ChatServiceException(
         'Không thể kết nối tới server. Kiểm tra kết nối mạng hoặc backend.',
@@ -63,6 +78,9 @@ class ChatService {
       rethrow;
     } catch (e) {
       throw ChatServiceException('Đã xảy ra lỗi không xác định: $e');
+    } finally {
+      _extraClients.remove(client);
+      client.close();
     }
   }
 
@@ -71,6 +89,8 @@ class ChatService {
     required Uint8List imageBytes,
     required String fileName,
   }) async {
+    final client = http.Client();
+    _extraClients.add(client);
     try {
       final request = http.MultipartRequest(
         'POST',
@@ -85,7 +105,7 @@ class ChatService {
           ),
         );
 
-      final streamed = await _client.send(request).timeout(timeout);
+      final streamed = await client.send(request).timeout(timeout);
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200) {
@@ -101,7 +121,9 @@ class ChatService {
         detail ?? 'Server trả về lỗi (mã ${response.statusCode}). Vui lòng thử lại.',
       );
     } on TimeoutException {
-      throw ChatServiceException('Hết thời gian chờ phản hồi. Vui lòng thử lại.');
+      throw ChatServiceException(
+        'Hết thời gian chờ phản hồi (${timeout.inSeconds}s). Có thể backend đang bận — thử lại sau.',
+      );
     } on http.ClientException {
       throw ChatServiceException(
         'Không thể kết nối tới server. Kiểm tra kết nối mạng hoặc backend.',
@@ -112,6 +134,9 @@ class ChatService {
       rethrow;
     } catch (e) {
       throw ChatServiceException('Đã xảy ra lỗi không xác định: $e');
+    } finally {
+      _extraClients.remove(client);
+      client.close();
     }
   }
 

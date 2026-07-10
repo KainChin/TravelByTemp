@@ -8,6 +8,8 @@ class ChatInput extends StatefulWidget {
   final Future<void> Function(String text, XFile image)? onImageSend;
   final VoidCallback? onEmojiTap;
   final VoidCallback? onMicTap;
+  final VoidCallback? onCancel;
+  final bool isLoading;
   final String hintText;
 
   const ChatInput({
@@ -16,6 +18,8 @@ class ChatInput extends StatefulWidget {
     this.onImageSend,
     this.onEmojiTap,
     this.onMicTap,
+    this.onCancel,
+    this.isLoading = false,
     this.hintText = 'Nhắn tin với AI Travel Assistant...',
   });
 
@@ -163,51 +167,79 @@ class _ChatInputState extends State<ChatInput> {
                   onPressed: widget.onMicTap,
                   visualDensity: VisualDensity.compact,
                 ),
-              // Send button (blue circle)
-              GestureDetector(
-                onTap: _isSendingImage
-                    ? null
-                    : (canSend ? _handleSend : null),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 42,
-                  height: 42,
-                  margin: const EdgeInsets.only(right: 2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: canSend
-                        ? const LinearGradient(
-                            colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : LinearGradient(
-                            colors: [
-                              const Color(0xFFB0BEC5),
-                              const Color(0xFFCFD8DC),
-                            ],
-                          ),
-                    boxShadow: canSend
-                        ? [
-                            BoxShadow(
-                              color:
-                                  const Color(0xFF1565C0).withOpacity(0.4),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : [],
+              // Stop button (shown while AI is thinking) OR Send button
+              if (widget.isLoading && widget.onCancel != null)
+                GestureDetector(
+                  onTap: widget.onCancel,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 42,
+                    height: 42,
+                    margin: const EdgeInsets.only(right: 2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE53935), Color(0xFFEF5350)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE53935).withValues(alpha: 0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.stop_rounded,
+                        color: Colors.white, size: 18),
                   ),
-                  child: _isSendingImage
-                      ? const Padding(
-                          padding: EdgeInsets.all(10),
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.send_rounded,
-                          color: Colors.white, size: 18),
+                )
+              else
+                GestureDetector(
+                  onTap: _isSendingImage
+                      ? null
+                      : (canSend ? _handleSend : null),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 42,
+                    height: 42,
+                    margin: const EdgeInsets.only(right: 2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: canSend
+                          ? const LinearGradient(
+                              colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : LinearGradient(
+                              colors: [
+                                const Color(0xFFB0BEC5),
+                                const Color(0xFFCFD8DC),
+                              ],
+                            ),
+                      boxShadow: canSend
+                          ? [
+                              BoxShadow(
+                                color:
+                                    const Color(0xFF1565C0).withOpacity(0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: _isSendingImage
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.send_rounded,
+                            color: Colors.white, size: 18),
+                  ),
                 ),
-              ),
             ],
           ),
         ],

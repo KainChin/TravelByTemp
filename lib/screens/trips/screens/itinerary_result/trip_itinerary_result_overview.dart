@@ -12,7 +12,6 @@ class TripHeroHeader extends StatelessWidget {
     required this.activitiesCount,
     required this.totalCost,
     required this.aiScore,
-    required this.status,
   });
 
   final String title;
@@ -22,28 +21,27 @@ class TripHeroHeader extends StatelessWidget {
   final int activitiesCount;
   final num totalCost;
   final double aiScore;
-  final String status;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF312E81), // Deep Indigo
-            Color(0xFF4338CA), // Indigo
-            Color(0xFF0284C7), // Light Blue
+            Color(0xFF008F6A), // _primary
+            Color(0xFF05B581),
+            Color(0xFF34D399), // _primary soft edge
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4338CA).withValues(alpha: 0.25),
-            blurRadius: 32,
-            offset: const Offset(0, 16),
+            color: const Color(0xFF008F6A).withValues(alpha: 0.28),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
@@ -51,11 +49,11 @@ class TripHeroHeader extends StatelessWidget {
         children: [
           // Decorative circles
           Positioned(
-            right: -40,
-            top: -40,
+            right: -50,
+            top: -50,
             child: Container(
-              width: 180,
-              height: 180,
+              width: 160,
+              height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.08),
@@ -63,11 +61,11 @@ class TripHeroHeader extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: -30,
-            bottom: 20,
+            left: -20,
+            bottom: 10,
             child: Container(
-              width: 120,
-              height: 120,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.06),
@@ -76,73 +74,102 @@ class TripHeroHeader extends StatelessWidget {
           ),
           // Content
           Padding(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.auto_awesome, color: Colors.white, size: 14),
-                      SizedBox(width: 6),
-                      Text(
-                        'VietAI Travel Planner',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                    ],
-                  ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, color: Colors.white, size: 13),
+                          SizedBox(width: 5),
+                          Text(
+                            'AI Travel Planner',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            aiScore.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Text(
                   title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 26,
+                    fontSize: 22,
                     height: 1.15,
                     fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  summary,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    height: 1.4,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 18),
+                // Compact metrics row
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _HeroMetric(icon: Icons.calendar_today_outlined, label: '$daysCount ngày'),
-                    _HeroMetric(icon: Icons.place_outlined, label: '$destinationCount điểm đến'),
+                    _HeroMetric(icon: Icons.place_outlined, label: '$destinationCount điểm'),
                     _HeroMetric(icon: Icons.explore_outlined, label: '$activitiesCount hoạt động'),
-                    _HeroMetric(icon: Icons.payments_outlined, label: _moneyOrStatus(totalCost, empty: 'Đang tính...')),
-                    _HeroMetric(icon: Icons.star_rate_rounded, label: 'AI Score ${aiScore.toStringAsFixed(1)}'),
-                    _HeroMetric(icon: Icons.task_alt_outlined, label: status),
+                    _HeroMetric(icon: Icons.payments_outlined, label: _moneyOrStatus(totalCost, empty: '—')),
                   ],
                 ),
+                if (summary.isNotEmpty && summary != ItineraryStrings.defaultSummary) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    summary,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      height: 1.4,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0, curve: Curves.easeOutBack);
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.08, end: 0, curve: Curves.easeOutBack);
   }
 }
 
@@ -153,14 +180,14 @@ class QuickActions extends StatelessWidget {
     required this.onEdit,
     required this.onOptimize,
     required this.onShare,
-    required this.onSave,
+    this.onSave,
   });
 
   final VoidCallback onNavigate;
   final VoidCallback onEdit;
   final VoidCallback onOptimize;
   final VoidCallback onShare;
-  final VoidCallback onSave;
+  final VoidCallback? onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -176,9 +203,10 @@ class QuickActions extends StatelessWidget {
         children: [
           _QuickActionButton(icon: Icons.near_me_outlined, label: 'Điều hướng', color: const Color(0xFF0EA5E9), onTap: onNavigate),
           _QuickActionButton(icon: Icons.edit_outlined, label: 'Chỉnh sửa', color: const Color(0xFFF59E0B), onTap: onEdit),
-          _QuickActionButton(icon: Icons.auto_awesome_outlined, label: 'AI tối ưu', color: const Color(0xFF8B5CF6), onTap: onOptimize),
-          _QuickActionButton(icon: Icons.ios_share_outlined, label: 'Chia sẻ', color: const Color(0xFF10B981), onTap: onShare),
-          _QuickActionButton(icon: Icons.bookmark_outline_rounded, label: 'Lưu', color: const Color(0xFFF43F5E), onTap: onSave),
+          _QuickActionButton(icon: Icons.auto_awesome_outlined, label: 'AI chat', color: const Color(0xFF8B5CF6), onTap: onOptimize),
+          _QuickActionButton(icon: Icons.content_copy_rounded, label: 'Sao chép', color: const Color(0xFF10B981), onTap: onShare),
+          if (onSave != null)
+            _QuickActionButton(icon: Icons.bookmark_outline_rounded, label: 'Lưu lại', color: const Color(0xFFF43F5E), onTap: onSave!),
         ],
       ),
     ).animate().fadeIn(delay: 200.ms, duration: 500.ms).slideY(begin: 0.1, end: 0);

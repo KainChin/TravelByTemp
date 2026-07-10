@@ -32,6 +32,10 @@ public static class DbSeeder
             roles = await db.Roles.ToListAsync();
         }
 
+        // Note: Roles, transport hubs/configs, destinations, content và mọi
+        // reference data đã được seed bởi database/postgres/init.sql.
+        // DbSeeder chỉ xử lý users (cần password hash BCrypt — không thuần SQL).
+
         async Task EnsureUser(string username, string email, string password, string roleName, string fullName)
         {
             if (await db.Users.AnyAsync(u => u.Username == username)) return;
@@ -54,14 +58,8 @@ public static class DbSeeder
         await EnsureUser("traveler", "traveler@vietai.travel", "Traveler@123", RoleNames.Traveler, "Khách du lịch");
         await db.SaveChangesAsync();
 
-        try
-        {
-            await ContentSeeder.SeedAsync(db, logger);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Content seed skipped.");
-        }
+        // Content seed (articles/logs/banners/gallery/featured) đã chạy bởi
+        // database/postgres/init.sql (block DO $$ cuối file). Không cần seed từ C#.
 
         // Embeddings được tạo bởi EmbeddingSeedService sau khi Ollama sẵn sàng.
         logger.LogInformation("User seed completed. Embedding seed runs in background.");
