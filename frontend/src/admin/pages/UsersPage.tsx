@@ -4,7 +4,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { ContentPageHeader, ContentToast } from '../components/ContentPageHeader';
 import { EditorModal } from '../components/EditorModal';
 import { useI18n } from '../i18n';
-import { PlusIcon } from '../components/Icons';
+import { PlusIcon, UserIcon } from '../components/Icons';
 
 const emptyUser = (): CreateAdminUserPayload => ({
   username: '',
@@ -105,6 +105,11 @@ export function UsersPage() {
     }
   };
 
+  const totalCount = users.length;
+  const activeCount = users.filter((u) => u.isActive).length;
+  const adminCount = users.filter((u) => u.role === 'Admin').length;
+  const managerCount = users.filter((u) => u.role === 'TravelManager').length;
+
   return (
     <div className="content-page">
       <Breadcrumb items={[{ label: t('users.title') }]} />
@@ -115,6 +120,48 @@ export function UsersPage() {
         </button>
       </ContentPageHeader>
       <ContentToast message={toast} />
+
+      <div className="dashboard-stats-grid" style={{ marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          <div className="stat-icon-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 10, background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+            <UserIcon size={24} />
+          </div>
+          <div>
+            <p className="stat-label" style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Tổng số tài khoản</p>
+            <p className="stat-value" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{totalCount}</p>
+          </div>
+        </div>
+
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          <div className="stat-icon-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 10, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <UserIcon size={24} />
+          </div>
+          <div>
+            <p className="stat-label" style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Đang hoạt động</p>
+            <p className="stat-value" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{activeCount}</p>
+          </div>
+        </div>
+
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          <div className="stat-icon-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 10, background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}>
+            <UserIcon size={24} />
+          </div>
+          <div>
+            <p className="stat-label" style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Quản trị viên (Admin)</p>
+            <p className="stat-value" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{adminCount}</p>
+          </div>
+        </div>
+
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          <div className="stat-icon-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 10, background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+            <UserIcon size={24} />
+          </div>
+          <div>
+            <p className="stat-label" style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Content Manager</p>
+            <p className="stat-value" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{managerCount}</p>
+          </div>
+        </div>
+      </div>
 
       {error && <p className="content-error">{error}</p>}
 

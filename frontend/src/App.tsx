@@ -4,9 +4,8 @@ import { api, AuthResponse, Destination, FavoriteDestination } from './api';
 type Tab = 'explore' | 'saved' | 'ai' | 'trips';
 
 function isAuthResponse(value: unknown): value is AuthResponse {
-  if (!value || typeof value !== 'object') return false;
   const auth = value as Partial<AuthResponse>;
-  return Boolean(auth.accessToken && auth.refreshToken && auth.user?.role);
+  return !!(auth && auth.accessToken && auth.refreshToken && auth.user?.role);
 }
 
 export default function App() {
@@ -18,25 +17,15 @@ export default function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [aiResult, setAiResult] = useState<unknown>(null);
-  
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark';
-  });
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.body.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    document.body.classList.toggle('dark', darkMode);
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  const [loginForm, setLoginForm] = useState({ username: 'traveler', password: 'Traveler@123' });
   const [aiForm, setAiForm] = useState({
     latitude: 10.7769,
     longitude: 106.7009,
@@ -48,18 +37,27 @@ export default function App() {
 
   useEffect(() => {
     const saved = localStorage.getItem('auth');
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (isAuthResponse(parsed)) {
-        setAuth(parsed);
-        return;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (isAuthResponse(parsed)) {
+          setAuth(parsed);
+          return;
+        }
+      } catch {
+        // Ignore invalid persisted auth and start a fresh session.
       }
-    } catch {
-      // Ignore invalid persisted auth and start a fresh session.
     }
-    localStorage.removeItem('auth');
-    localStorage.removeItem('token');
+    // Auto-login as traveler silently
+    setLoading(true);
+    api.login('traveler', 'Traveler@123')
+      .then((res) => {
+        setAuth(res);
+        localStorage.setItem('auth', JSON.stringify(res));
+        localStorage.setItem('token', res.accessToken);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -92,21 +90,6 @@ export default function App() {
       loadExplore(selectedRegion, selectedCategory);
     }
   }, [selectedRegion, selectedCategory, tab, auth]);
-
-  const handleLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const res = await api.login(loginForm.username, loginForm.password);
-      setAuth(res);
-      localStorage.setItem('auth', JSON.stringify(res));
-      localStorage.setItem('token', res.accessToken);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleRecommend = async () => {
     setError('');
@@ -161,29 +144,8 @@ export default function App() {
 
   if (!auth) {
     return (
-      <div className="app">
-        <header><span className="logo">VietAI Travel</span></header>
-        <div className="card" style={{ maxWidth: 400, margin: '40px auto' }}>
-          <h2>Dang nhap</h2>
-          <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-            Traveler: traveler / Traveler@123 - Manager: manager / Manager@123 - Admin: admin / Admin@123
-          </p>
-          <input
-            placeholder="Username"
-            value={loginForm.username}
-            onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={loginForm.password}
-            onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-          />
-          {error && <p className="error">{error}</p>}
-          <button onClick={handleLogin} disabled={loading}>
-            {loading ? 'Dang dang nhap...' : 'Dang nhap'}
-          </button>
-        </div>
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <p style={{ color: 'var(--muted)' }}>Loading VietAI Travel…</p>
       </div>
     );
   }
