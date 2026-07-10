@@ -59,8 +59,11 @@ public class DestinationsController(AppDbContext db) : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<DestinationDto>> Get(Guid id, CancellationToken ct)
     {
-        var d = await db.Destinations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
+        var d = await db.Destinations.FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
         if (d == null) return NotFound();
+
+        d.ViewCount++;
+        await db.SaveChangesAsync(ct);
 
         var ratings = await GetRatingsAsync([d.Id], ct);
         return Ok(Map(d, ratings.GetValueOrDefault(d.Id)));

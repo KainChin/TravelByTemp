@@ -614,17 +614,7 @@ CREATE INDEX IF NOT EXISTS idx_content_articles_created_at ON content_articles(c
 CREATE INDEX IF NOT EXISTS idx_content_activity_logs_created_at ON content_activity_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_destinations_view_count ON destinations(view_count DESC);
 
-UPDATE destinations SET view_count = CASE slug
-    WHEN 'da-nang' THEN 125600
-    WHEN 'phu-quoc' THEN 118400
-    WHEN 'pho-co-hoi-an' THEN 98700
-    WHEN 'thanh-pho-da-lat' THEN 87200
-    WHEN 'ha-noi' THEN 76500
-    WHEN 'vinh-ha-long' THEN 65400
-    WHEN 'hue' THEN 54300
-    WHEN 'sapa' THEN 43200
-    ELSE 10000 + (ABS(hashtext(slug::text)) % 50000)
-END WHERE view_count = 0;
+
 
 -- ============================================================================
 -- Content seed: 245 articles + logs + banners + gallery + featured
