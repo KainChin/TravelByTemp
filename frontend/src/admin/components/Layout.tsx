@@ -14,7 +14,7 @@ import {
   SunIcon,
   MoonIcon,
 } from './Icons';
-
+import { LocaleSwitcher } from './LocaleSwitcher';
 
 export const NAV_ITEMS = [
   { id: 'dashboard' },
@@ -277,6 +277,7 @@ export function Header({
       </form>
 
       <div className="header-actions">
+        <LocaleSwitcher compact />
         <button
           type="button"
           className="icon-btn theme-toggle-btn"
