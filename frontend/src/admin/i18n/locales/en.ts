@@ -15,6 +15,12 @@ const en = {
     review: 'Content Review',
     comments: 'Comments',
     users: 'Users',
+    categories: 'Categories',
+    regions: 'Regions',
+    tags: 'Tags',
+    seo: 'SEO',
+    recycleBin: 'Recycle Bin',
+    settings: 'Settings',
   },
   brand: {
     title: 'AI Travel Admin',
@@ -169,6 +175,10 @@ const en = {
       travelNews: 'Travel news',
       destinations: 'Destinations',
       pending: 'Pending review',
+      publishedArticles: 'Published articles',
+      draftArticles: 'Draft articles',
+      featuredDestinations: 'Featured dests',
+      mediaCount: 'Media library',
     },
   },
   activity: {
@@ -351,6 +361,11 @@ const en = {
   errors: {
     network: 'Cannot reach the API server. Run the backend (port 5000) and open admin via Vite (http://localhost:3000/admin).',
     sessionExpired: 'Your session has expired. Please sign in again.',
+  },
+  placeholder: {
+    title: 'Suggested Future Feature',
+    desc: 'The "{{name}}" page is not fully implemented in the original source code. This represents a suggested future feature in the SDD software design document.',
+    back: 'Back to Dashboard',
   },
 } as const;
 

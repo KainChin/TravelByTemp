@@ -34,6 +34,14 @@ public class ContentDashboardController(AppDbContext db) : ControllerBase
         var totalNews = await db.ContentArticles.CountAsync(a => a.ArticleType == "news", ct);
         var totalDestinations = await db.Destinations.CountAsync(d => d.IsActive, ct);
         var pendingArticles = await db.ContentArticles.CountAsync(a => a.Status == "pending", ct);
+        var publishedArticles = await db.ContentArticles.CountAsync(a => a.ArticleType == "article" && a.Status == "published", ct);
+        var draftArticles = await db.ContentArticles.CountAsync(a => a.ArticleType == "article" && a.Status == "draft", ct);
+        var totalFeaturedDestinations = await db.FeaturedContents.CountAsync(f => f.IsActive && f.ContentType == "destination", ct);
+        
+        var galleryImagesCount = await db.GalleryImages.CountAsync(ct);
+        var bannersCount = await db.Banners.CountAsync(b => b.IsActive, ct);
+        var destinationImagesCount = await db.Destinations.CountAsync(d => d.IsActive && d.ImageUrl != null && d.ImageUrl != "", ct);
+        var totalMediaCount = galleryImagesCount + bannersCount + destinationImagesCount;
 
         var (articlesCur, articlesPrev) = await CountWithTrend(q => q.Where(a => a.ArticleType == "article"));
         var (newsCur, newsPrev) = await CountWithTrend(q => q.Where(a => a.ArticleType == "news"));
@@ -41,12 +49,30 @@ public class ContentDashboardController(AppDbContext db) : ControllerBase
             await db.Destinations.CountAsync(d => d.IsActive && d.CreatedAt >= thisMonthStart, ct),
             await db.Destinations.CountAsync(d => d.IsActive && d.CreatedAt >= lastMonthStart && d.CreatedAt < thisMonthStart, ct));
         var (pendingCur, pendingPrev) = await CountWithTrend(q => q.Where(a => a.Status == "pending"));
+        
+        var (publishedCur, publishedPrev) = await CountWithTrend(q => q.Where(a => a.ArticleType == "article" && a.Status == "published"));
+        var (draftCur, draftPrev) = await CountWithTrend(q => q.Where(a => a.ArticleType == "article" && a.Status == "draft"));
+        
+        var (featuredCur, featuredPrev) = (
+            await db.FeaturedContents.CountAsync(f => f.IsActive && f.ContentType == "destination" && f.CreatedAt >= thisMonthStart, ct),
+            await db.FeaturedContents.CountAsync(f => f.IsActive && f.ContentType == "destination" && f.CreatedAt >= lastMonthStart && f.CreatedAt < thisMonthStart, ct));
+
+        var mediaCur = await db.GalleryImages.CountAsync(g => g.CreatedAt >= thisMonthStart, ct)
+                     + await db.Banners.CountAsync(b => b.CreatedAt >= thisMonthStart, ct)
+                     + await db.Destinations.CountAsync(d => d.IsActive && d.ImageUrl != null && d.ImageUrl != "" && d.CreatedAt >= thisMonthStart, ct);
+        var mediaPrev = await db.GalleryImages.CountAsync(g => g.CreatedAt >= lastMonthStart && g.CreatedAt < thisMonthStart, ct)
+                      + await db.Banners.CountAsync(b => b.CreatedAt >= lastMonthStart && b.CreatedAt < thisMonthStart, ct)
+                      + await db.Destinations.CountAsync(d => d.IsActive && d.ImageUrl != null && d.ImageUrl != "" && d.CreatedAt >= lastMonthStart && d.CreatedAt < thisMonthStart, ct);
 
         return Ok(new DashboardStatsResponse([
             new("totalArticles", "Tổng bài viết", totalArticles, CalcChange(articlesCur, articlesPrev), "green"),
+            new("publishedArticles", "Bài đã xuất bản", publishedArticles, CalcChange(publishedCur, publishedPrev), "green"),
+            new("draftArticles", "Bài viết nháp", draftArticles, CalcChange(draftCur, draftPrev), "green"),
             new("travelNews", "Tin tức du lịch", totalNews, CalcChange(newsCur, newsPrev), "blue"),
             new("destinations", "Địa điểm du lịch", totalDestinations, CalcChange(destCur, destPrev), "purple"),
-            new("pending", "Bài chờ duyệt", pendingArticles, CalcChange(pendingCur, pendingPrev), "orange")
+            new("featuredDestinations", "Địa điểm nổi bật", totalFeaturedDestinations, CalcChange(featuredCur, featuredPrev), "purple"),
+            new("pending", "Bài chờ duyệt", pendingArticles, CalcChange(pendingCur, pendingPrev), "orange"),
+            new("mediaCount", "Thư viện phương tiện", totalMediaCount, CalcChange(mediaCur, mediaPrev), "blue")
         ]));
     }
 
@@ -92,7 +118,8 @@ public class ContentDashboardController(AppDbContext db) : ControllerBase
 
         var destinations = await db.Destinations.AsNoTracking()
             .Where(d => d.IsActive)
-            .Take(limit * 3)
+            .OrderByDescending(d => d.ViewCount)
+            .Take(limit)
             .ToListAsync(ct);
 
         var result = destinations
@@ -103,15 +130,36 @@ public class ContentDashboardController(AppDbContext db) : ControllerBase
                     d.Id,
                     d.Name,
                     d.ImageUrl,
-                    (articles + 1) * 12500L + articles * 800L,
+                    d.ViewCount,
                     articles);
             })
-            .OrderByDescending(d => d.ViewCount)
-            .ThenBy(d => d.Name)
-            .Take(limit)
             .ToList();
 
         return Ok(result);
+    }
+
+    [HttpGet("chart-stats")]
+    public async Task<ActionResult<DashboardChartStatsResponse>> ChartStats(CancellationToken ct = default)
+    {
+        var regions = await db.Destinations.AsNoTracking()
+            .Where(d => d.IsActive)
+            .GroupBy(d => d.Region)
+            .Select(g => new ChartStatDto(g.Key, g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        var categories = await db.Destinations.AsNoTracking()
+            .Where(d => d.IsActive)
+            .GroupBy(d => d.Category)
+            .Select(g => new ChartStatDto(g.Key, g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        var articles = await db.ContentArticles.AsNoTracking()
+            .Where(a => a.Status == "published")
+            .GroupBy(a => a.Category)
+            .Select(g => new ChartStatDto(g.Key, g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        return Ok(new DashboardChartStatsResponse(regions, categories, articles));
     }
 
     [HttpGet("recent-activity")]

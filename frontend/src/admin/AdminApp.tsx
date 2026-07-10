@@ -33,6 +33,12 @@ import { CommentsPage } from './pages/CommentsPage';
 import { UsersPage } from './pages/UsersPage';
 
 import { ActivityPage } from './pages/ActivityPage';
+import { PlaceholderPage } from './pages/PlaceholderPage';
+import { CategoriesPage } from './pages/CategoriesPage';
+import { RegionsPage } from './pages/RegionsPage';
+import { TagsPage } from './pages/TagsPage';
+import { SeoPage } from './pages/SeoPage';
+import { RecycleBinPage } from './pages/RecycleBinPage';
 
 import { PermissionsProvider } from './context/PermissionsContext';
 
@@ -364,6 +370,11 @@ function AdminShell() {
         const nav = PERM_NAV[perm.key];
         if (nav && !ids.includes(nav)) ids.push(nav);
       });
+      // Always include new future feature placeholders in visible list
+      const extraNavs = ['categories', 'regions', 'tags', 'seo', 'recycleBin'];
+      extraNavs.forEach(nav => {
+        if (!ids.includes(nav)) ids.push(nav);
+      });
       setVisibleNavIds(ids);
       setPermissions({
         canPublish: p.canPublish,
@@ -607,6 +618,21 @@ function AdminShell() {
       case 'activity':
 
         return <ActivityPage />;
+
+      case 'categories':
+        return <CategoriesPage />;
+
+      case 'regions':
+        return <RegionsPage />;
+
+      case 'tags':
+        return <TagsPage />;
+
+      case 'seo':
+        return <SeoPage />;
+
+      case 'recycleBin':
+        return <RecycleBinPage />;
 
       default:
 

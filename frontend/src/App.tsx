@@ -18,6 +18,23 @@ export default function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [aiResult, setAiResult] = useState<unknown>(null);
+  
+  const [selectedRegion, setSelectedRegion] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
 
   const [loginForm, setLoginForm] = useState({ username: 'traveler', password: 'Traveler@123' });
   const [aiForm, setAiForm] = useState({
@@ -56,11 +73,11 @@ export default function App() {
     return items.map((d) => ({ ...d, isFavorite: savedIds.has(d.id) }));
   };
 
-  const loadExplore = async () => {
+  const loadExplore = async (reg = selectedRegion, cat = selectedCategory) => {
     try {
       const canLoadFavorites = auth?.user.role === 'Traveler' || auth?.user.role === 'Admin';
       const [items, saved] = await Promise.all([
-        api.destinations(),
+        api.destinations({ region: reg || undefined, category: cat || undefined }),
         canLoadFavorites ? api.favorites() : Promise.resolve([]),
       ]);
       setFavorites(saved);
@@ -69,6 +86,12 @@ export default function App() {
       setError((e as Error).message);
     }
   };
+
+  useEffect(() => {
+    if (auth && tab === 'explore') {
+      loadExplore(selectedRegion, selectedCategory);
+    }
+  }, [selectedRegion, selectedCategory, tab, auth]);
 
   const handleLogin = async () => {
     setError('');
@@ -178,6 +201,13 @@ export default function App() {
           <button
             className="secondary"
             style={{ width: 'auto', marginLeft: 12 }}
+            onClick={() => setDarkMode(!darkMode)}
+          >
+            {darkMode ? '☀️ Light' : '🌙 Dark'}
+          </button>
+          <button
+            className="secondary"
+            style={{ width: 'auto', marginLeft: 12 }}
             onClick={() => {
               localStorage.clear();
               setAuth(null);
@@ -223,7 +253,33 @@ export default function App() {
       {error && <p className="error">{error}</p>}
 
       {tab === 'explore' && (
-        <div className="grid">
+        <>
+          <div className="explore-filters" style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <select 
+              value={selectedRegion} 
+              onChange={(e) => setSelectedRegion(e.target.value)}
+              style={{ flex: 1, margin: 0 }}
+            >
+              <option value="">Tất cả miền (All regions)</option>
+              <option value="North">Miền Bắc (North)</option>
+              <option value="Central">Miền Trung (Central)</option>
+              <option value="South">Miền Nam (South)</option>
+              <option value="West">Miền Tây (West)</option>
+            </select>
+            <select 
+              value={selectedCategory} 
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              style={{ flex: 1, margin: 0 }}
+            >
+              <option value="">Tất cả danh mục (All categories)</option>
+              <option value="Beach">Bãi biển (Beach)</option>
+              <option value="City">Thành phố (City)</option>
+              <option value="Mountain">Núi non (Mountain)</option>
+              <option value="Nature">Thiên nhiên (Nature)</option>
+              <option value="Culture">Văn hóa (Culture)</option>
+            </select>
+          </div>
+          <div className="grid">
           {destinations.map((d) => (
             <div key={d.id} className="card dest">
               {d.imageUrl && <img src={d.imageUrl} alt={d.name} />}
@@ -233,7 +289,6 @@ export default function App() {
                 Rating: {d.averageRating.toFixed(1)} ({d.totalReviews} reviews)
               </p>
               <p style={{ fontSize: 13 }}>{d.description.slice(0, 100)}...</p>
-              <strong style={{ color: 'var(--primary)' }}>{d.estimatedCost.toLocaleString()} VND</strong>
               {canUseFavorites && (
                 <button
                   className={d.isFavorite ? 'secondary' : undefined}
@@ -246,6 +301,7 @@ export default function App() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {tab === 'saved' && (
@@ -266,9 +322,6 @@ export default function App() {
                   {f.destination.province} - {f.destination.category}
                 </p>
                 <p style={{ fontSize: 13 }}>{f.destination.description.slice(0, 100)}...</p>
-                <strong style={{ color: 'var(--primary)' }}>
-                  {f.destination.estimatedCost.toLocaleString()} VND
-                </strong>
                 <button
                   className="secondary"
                   onClick={() => toggleFavorite({ ...f.destination, isFavorite: true })}
@@ -302,7 +355,7 @@ export default function App() {
           <button className="gradient" onClick={handleRecommend} disabled={loading || !canUseAi}>
             {loading ? 'AI dang tao lich trinh...' : 'Tao lich trinh AI'}
           </button>
-          {aiResult && (
+          {Boolean(aiResult) && (
             <pre style={{ background: '#f0f0f0', padding: 12, borderRadius: 12, overflow: 'auto', fontSize: 12 }}>
               {JSON.stringify(aiResult, null, 2)}
             </pre>

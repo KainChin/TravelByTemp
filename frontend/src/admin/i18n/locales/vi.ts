@@ -15,6 +15,12 @@ const vi = {
     review: 'Duyệt bài viết',
     comments: 'Bình luận',
     users: 'Người dùng',
+    categories: 'Thể loại',
+    regions: 'Vùng miền',
+    tags: 'Thẻ',
+    seo: 'SEO',
+    recycleBin: 'Thùng rác',
+    settings: 'Cài đặt',
   },
   brand: {
     title: 'AI Travel Admin',
@@ -169,6 +175,10 @@ const vi = {
       travelNews: 'Tin tức du lịch',
       destinations: 'Địa điểm du lịch',
       pending: 'Bài chờ duyệt',
+      publishedArticles: 'Bài đã xuất bản',
+      draftArticles: 'Bài viết nháp',
+      featuredDestinations: 'Địa điểm nổi bật',
+      mediaCount: 'Thư viện phương tiện',
     },
   },
   activity: {
@@ -351,6 +361,11 @@ const vi = {
   errors: {
     network: 'Không kết nối được máy chủ API. Hãy chạy backend (port 5000) và mở admin qua Vite (http://localhost:3000/admin).',
     sessionExpired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+  },
+  placeholder: {
+    title: 'Gợi ý tính năng tương lai',
+    desc: 'Trang "{{name}}" hiện chưa được triển khai hoàn chỉnh trong mã nguồn gốc. Đây là một tính năng được đề xuất (Suggested Future Feature) trong tài liệu thiết kế SDD.',
+    back: 'Quay lại Dashboard',
   },
 } as const;
 
