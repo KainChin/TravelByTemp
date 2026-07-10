@@ -51,11 +51,15 @@ public class ArticlesController(AppDbContext db) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ArticleDetailDto>> Get(Guid id, CancellationToken ct)
     {
-        var article = await db.ContentArticles.AsNoTracking()
+        var article = await db.ContentArticles
             .Include(a => a.Author)
             .FirstOrDefaultAsync(a => a.Id == id && a.Status == "published", ct);
 
         if (article == null) return NotFound();
+
+        article.ViewCount++;
+        await db.SaveChangesAsync(ct);
+
         return Ok(MapDetail(article));
     }
 
