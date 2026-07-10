@@ -8,6 +8,9 @@ public sealed partial class TravelChatService
 {
     private async Task<ChatEnvelopeResponse> ChatImageWithGroqAsync(string message, string base64, string contentType, CancellationToken ct)
     {
+        var keys = groqOptions.ApiKey.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (keys.Length == 0) throw new TravelAiException(StatusCodes.Status500InternalServerError, "No Groq API key configured.");
+
         var payload = new
         {
             model = groqOptions.VisionModel,
@@ -39,32 +42,35 @@ public sealed partial class TravelChatService
 
         var client = httpClientFactory.CreateClient("groq");
         client.BaseAddress = new Uri(groqOptions.BaseUrl.TrimEnd('/') + "/");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", groqOptions.ApiKey);
 
-        try
+        foreach (var key in keys)
         {
-            using var response = await client.PostAsJsonAsync("chat/completions", payload, JsonOptions, ct);
-            var body = await response.Content.ReadAsStringAsync(ct);
-            if (!response.IsSuccessStatusCode)
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+            try
             {
-                logger.LogWarning("Groq request failed: {StatusCode} {Body}", response.StatusCode, body);
-                var messageText = response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
-                    ? "Groq rate limit or quota exceeded. Retry later or check Groq limits."
-                    : "Groq request failed. Check API key, quota, model, or image input.";
-                throw new TravelAiException(StatusCodes.Status503ServiceUnavailable, messageText);
-            }
+                using var response = await client.PostAsJsonAsync("chat/completions", payload, JsonOptions, ct);
+                var body = await response.Content.ReadAsStringAsync(ct);
+                if (response.IsSuccessStatusCode)
+                {
+                    return new ChatEnvelopeResponse(ReadOpenAiContent(body), null);
+                }
 
-            return new ChatEnvelopeResponse(ReadOpenAiContent(body), null);
+                var maskedKey = key.Length > 4 ? key.Substring(key.Length - 4) : "****";
+                logger.LogWarning("Groq vision request failed with key ending in {KeyEnd}: {StatusCode} {Body}", 
+                    maskedKey, response.StatusCode, body);
+                
+                // If it is any error, continue to next key
+                continue;
+            }
+            catch (Exception ex)
+            {
+                var maskedKey = key.Length > 4 ? key.Substring(key.Length - 4) : "****";
+                logger.LogWarning(ex, "Groq vision request exception with key ending in {KeyEnd}", maskedKey);
+                // Continue to try the next key
+            }
         }
-        catch (TravelAiException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Groq vision request failed");
-            throw new TravelAiException(StatusCodes.Status503ServiceUnavailable, "Cannot connect to Groq.");
-        }
+
+        throw new TravelAiException(StatusCodes.Status503ServiceUnavailable, "All Groq API keys failed or were rate limited during vision chat.");
     }
 
     private async Task<ChatEnvelopeResponse> ChatImageWithOpenAiAsync(string message, string base64, string contentType, CancellationToken ct)

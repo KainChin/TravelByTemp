@@ -11,6 +11,8 @@ import {
   MenuIcon,
   NAV_ICON_MAP,
   SearchIcon,
+  SunIcon,
+  MoonIcon,
 } from './Icons';
 import { LocaleSwitcher } from './LocaleSwitcher';
 
@@ -25,6 +27,11 @@ export const NAV_ITEMS = [
   { id: 'featured' },
   { id: 'gallery' },
   { id: 'users' },
+  { id: 'categories' },
+  { id: 'regions' },
+  { id: 'tags' },
+  { id: 'seo' },
+  { id: 'recycleBin' },
 ] as const;
 
 type Props = {
@@ -195,6 +202,20 @@ export function Header({
   const inboxRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('admin_theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+      localStorage.setItem('admin_theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('admin_theme', 'light');
+    }
+  }, [darkMode]);
+
   const pendingArticles = inbox?.pendingArticles ?? 0;
   const pendingComments = inbox?.pendingComments ?? 0;
   const totalInbox = pendingArticles + pendingComments;
@@ -261,6 +282,15 @@ export function Header({
 
       <div className="header-actions">
         <LocaleSwitcher compact />
+        <button
+          type="button"
+          className="icon-btn theme-toggle-btn"
+          onClick={() => setDarkMode(!darkMode)}
+          aria-label={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          style={{ cursor: 'pointer', padding: '6px' }}
+        >
+          {darkMode ? <SunIcon size={20} /> : <MoonIcon size={20} />}
+        </button>
         <div className="inbox-wrap" ref={inboxRef}>
           <button
             type="button"

@@ -30,6 +30,33 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT fk_users_roles FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
+DO $$
+DECLARE
+    v_admin_role_id UUID;
+    v_manager_role_id UUID;
+    v_traveler_role_id UUID;
+BEGIN
+    SELECT id INTO v_admin_role_id FROM roles WHERE name = 'Admin';
+    SELECT id INTO v_manager_role_id FROM roles WHERE name = 'TravelManager';
+    SELECT id INTO v_traveler_role_id FROM roles WHERE name = 'Traveler';
+
+    IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin') THEN
+        INSERT INTO users (id, role_id, username, email, password_hash, full_name, is_active, created_at)
+        VALUES ('759dc93c-0dcf-48ab-9efa-0864f2ce6ba9', v_admin_role_id, 'admin', 'admin@vietai.travel', '$2a$11$59i3UBtMNV/t1bshNXqV5e5k/roOXcKAKleauNLkc0a7YLraj6xLy', 'Quản trị viên', TRUE, NOW());
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'manager') THEN
+        INSERT INTO users (id, role_id, username, email, password_hash, full_name, is_active, created_at)
+        VALUES ('4ec238f6-d7c5-4265-8942-74eddbd89d13', v_manager_role_id, 'manager', 'manager@vietai.travel', '$2a$11$x5qdDiOYszBnoLi.2FRvv.aWNi.R4axIMh0/V/EdxToXPru/o2Ol.', 'Content Manager', TRUE, NOW());
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'traveler') THEN
+        INSERT INTO users (id, role_id, username, email, password_hash, full_name, is_active, created_at)
+        VALUES ('0fe996e0-a1ad-41b9-8e65-db14b6863450', v_traveler_role_id, 'traveler', 'traveler@vietai.travel', '$2a$11$51TyCGirgjSwynxPXnEq3efejhZE862mqv1ZaddpvVAisSIVL6iFW', 'Khách du lịch', TRUE, NOW());
+    END IF;
+END $$;
+
+
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
@@ -317,6 +344,7 @@ CREATE TABLE IF NOT EXISTS banners (
     link_url VARCHAR(500),
     sort_order INT NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    region VARCHAR(50) NOT NULL DEFAULT 'North',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
@@ -666,7 +694,7 @@ BEGIN
         SELECT
             gen_random_uuid(),
             'Bài viết du lịch #' || (i + 1)::text || ': ' || d.name,
-            'bai-viet-du-lich-' || (i + 1)::text,
+            'bai-viet-du-lich-' || (i + 1)::text || '-' || d.slug,
             'Tóm tắt nội dung cho Bài viết du lịch #' || (i + 1)::text || ': ' || d.name,
             '<p>Nội dung chi tiết cho bài viết: Bài viết du lịch #' || (i + 1)::text || ': ' || d.name || '</p>',
             (CASE WHEN i % 4 = 0 THEN 'news' ELSE 'article' END)::varchar,
@@ -690,7 +718,7 @@ BEGIN
                   ELSE NULL END)
         FROM generate_series(5, 244) AS i
         CROSS JOIN LATERAL (
-            SELECT id, name, image_url
+            SELECT id, name, image_url, slug
             FROM destinations
             WHERE is_active
             ORDER BY name
@@ -719,7 +747,7 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM gallery_images) THEN
         INSERT INTO gallery_images (id, title, image_url, destination_id, sort_order, created_at)
-        SELECT gen_random_uuid(), x.title, x.image_url, x.dest_id, x.sort_order, NOW()
+        SELECT gen_random_uuid(), x.title, x.image_url, d.id, x.sort_order, NOW()
         FROM (VALUES
             ('Bãi biển Mỹ Khê', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600', 'da-nang', 1),
             ('Hoàng hôn Phú Quốc', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600', 'phu-quoc', 2),

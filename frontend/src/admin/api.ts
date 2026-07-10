@@ -6,7 +6,7 @@ const API = import.meta.env.VITE_API_BASE_URL ?? '';
 export type AuthResponse = {
   accessToken: string;
   refreshToken: string;
-  user: { id: string; username: string; email: string; fullName: string; role: string };
+  user: { id: string; username: string; email: string; fullName: string; role: string; avatarUrl?: string | null };
 };
 
 export type DashboardStat = {
@@ -95,6 +95,18 @@ export type GalleryImage = {
   destinationName?: string;
   sortOrder: number;
   createdAt: string;
+};
+
+export type ChartStat = {
+  key: string;
+  label: string;
+  count: number;
+};
+
+export type DashboardChartStats = {
+  regions: ChartStat[];
+  categories: ChartStat[];
+  articles: ChartStat[];
 };
 
 export type InboxSummary = {
@@ -338,6 +350,7 @@ export const adminApi = {
     request<PaginatedArticles>(`/api/content/dashboard/recent-articles?page=${page}&pageSize=${pageSize}`),
   popularDestinations: (limit = 5) =>
     request<PopularDestination[]>(`/api/content/dashboard/popular-destinations?limit=${limit}`),
+  chartStats: () => request<DashboardChartStats>('/api/content/dashboard/chart-stats'),
   recentActivity: (limit = 6) =>
     request<ActivityLog[]>(`/api/content/dashboard/recent-activity?limit=${limit}`),
   activityLogs: (params?: { page?: number; pageSize?: number }) => {

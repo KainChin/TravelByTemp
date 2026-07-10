@@ -144,3 +144,9 @@ public record ArticleDetailDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? PublishedAt);
+
+public record ChartStatDto(string Key, string Label, int Count);
+public record DashboardChartStatsResponse(
+    IReadOnlyList<ChartStatDto> Regions,
+    IReadOnlyList<ChartStatDto> Categories,
+    IReadOnlyList<ChartStatDto> Articles);

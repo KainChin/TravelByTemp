@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import en from './locales/en';
 import vi from './locales/vi';
 import type { Locale, TranslateParams, TranslationDict } from './types';
+export type { Locale, TranslateParams, TranslationDict };
 
 const STORAGE_KEY = 'admin_locale';
 

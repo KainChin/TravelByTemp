@@ -23,6 +23,7 @@ public class Destination
     public string? AiRecommendationNote { get; set; }
     public string? EmbeddingText { get; set; }
     public Vector? Embedding { get; set; }
+    public long ViewCount { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

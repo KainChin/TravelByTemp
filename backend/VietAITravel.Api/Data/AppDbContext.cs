@@ -110,6 +110,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.AiRecommendationNote).HasColumnName("ai_recommendation_note");
             e.Property(x => x.EmbeddingText).HasColumnName("embedding_text");
             e.Property(x => x.Embedding).HasColumnName("embedding");
+            e.Property(x => x.ViewCount).HasColumnName("view_count");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
